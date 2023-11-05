@@ -13,26 +13,26 @@ The current version of Boa32 will implement RV32IM_Zicsr:
 | M               | Multiply and division instructions
 | Zicsr           | Control and status register instructions
 
-With the following CSRs implemented:
+With the following CSRs present, all mandatory:
 | CSR address | CSR name     | Default value | Features
 | :---------- | :----------- | :------------ | :-------
-| `0x300`     | `mstatus`    | `0x000000000` | MIE and MPIE bits
-| `0x301`     | `misa`       | `0x000000000` | Read-only query of ISA
-| `0x302`     | `medeleg`    | `0x000000000` | Read-only
-| `0x303`     | `mideleg`    | `0x000000000` | Read-only
-| `0x304`     | `mie`        | `0x000000000` | Read/write any interrupt enable
-| `0x305`     | `mtvec`      | `0x000000000` | Read/write direct exception vector
-| `0x310`     | `mstatush`   | `0x000000000` | Read-only
-| `0x344`     | `mip`        | `0x000000000` | Read-only quary of pending interrupts
-| `0x340`     | `mscratch`   | `0x000000000` | Read/write any value
-| `0x341`     | `mepc`       | `0x000000000` | Read/write any legal address
-| `0x342`     | `mcause`     | `0x000000000` | WARL trap and exception cause
-| `0x343`     | `mtval`      | `0x000000000` | Read-only
-| `0xf11`     | `mvendorid`  | `0x000000000` | Read-only
-| `0xf12`     | `marchid`    | `0x000000000` | Read-only
-| `0xf13`     | `mipid`      | `0x000000000` | Read-only
-| `0xf14`     | `mhartid`    | `0x000000000` | Read-only
-| `0xf15`     | `mconfigptr` | `0x000000000` | Read-only
+| `0x300`     | `mstatus`    | `0x0000_0000` | MIE and MPIE bits
+| `0x301`     | `misa`       | `0x4001_0100` | Read-only query of ISA
+| `0x302`     | `medeleg`    | `0x0000_0000` | (unimplemented)
+| `0x303`     | `mideleg`    | `0x0000_0000` | (unimplemented)
+| `0x304`     | `mie`        | `0x0000_0000` | Read/write any interrupt enable
+| `0x305`     | `mtvec`      | `0x0000_0000` | Read/write direct exception vector
+| `0x310`     | `mstatush`   | `0x0000_0000` | (unimplemented)
+| `0x344`     | `mip`        | `0x0000_0000` | Read-only quary of pending interrupts
+| `0x340`     | `mscratch`   | `0x0000_0000` | Read/write any value
+| `0x341`     | `mepc`       | `0x0000_0000` | Read/write any legal address
+| `0x342`     | `mcause`     | `0x0000_0000` | WARL trap and exception cause
+| `0x343`     | `mtval`      | `0x0000_0000` | (unimplemented)
+| `0xf11`     | `mvendorid`  | `0x0000_0000` | (unimplemented)
+| `0xf12`     | `marchid`    | `0x0000_0000` | (unimplemented)
+| `0xf13`     | `mipid`      | `0x0000_0000` | (unimplemented)
+| `0xf14`     | `mhartid`    | parameter     | Read-only query of CPU/HART ID
+| `0xf15`     | `mconfigptr` | `0x0000_0000` | (unimplemented)
 
 
 

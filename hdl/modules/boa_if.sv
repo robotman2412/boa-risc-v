@@ -1,0 +1,79 @@
+/*
+    Copyright © 2023, Julian Scheffers
+    
+    This work ("Boa³²") is licensed under a Creative Commons
+    Attribution-NonCommercial-ShareAlike 4.0 International License:
+    
+    https://creativecommons.org/licenses/by-nc-sa/4.0/
+*/
+
+`include "boa_defines.sv"
+
+
+
+// Boa³² pipline stage: IF (instruction fetch).
+module boa_stage_if#(
+    // Entrypoint address.
+    parameter entrypoint    = 32'h4000_0000
+)(
+    // CPU clock.
+    input  logic        clk,
+    // Synchronous reset.
+    input  logic        rst,
+    
+    // Program memory bus.
+    boa_mem_bus.CPU     pbus,
+    
+    
+    // IF/ID: Result valid.
+    output logic        q_valid,
+    // IF/ID: Current instruction PC.
+    output logic[31:2]  q_pc,
+    // IF/ID: Current instruction word.
+    output logic[31:0]  q_insn,
+    
+    
+    // ID/IF: Branch predicted.
+    input  logic        id_branch_predict,
+    // ID/IF: Branch target address.
+    input  logic[31:2]  id_branch_target,
+    
+    // Stall IF stage.
+    input  logic        fw_stall_if,
+    // Branch correction address.
+    input  logic[31:2]  fw_branch_alt,
+    // Branch to be corrected.
+    input  logic        fw_branch_correct
+);
+    // Next instruction to load.
+    logic[31:2] pc;
+    // Next memory read is valid.
+    logic       valid;
+    
+    assign pbus.re      = 1;
+    assign pbus.we      = 0;
+    assign pbus.addr    = pc;
+    assign q_insn       = pbus.rdata;
+    assign q_valid      = valid && pbus.ready;
+    
+    always @(posedge clk) begin
+        q_pc <= pc;
+        if (rst) begin
+            pc      <= 0;
+            valid   <= 0;
+        end else if(!fw_stall_if) begin
+            if (fw_branch_correct) begin
+                pc      <= fw_branch_alt;
+                valid <= 0;
+            end else if (id_branch_predict) begin
+                pc      <= id_branch_target;
+                valid   <= 0;
+            end else if (!pbus.ready) begin
+                valid   <= 0;
+            end else begin
+                pc      <= pc + 4;
+                valid   <= 1;
+            end
+        end
+    end
+endmodule

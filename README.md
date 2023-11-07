@@ -23,7 +23,7 @@ With the following CSRs present, all mandatory:
 | `0x304`     | `mie`        | `0x0000_0000` | Read/write any interrupt enable
 | `0x305`     | `mtvec`      | `0x0000_0000` | Read/write direct exception vector
 | `0x310`     | `mstatush`   | `0x0000_0000` | (unimplemented)
-| `0x344`     | `mip`        | `0x0000_0000` | Read-only quary of pending interrupts
+| `0x344`     | `mip`        | `0x0000_0000` | Read-only query of pending interrupts
 | `0x340`     | `mscratch`   | `0x0000_0000` | Read/write any value
 | `0x341`     | `mepc`       | `0x0000_0000` | Read/write any legal address
 | `0x342`     | `mcause`     | `0x0000_0000` | WARL trap and exception cause

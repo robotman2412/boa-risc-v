@@ -106,7 +106,7 @@ module boa_branch_target(
     // Value of RS1 register (for JALR).
     input  logic[31:0]  rs1_val,
     // Value of xEPC register (for xRET).
-    input  logic[31:1]  epc_val;
+    input  logic[31:1]  epc_val,
     
     // Instruction is MRET or SRET.
     output logic        is_xret,

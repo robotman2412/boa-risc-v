@@ -33,7 +33,7 @@ module top(
     logic[31:1] fw_branch_alt;
     boa_stage_if stage_if(
         clk, rst, pbus,
-        b_if_id_valid, b_if_id_pc, b_if_id_insn,
+        b_if_id_valid, b_if_id_pc, b_if_id_insn, b_if_id_trap, b_if_id_cause,
         id_branch_predict, id_branch_target,
         fw_stall_if, fw_stall_id, fw_branch_correct, fw_branch_alt
     );

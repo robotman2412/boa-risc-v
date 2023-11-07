@@ -26,13 +26,14 @@ module top(
     logic id_branch_predict;
     logic[31:2] id_branch_target;
     logic fw_stall_if;
+    logic fw_stall_id;
     logic fw_branch_correct;
     logic[31:2] fw_branch_alt;
     boa_stage_if stage_if(
         clk, rst, pbus,
         b_if_id_valid, b_if_id_pc, b_if_id_insn,
         id_branch_predict, id_branch_target,
-        fw_stall_if, fw_branch_correct, fw_branch_alt
+        fw_stall_if, fw_stall_id, fw_branch_correct, fw_branch_alt
     );
     
     always @(posedge clk) begin
@@ -41,10 +42,12 @@ module top(
     
     always @(*) begin
         case (cycle)
-            default: begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 0; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
-            5: begin id_branch_predict = 1; id_branch_target = 32'hdead_beef; fw_stall_if = 0; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
-            6: begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 0; fw_branch_correct = 1; fw_branch_alt = 32'hcafe_babe; end
-            9: begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 1; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
+            default: begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 0; fw_stall_id = 0; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
+            5:  begin id_branch_predict = 1; id_branch_target = 32'hdead_beef; fw_stall_if = 0; fw_stall_id = 0; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
+            6:  begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 0; fw_stall_id = 0; fw_branch_correct = 1; fw_branch_alt = 32'hcafe_babe; end
+            8:  begin id_branch_predict = 1; id_branch_target = 32'hbaad_f00d; fw_stall_if = 0; fw_stall_id = 0; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
+            11: begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 1; fw_stall_id = 0; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
+            14: begin id_branch_predict = 0; id_branch_target = 32'h0000_0000; fw_stall_if = 1; fw_stall_id = 1; fw_branch_correct = 0; fw_branch_alt = 32'h0000_0000; end
         endcase
     end
 endmodule

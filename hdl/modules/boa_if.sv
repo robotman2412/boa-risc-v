@@ -40,10 +40,12 @@ module boa_stage_if#(
     
     // Stall IF stage.
     input  logic        fw_stall_if,
-    // Branch correction address.
-    input  logic[31:2]  fw_branch_alt,
+    // Stall ID stage.
+    input  logic        fw_stall_id,
     // Branch to be corrected.
-    input  logic        fw_branch_correct
+    input  logic        fw_branch_correct,
+    // Branch correction address.
+    input  logic[31:2]  fw_branch_alt
 );
     // Next instruction to load.
     logic[31:2] pc;
@@ -74,6 +76,8 @@ module boa_stage_if#(
                 pc      <= pc + 4;
                 valid   <= 1;
             end
+        end else begin
+            valid <= valid && fw_stall_id;
         end
     end
 endmodule

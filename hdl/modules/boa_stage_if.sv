@@ -48,9 +48,9 @@ module boa_stage_if#(
     input  logic[31:2]  fw_branch_alt
 );
     // Next instruction to load.
-    logic[31:2] pc;
+    logic[31:2] pc      = entrypoint;
     // Next memory read is valid.
-    logic       valid;
+    logic       valid   = 0;
     
     assign pbus.re      = 1;
     assign pbus.we      = 0;
@@ -61,7 +61,7 @@ module boa_stage_if#(
     always @(posedge clk) begin
         q_pc <= pc;
         if (rst) begin
-            pc      <= 0;
+            pc      <= entrypoint;
             valid   <= 0;
         end else if(!fw_stall_if) begin
             if (fw_branch_correct) begin

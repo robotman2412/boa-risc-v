@@ -21,14 +21,16 @@ module top(
     always @(negedge clk) pbus.rdata <= addr_reg;
     
     wire       b_if_id_valid;
-    wire[31:2] b_if_id_pc;
+    wire[31:1] b_if_id_pc;
     wire[31:0] b_if_id_insn;
+    wire       b_if_id_trap;
+    wire[3:0]  b_if_id_cause;
     logic id_branch_predict;
-    logic[31:2] id_branch_target;
+    logic[31:1] id_branch_target;
     logic fw_stall_if;
     logic fw_stall_id;
     logic fw_branch_correct;
-    logic[31:2] fw_branch_alt;
+    logic[31:1] fw_branch_alt;
     boa_stage_if stage_if(
         clk, rst, pbus,
         b_if_id_valid, b_if_id_pc, b_if_id_insn,

@@ -28,15 +28,19 @@ module boa_stage_if#(
     // IF/ID: Result valid.
     output logic        q_valid,
     // IF/ID: Current instruction PC.
-    output logic[31:2]  q_pc,
+    output logic[31:1]  q_pc,
     // IF/ID: Current instruction word.
     output logic[31:0]  q_insn,
+    // IF/ID: Trap raised.
+    output logic        q_trap,
+    // IF/ID: Trap cause.
+    output logic[3:0]   q_cause,
     
     
     // ID/IF: Branch predicted.
     input  logic        id_branch_predict,
     // ID/IF: Branch target address.
-    input  logic[31:2]  id_branch_target,
+    input  logic[31:1]  id_branch_target,
     
     // Stall IF stage.
     input  logic        fw_stall_if,
@@ -45,18 +49,22 @@ module boa_stage_if#(
     // Branch to be corrected.
     input  logic        fw_branch_correct,
     // Branch correction address.
-    input  logic[31:2]  fw_branch_alt
+    input  logic[31:1]  fw_branch_alt
 );
     // Next instruction to load.
-    logic[31:2] pc      = entrypoint;
+    logic[31:1] pc      = entrypoint;
     // Next memory read is valid.
     logic       valid   = 0;
     
     assign pbus.re      = 1;
     assign pbus.we      = 0;
     assign pbus.addr    = pc;
+    // Pipeline barrier logic.
     assign q_insn       = pbus.rdata;
     assign q_valid      = valid && pbus.ready;
+    always @(posedge clk) q_pc <= pc;
+    assign q_trap       = q_pc[1];
+    assign q_cause      = `RV_ECAUSE_IALIGN;
     
     always @(posedge clk) begin
         q_pc <= pc;

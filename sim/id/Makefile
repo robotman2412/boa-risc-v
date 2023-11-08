@@ -8,8 +8,7 @@ HDL = 	hdl/top.sv \
 
 all: wave
 
-build: $(HDL) $(shell find ../../hdl -type f) bench.cpp
-	mkdir -p build
+build: $(HDL) bench.cpp
 	verilator -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-VARHIDDEN -Wno-WIDTH -Wno-UNUSED \
 		--trace-fst -sv --cc --exe --build \
 		-I../../hdl/include \

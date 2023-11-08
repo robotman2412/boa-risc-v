@@ -1,0 +1,93 @@
+/*
+    Copyright © 2023, Julian Scheffers
+    
+    This work ("Boa³²") is licensed under a Creative Commons
+    Attribution-NonCommercial 4.0 International License:
+    
+    https://creativecommons.org/licenses/by-nc/4.0/
+*/
+
+`include "boa_defines.sv"
+
+
+
+// Simple zero latency multiplier.
+module boa_mul_simple(
+    // Left-hand side is unsigned.
+    input  logic       u_lhs,
+    // Right-hand side is unsigned.
+    input  logic       u_rhs,
+    
+    // Left-hand side.
+    input  logic[31:0] lhs,
+    // Right-hand side.
+    input  logic[31:0] rhs,
+    // Multiplication result.
+    output logic[63:0] res
+);
+    // Expand inputs to 64-bit.
+    logic[63:0] tmp_lhs;
+    assign tmp_lhs[31:0]  = lhs;
+    assign tmp_lhs[63:32] = u_lhs ? 0 : lhs[31] * 32'hffff_ffff;
+    logic[63:0] tmp_rhs;
+    assign tmp_rhs[31:0]  = rhs;
+    assign tmp_rhs[63:32] = u_rhs ? 0 : rhs[31] * 32'hffff_ffff;
+    
+    // Have the synthesizer figure out the multiplier for us.
+    assign res = tmp_lhs * tmp_rhs;
+endmodule
+
+
+
+// Simple zero latency divider.
+module boa_div_simple(
+    // Perform unsigned division.
+    input  logic        u,
+    
+    // Left-hand side.
+    input  logic[31:0] lhs,
+    // Right-hand side.
+    input  logic[31:0] rhs,
+    // Division result.
+    output logic[31:0] div_res,
+    // Modulo result.
+    output logic[31:0] mod_res
+);
+    // Correct sign of inputs.
+    logic[31:0] neg_lhs  = ~lhs + 1;
+    logic       sign_lhs = !u && lhs[31];
+    logic[31:0] tmp_lhs  = sign_lhs ? neg_lhs : lhs;
+    logic[31:0] neg_rhs  = ~rhs + 1;
+    logic       sign_rhs = !u && rhs[31];
+    logic[31:0] tmp_rhs  = sign_rhs ? neg_rhs : rhs;
+    
+    // Have the synthesizer figure out the divider for us.
+    logic[31:0] u_div    = tmp_lhs / tmp_rhs;
+    logic[31:0] u_mod    = tmp_lhs % tmp_rhs;
+    
+    // Correct sign of outputs.
+    logic[31:0] neg_div  = ~u_div + 1;
+    assign      div_res  = sign_lhs ^ sign_rhs ? neg_div : u_div;
+    logic[31:0] neg_mod  = ~u_mod + 1;
+    assign      mod_res  = sign_lhs ? neg_mod : u_mod;
+endmodule
+
+
+
+// Simple zero latency bit shifter.
+module boa_shift_simple(
+    // Shift arithmetic.
+    input  logic        arith,
+    // Shift right instead of left.
+    input  logic        shr,
+    
+    // Left-hand side.
+    input  logic[31:0]  lhs,
+    // Right-hand side.
+    input  logic[31:0]  rhs,
+    // Bit shift result.
+    output logic[31:0]  res
+);
+    wire signed[31:0]   slhs = lhs;
+    assign              res  = shr ? arith ? (slhs >> rhs[4:0]) : (lhs >> rhs[4:0]) : (lhs << rhs[4:0]);
+endmodule

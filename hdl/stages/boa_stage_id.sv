@@ -22,7 +22,7 @@ module boa_stage_id(
     // IF/ID: Result valid.
     input  logic        d_valid,
     // IF/ID: Current instruction PC.
-    input  logic[31:2]  d_pc,
+    input  logic[31:1]  d_pc,
     // IF/ID: Current instruction word.
     input  logic[31:0]  d_insn,
     // IF/ID: Trap raised.
@@ -33,7 +33,7 @@ module boa_stage_id(
     // ID/EX: Result valid.
     output logic        q_valid,
     // ID/EX: Current instruction PC.
-    output logic[31:2]  q_pc,
+    output logic[31:1]  q_pc,
     // ID/EX: Current instruction word.
     output logic[31:0]  q_insn,
     // ID/EX: Stores to register RD.
@@ -42,22 +42,51 @@ module boa_stage_id(
     output logic[31:0]  q_rs1_val,
     // ID/EX: Value from RS2 register.
     output logic[31:0]  q_rs2_val,
+    // ID/EX: Conditional branch.
+    output logic        q_branch,
+    // ID/EX: Branch prediction result.
+    output logic        q_branch_predict,
     // ID/EX: Trap raised.
     output logic        q_trap,
     // ID/EX: Trap cause.
     output logic[3:0]   q_cause,
     
     
-    // ID/IF: Branch predicted.
-    output logic        id_branch_predict,
-    // ID/IF: Branch target address.
-    output logic[31:2]  id_branch_target,
+    // MRET or SRET instruction.
+    output logic        is_xret,
+    // Is SRET instead of MRET.
+    output logic        is_sret,
+    // Unconditional jump.
+    output logic        is_jump,
+    // Conditional branch.
+    output logic        is_branch,
+    // Branch predicted.
+    output logic        branch_predict,
+    // Branch target address.
+    output logic[31:1]  branch_target,
+    
+    // Write-back enable.
+    input  logic        wb_we,
+    // Write-back register.
+    input  logic[4:0]   wb_rd,
+    // Write-back write data.
+    input  logic[31:0]  wb_wdata,
     
     // Stall ID stage.
     input  logic        fw_stall_id,
     // Stall EX stage.
     input  logic        fw_stall_ex
 );
+    // Register file.
+    logic[31:0] rs1_val;
+    logic[31:0] rs2_val;
+    boa_regfile regfile(
+        clk, rst,
+        wb_we, wb_rd, wb_wdata,
+        d_insn[19:15], rs1_val,
+        d_insn[24:20], rs2_val
+    );
+    
     // Instruction validator.
     wire insn_valid, insn_legal;
     boa_insn_validator#(.has_m(1), .has_zicsr(1)) validator(
@@ -69,28 +98,86 @@ module boa_stage_id(
     wire has_rs1, has_rs2, has_rs3, has_rd;
     boa_reg_decoder reg_decd(d_insn, has_rs1, has_rs2, has_rs3, has_rd);
     
+    // Branch decoding logic.
+    boa_branch_decoder branch_decd(d_insn, d_pc, rs1_val, is_xret, is_branch, is_jump, branch_target);
+    assign branch_predict = d_insn[31];
+    assign is_sret        = !d_insn[29];
+    
     // Pipeline barrier logic.
     always @(posedge clk) begin
         if (rst) begin
-            q_valid     <= 0;
-            q_pc        <= 'bx;
-            q_insn      <= 'bx;
-            q_use_rd    <= 'bx;
-            q_rs1_val   <= 'bx;
-            q_rs2_val   <= 'bx;
-            q_trap      <= 0;
-            q_cause     <= 'bx;
+            q_valid             <= 0;
+            q_pc                <= 'bx;
+            q_insn              <= 'bx;
+            q_use_rd            <= 'bx;
+            q_rs1_val           <= 'bx;
+            q_rs2_val           <= 'bx;
+            q_branch            <= 'bx;
+            q_branch_predict    <= 'bx;
+            q_trap              <= 0;
+            q_cause             <= 'bx;
         end else if (!fw_stall_id) begin
-            q_valid     <= d_valid && insn_valid && insn_legal;
-            q_pc        <= d_pc;
-            q_insn      <= d_insn;
-            q_use_rd    <= has_rd;
-            q_rs1_val   <= rs1_val;
-            q_rs2_val   <= rs2_val;
-            q_trap      <= d_trap || !insn_valid || !insn_legal;
-            q_cause     <= d_trap ? d_cause : `RV_ECAUSE_IILLEGAL;
+            q_valid             <= d_valid && insn_valid && insn_legal;
+            q_pc                <= d_pc;
+            q_insn              <= d_insn;
+            q_use_rd            <= has_rd;
+            q_rs1_val           <= rs1_val;
+            q_rs2_val           <= rs2_val;
+            q_branch            <= is_branch;
+            q_branch_predict    <= branch_predict;
+            q_trap              <= d_trap || d_valid && (!insn_valid || !insn_legal);
+            q_cause             <= d_trap ? d_cause : `RV_ECAUSE_IILLEGAL;
         end else begin
-            q_valid &= !fw_stall_ex;
+            q_valid <= q_valid && !fw_stall_ex;
+        end
+    end
+endmodule
+
+
+
+// Write-first RV32 register file.
+module boa_regfile(
+    // CPU clock.
+    input  logic        clk,
+    // Synchronous reset.
+    input  logic        rst,
+    
+    // Register write enable.
+    input  logic        we,
+    // Register write index.
+    input  logic[4:0]   rd,
+    // Register write data.
+    input  logic[31:0]  wdata,
+    
+    // Register read index 1.
+    input  logic[4:0]   rs1,
+    // Register read data 1.
+    output logic[31:0]  q1,
+    
+    // Register read index 1.
+    input  logic[4:0]   rs2,
+    // Register read data 1.
+    output logic[31:0]  q2
+);
+    // Register storage.
+    logic[31:0] storage[31:1];
+    
+    // Read logic.
+    assign q1 = rs1 == 0 ? 0 : we && rs1 == rd ? wdata : storage[rs1];
+    assign q2 = rs2 == 0 ? 0 : we && rs2 == rd ? wdata : storage[rs2];
+    
+    // Write logic.
+    always @(posedge clk) begin
+        if (rst) begin
+            // Clear all registers on reset.
+            integer i;
+            for (i = 1; i < 32; i = i + 1) begin
+                storage[i] <= 0;
+            end
+            
+        end else if (we && rd != 0) begin
+            // Write a register.
+            storage[rd] <= wdata;
         end
     end
 endmodule
@@ -98,15 +185,13 @@ endmodule
 
 
 // Does branch prediction and branch target address calculation.
-module boa_branch_target(
+module boa_branch_decoder(
     // Instruction to evaluate.
     input  logic[31:0]  insn,
     // Address of current instruction (for JAL and conditional branch).
     input  logic[31:1]  pc_val,
     // Value of RS1 register (for JALR).
     input  logic[31:0]  rs1_val,
-    // Value of xEPC register (for xRET).
-    input  logic[31:1]  epc_val,
     
     // Instruction is MRET or SRET.
     output logic        is_xret,
@@ -123,7 +208,7 @@ module boa_branch_target(
     logic[31:0] add_rhs;
     // Adder result.
     logic[31:0] add_res = add_lhs + add_rhs;
-    assign branch_addr  = is_xret ? epc_val : add_res;
+    assign branch_addr[31:1] = add_res[31:1];
     
     always @(*) begin
         if (insn[6:2] == `RV_OP_JAL) begin

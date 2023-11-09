@@ -54,21 +54,21 @@ module boa_div_simple(
     output logic[31:0] mod_res
 );
     // Correct sign of inputs.
-    logic[31:0] neg_lhs  = ~lhs + 1;
-    logic       sign_lhs = !u && lhs[31];
-    logic[31:0] tmp_lhs  = sign_lhs ? neg_lhs : lhs;
-    logic[31:0] neg_rhs  = ~rhs + 1;
-    logic       sign_rhs = !u && rhs[31];
-    logic[31:0] tmp_rhs  = sign_rhs ? neg_rhs : rhs;
+    wire [31:0] neg_lhs  = ~lhs + 1;
+    wire        sign_lhs = !u && lhs[31];
+    wire [31:0] tmp_lhs  = sign_lhs ? neg_lhs : lhs;
+    wire [31:0] neg_rhs  = ~rhs + 1;
+    wire        sign_rhs = !u && rhs[31];
+    wire [31:0] tmp_rhs  = sign_rhs ? neg_rhs : rhs;
     
     // Have the synthesizer figure out the divider for us.
-    logic[31:0] u_div    = tmp_lhs / tmp_rhs;
-    logic[31:0] u_mod    = tmp_lhs % tmp_rhs;
+    wire [31:0] u_div    = tmp_lhs / tmp_rhs;
+    wire [31:0] u_mod    = tmp_lhs % tmp_rhs;
     
     // Correct sign of outputs.
-    logic[31:0] neg_div  = ~u_div + 1;
+    wire [31:0] neg_div  = ~u_div + 1;
     assign      div_res  = sign_lhs ^ sign_rhs ? neg_div : u_div;
-    logic[31:0] neg_mod  = ~u_mod + 1;
+    wire [31:0] neg_mod  = ~u_mod + 1;
     assign      mod_res  = sign_lhs ? neg_mod : u_mod;
 endmodule
 
@@ -77,17 +77,16 @@ endmodule
 // Simple zero latency bit shifter.
 module boa_shift_simple(
     // Shift arithmetic.
-    input  logic        arith,
+    input  logic                arith,
     // Shift right instead of left.
-    input  logic        shr,
+    input  logic                shr,
     
     // Left-hand side.
-    input  logic[31:0]  lhs,
+    input  logic signed[31:0]   lhs,
     // Right-hand side.
-    input  logic[31:0]  rhs,
+    input  logic       [31:0]   rhs,
     // Bit shift result.
-    output logic[31:0]  res
+    output logic signed[31:0]   res
 );
-    wire signed[31:0]   slhs = lhs;
-    assign              res  = shr ? arith ? (slhs >> rhs[4:0]) : (lhs >> rhs[4:0]) : (lhs << rhs[4:0]);
+    assign              res  = shr ? arith ? (lhs >>> rhs[4:0]) : (lhs >> rhs[4:0]) : (lhs << rhs[4:0]);
 endmodule

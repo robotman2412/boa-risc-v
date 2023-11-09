@@ -75,7 +75,19 @@ module boa_stage_id(
     // Stall ID stage.
     input  logic        fw_stall_id,
     // Stall EX stage.
-    input  logic        fw_stall_ex
+    input  logic        fw_stall_ex,
+    
+    // Branch target address uses RS1.
+    output logic        bt_use_rs1,
+    // Branch target address forwarding value.
+    input  logic[31:0]  fw_bt_val,
+    
+    // Forward value to RS1.
+    input  logic        fw_rs1,
+    // Forward value to RS2.
+    input  logic        fw_rs2,
+    // Forwarding value.
+    input  logic[31:0]  fw_val
 );
     // Register file.
     logic[31:0] rs1_val;
@@ -95,11 +107,11 @@ module boa_stage_id(
     );
     
     // Register decoder.
-    wire has_rs1, has_rs2, has_rs3, has_rd;
-    boa_reg_decoder reg_decd(d_insn, has_rs1, has_rs2, has_rs3, has_rd);
+    wire use_rs1, use_rs2, use_rs3, use_rd;
+    boa_reg_decoder reg_decd(d_insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
-    boa_branch_decoder branch_decd(d_insn, d_pc, rs1_val, is_xret, is_branch, is_jump, branch_target);
+    boa_branch_decoder branch_decd(d_insn, d_pc, rs1_val, is_xret, is_branch, is_jump, branch_target, bt_use_rs1);
     assign branch_predict = d_insn[31];
     assign is_sret        = !d_insn[29];
     
@@ -120,9 +132,9 @@ module boa_stage_id(
             q_valid             <= d_valid && insn_valid && insn_legal;
             q_pc                <= d_pc;
             q_insn              <= d_insn;
-            q_use_rd            <= has_rd;
-            q_rs1_val           <= rs1_val;
-            q_rs2_val           <= rs2_val;
+            q_use_rd            <= use_rd;
+            q_rs1_val           <= fw_rs1 ? fw_val : rs1_val;
+            q_rs2_val           <= fw_rs2 ? fw_val : rs2_val;
             q_branch            <= is_branch;
             q_branch_predict    <= branch_predict;
             q_trap              <= d_trap || d_valid && (!insn_valid || !insn_legal);
@@ -200,7 +212,10 @@ module boa_branch_decoder(
     // Instruction is JAL or JALR.
     output logic        is_jump,
     // Calculated branch target address.
-    output logic[31:1]  branch_addr
+    output logic[31:1]  branch_addr,
+    
+    // Branch address uses RS1.
+    output logic        use_rs1
 );
     // Adder left-hand side.
     logic[31:0] add_lhs;
@@ -222,6 +237,7 @@ module boa_branch_decoder(
             add_rhs[11]     = insn[20];
             add_rhs[19:12]  = insn[19:12];
             add_rhs[20]     = insn[31];
+            use_rs1         = 0;
             
         end else if (insn[6:2] == `RV_OP_JALR) begin
             // JALR instructions.
@@ -231,6 +247,7 @@ module boa_branch_decoder(
             add_lhs         = rs1_val;
             add_rhs[11:0]   = insn[31:20];
             add_rhs[20:12]  = insn[31] ? 9'h1ff : 9'h000;
+            use_rs1         = 1;
             
         end else if (insn[6:2] == `RV_OP_BRANCH) begin
             // Conditional branch instructions.
@@ -244,6 +261,7 @@ module boa_branch_decoder(
             add_rhs[11]     = insn[7];
             add_rhs[12]     = insn[30];
             add_rhs[20:13]  = insn[31] ? 8'hff : 8'h00;
+            use_rs1         = 0;
             
         end else begin
             // Non-branch instructions.
@@ -252,6 +270,7 @@ module boa_branch_decoder(
             is_jump         = 0;
             add_lhs         = 'bx;
             add_rhs[20:0]   = 'bx;
+            use_rs1         = 0;
         end
         add_rhs[31:21] = insn[31] ? 11'h7ff : 11'h000;
     end

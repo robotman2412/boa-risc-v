@@ -35,6 +35,10 @@ module top(
     logic[31:0]  q_insn;
     // ID/EX: Stores to register RD.
     logic        q_use_rd;
+    // ID/EX: Uses register RS1.
+    logic        q_use_rs1;
+    // ID/EX: Uses register RS2.
+    logic        q_use_rs2;
     // ID/EX: Value from RS1 register.
     logic[31:0]  q_rs1_val;
     // ID/EX: Value from RS2 register.
@@ -66,13 +70,26 @@ module top(
     // Stall EX stage.
     logic        fw_stall_ex;
     
+    // Branch target address uses RS1.
+    logic        bt_use_rs1;
+    // Branch target address forwarding value.
+    logic[31:0]  fw_bt_val;
+    
+    // Forward value to RS1.
+    wire         fw_rs1 = 0;
+    // Forward value to RS2.
+    wire         fw_rs2 = 0;
+    // Forwarding value.
+    wire [31:0]  fw_val = 0;
+    
     boa_stage_id stage_id(
         clk, rst,
         d_valid, d_pc, d_insn, d_trap, d_cause,
-        q_valid, q_pc, q_insn, q_use_rd, q_rs1_val, q_rs2_val, q_branch, q_branch_predict, q_trap, q_cause,
+        q_valid, q_pc, q_insn, q_use_rd, q_use_rs1, q_use_rs2, q_rs1_val, q_rs2_val, q_branch, q_branch_predict, q_trap, q_cause,
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         0, 0, 0,
-        fw_stall_id, fw_stall_ex
+        fw_stall_id, fw_stall_ex,
+        bt_use_rs1, fw_bt_val, fw_rs1, fw_rs2, fw_val
     );
     
     always @(*) begin

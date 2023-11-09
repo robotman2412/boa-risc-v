@@ -11,77 +11,58 @@
 
 
 
-// Boa³² pipline stage: EX (ALU and address calculation).
-module boa_stage_ex(
+// Boa³² pipline stage: MEM (memory and CSR access).
+module boa_stage_mem(
     // CPU clock.
     input  logic        clk,
     // Synchronous reset.
     input  logic        rst,
     
     
-    // ID/EX: Result valid.
+    // EX/MEM: Result valid.
     input  logic        d_valid,
-    // ID/EX: Current instruction PC.
+    // EX/MEM: Current instruction PC.
     input  logic[31:1]  d_pc,
-    // ID/EX: Current instruction word.
+    // EX/MEM: Current instruction word.
     input  logic[31:0]  d_insn,
-    // ID/EX: Stores to register RD.
+    // EX/MEM: Stores to register RD.
     input  logic        d_use_rd,
-    // ID/EX: Value from RS1 register.
+    // EX/MEM: Value from RS1 register / ALU result / memory address.
     input  logic[31:0]  d_rs1_val,
-    // ID/EX: Value from RS2 register.
+    // EX/MEM: Value from RS2 register / memory write data.
     input  logic[31:0]  d_rs2_val,
-    // ID/EX: Conditional branch.
-    input  logic        d_branch,
-    // ID/EX: Branch prediction result.
-    input  logic        d_branch_predict,
-    // ID/EX: Trap raised.
+    // EX/MEM: Trap raised.
     input  logic        d_trap,
-    // ID/EX: Trap cause.
+    // EX/MEM: Trap cause.
     input  logic[3:0]   d_cause,
     
     
-    // EX/MEM: Result valid.
+    // MEM/WB: Result valid.
     output logic        q_valid,
-    // EX/MEM: Current instruction PC.
+    // MEM/WB: Current instruction PC.
     output logic[31:1]  q_pc,
-    // EX/MEM: Current instruction word.
+    // MEM/WB: Current instruction word.
     output logic[31:0]  q_insn,
-    // EX/MEM: Stores to register RD.
+    // MEM/WB: Stores to register RD.
     output logic        q_use_rd,
-    // EX/MEM: Value from RS1 register / ALU result / memory address.
-    output logic[31:0]  q_rs1_val,
-    // EX/MEM: Value from RS2 register / memory write data.
-    output logic[31:0]  q_rs2_val,
-    // EX/MEM: Trap raised.
+    // MEM/WB: Value to store to register Rd.
+    output logic[31:0]  q_rd_val,
+    // MEM/WB: Trap raised.
     output logic        q_trap,
-    // EX/MEM: Trap cause.
+    // MEM/WB: Trap cause.
     output logic[3:0]   q_cause,
     
     
-    // Stall EX stage.
-    input  logic        fw_stall_ex,
     // Stall MEM stage.
     input  logic        fw_stall_mem,
     
-    // Forward value to RS1.
-    input  logic        fw_rs1,
-    // Forward value to RS2.
-    input  logic        fw_rs2,
-    // Forwarding input.
-    input  logic[31:0]  fw_in,
-    
-    // Produces final result.
-    output logic        fw_rd,
     // Forwarding output.
-    output logic[31:0]  fw_out
+    input  logic[31:0]  fw_out
 );
     // Is it an OP or OP-IMM instruction?
     wire is_op  = d_insn[6:2] == `RV_OP_OP_IMM || d_insn[6:2] == `RV_OP_OP;
     // Is it a LOAD or STORE instruction?
     wire is_mem = d_insn[6:2] == `RV_OP_LOAD || d_insn[6:2] == `RV_OP_STORE;
-    // Is it a JAL or JALR instruction?
-    wire is_jal = d_insn[6:2] == `RV_OP_JAL || d_insn[6:2] == `RV_OP_JALR;
     
     // IMM generation for LUI and AUIPC.
     logic[31:0] uimm;
@@ -132,7 +113,6 @@ module boa_stage_ex(
     
     // Output LHS multiplexer.
     logic[31:0] out_mux;
-    assign fw_out = out_mux;
     always @(*) begin
         if (is_op) begin
             if (muldiv_en) begin
@@ -156,28 +136,19 @@ module boa_stage_ex(
                     `RV_ALU_AND:  out_mux = d_rs1_val & rhs;
                 endcase
             end
-            fw_rd = d_valid && d_use_rd;
-        end else if (is_jal) begin
-            // JAL and JALR instructions.
-            out_mux = add_res;
-            fw_rd   = 1;
         end else if (is_mem) begin
             // LOAD and STORE instructions.
             out_mux = add_res;
-            fw_rd   = 0;
         end else if (d_insn[6:2] == `RV_OP_LUI) begin
             // LUI instructions.
             out_mux = uimm;
-            fw_rd   = d_valid && d_use_rd;
         end else if (d_insn[6:2] == `RV_OP_AUIPC) begin
             // AUIPC instructions.
             out_mux[31:1] = uimm[31:1] + d_pc[31:1];
             out_mux[0]    = 0;
-            fw_rd         = d_valid && d_use_rd;
         end else begin
             // Other instructions.
             out_mux = d_rs1_val;
-            fw_rd   = 0;
         end
     end
     
@@ -197,8 +168,8 @@ module boa_stage_ex(
             q_pc                <= d_pc;
             q_insn              <= d_insn;
             q_use_rd            <= d_use_rd;
-            q_rs1_val           <= fw_rs1 ? fw_in : out_mux;
-            q_rs2_val           <= fw_rs2 ? fw_in : d_rs2_val;
+            q_rs1_val           <= fw_rs1 ? fw_val : out_mux;
+            q_rs2_val           <= fw_rs2 ? fw_val : d_rs2_val;
             q_trap              <= d_trap;
             q_cause             <= d_cause;
         end else begin

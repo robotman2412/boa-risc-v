@@ -60,11 +60,18 @@ module top(
     // Stall MEM stage.
     logic        fw_stall_mem;
     
+    // Forward value to RS1.
+    wire         fw_rs1 = 0;
+    // Forward value to RS2.
+    wire         fw_rs2 = 0;
+    // Forwarding value.
+    wire [31:0]  fw_val = 0;
+    
     boa_stage_ex stage_ex(
         clk, rst,
         d_valid, d_pc, d_insn, d_use_rd, d_rs1_val, d_rs2_val, d_branch, d_branch_predict, d_trap, d_cause,
         q_valid, q_pc, q_insn, q_use_rd, q_rs1_val, q_rs2_val, q_trap, q_cause,
-        fw_stall_ex, fw_stall_mem
+        fw_stall_ex, fw_stall_mem, fw_rs1, fw_rs2, fw_val
     );
     
     always @(*) begin

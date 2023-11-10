@@ -7,7 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
-`include "boa_defines.sv"
+`include "boa_defines.svh"
 
 
 
@@ -209,7 +209,7 @@ endmodule
 
 // Boa³² pipline stage forwarding helper: EX (ALU and address calculation).
 module boa_stage_ex_fw(
-    // ID/EX: Current instruction word.
+    // Current instruction word.
     input  logic[31:0]  d_insn,
     
     // Uses value of RS1.

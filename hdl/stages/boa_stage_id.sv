@@ -7,7 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
-`include "boa_defines.sv"
+`include "boa_defines.svh"
 
 
 
@@ -56,7 +56,7 @@ module boa_stage_id(
     output logic        is_xret,
     // Is SRET instead of MRET.
     output logic        is_sret,
-    // Unconditional jump.
+    // Unconditional jump (JAL or JALR).
     output logic        is_jump,
     // Conditional branch.
     output logic        is_branch,

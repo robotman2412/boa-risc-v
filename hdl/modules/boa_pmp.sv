@@ -7,7 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
-`include "boa_defines.sv"
+`include "boa_defines.svh"
 
 
 

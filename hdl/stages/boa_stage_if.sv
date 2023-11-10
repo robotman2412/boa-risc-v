@@ -7,7 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
-`include "boa_defines.sv"
+`include "boa_defines.svh"
 
 
 
@@ -56,14 +56,16 @@ module boa_stage_if#(
     // Next memory read is valid.
     logic       valid   = 0;
     
-    assign pbus.re      = 1;
+    // Program bus logic.
+    assign pbus.re      = !fw_stall_if;
     assign pbus.we      = 0;
     assign pbus.addr    = pc;
+    
     // Pipeline barrier logic.
     assign q_insn       = pbus.rdata;
-    assign q_valid      = valid && pbus.ready;
+    assign q_valid      = valid && pbus.ready && !q_trap;
     always @(posedge clk) q_pc <= pc;
-    assign q_trap       = q_pc[1];
+    assign q_trap       = valid && q_pc[1];
     assign q_cause      = `RV_ECAUSE_IALIGN;
     
     always @(posedge clk) begin

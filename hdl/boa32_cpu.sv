@@ -149,6 +149,8 @@ module boa32_cpu#(
     always @(*) begin
         if (if_id_valid && is_xret) begin
             // TODO.
+            fw_branch_predict   = 1;
+            fw_branch_target    = 'bx;
             $display("TODO: MRET");
             $finish;
         end else if (if_id_valid && is_jump) begin

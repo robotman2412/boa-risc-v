@@ -18,7 +18,4 @@ _start:
     nop
     nop
 lolol:
-    nop
-    nop
-    nop
     j lolol

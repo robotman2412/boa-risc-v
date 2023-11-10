@@ -231,7 +231,8 @@ module boa_branch_decoder(
             is_xret         = 0;
             is_branch       = 0;
             is_jump         = 1;
-            add_lhs         = pc_val;
+            add_lhs[31:1]   = pc_val[31:1];
+            add_lhs[0]      = 0;
             add_rhs[0]      = 0;
             add_rhs[10:1]   = insn[30:21];
             add_rhs[11]     = insn[20];

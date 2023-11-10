@@ -14,8 +14,11 @@ module top(
     
     // Program bus.
     boa_mem_bus pbus();
+    rom prom(clk, pbus);
     // Dummy data bus.
     boa_mem_bus dbus();
+    assign dbus.ready = 1;
+    assign dbus.rdata = 0;
     
     // The CPU.
     boa32_cpu#(.entrypoint(0)) cpu(
@@ -23,4 +26,19 @@ module top(
         pbus, dbus,
         16'h0000
     );
+endmodule
+
+module rom(
+    input logic clk,
+    boa_mem_bus.MEM bus
+);
+    `include "rom.svh"
+    logic[$clog2(rom_len)-1:0] addr;
+    always @(posedge clk) begin
+        addr <= bus.addr[$clog2(rom_len)+1:2];
+    end
+    always @(negedge clk) begin
+        bus.ready <= 1;
+        bus.rdata <= rom[addr];
+    end
 endmodule

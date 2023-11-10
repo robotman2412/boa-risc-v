@@ -8,6 +8,7 @@
 */
 
 _start:
+    j lolol
     lui a0, 0xdeadc
     nop
     nop
@@ -16,3 +17,8 @@ _start:
     nop
     nop
     nop
+lolol:
+    nop
+    nop
+    nop
+    j lolol

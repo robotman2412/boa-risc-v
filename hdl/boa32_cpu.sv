@@ -125,7 +125,7 @@ module boa32_cpu#(
     logic[3:0]  mem_wb_cause;
     
     
-    /* ==== Pipeline hazard avoidance ==== */
+    /* ==== Control transfer logic ==== */
     // MRET or SRET instruction.
     logic       is_xret;
     // Is SRET instead of MRET.
@@ -141,6 +141,35 @@ module boa32_cpu#(
     // Branch target address uses RS1.
     logic       bt_use_rs1;
     
+    // Predicted branch or unconditional control transfer.
+    logic       fw_branch_predict;
+    // Target address of control transfer.
+    logic[31:1] fw_branch_target;
+    
+    always @(*) begin
+        if (if_id_valid && is_xret) begin
+            // TODO.
+            $display("TODO: MRET");
+            $finish;
+        end else if (if_id_valid && is_jump) begin
+            // JAL or JALR.
+            fw_branch_predict   = 1;
+            fw_branch_target    = branch_target;
+            $strobe("JAL(R) from %x to %x", if_id_pc, fw_branch_target);
+        end else if (if_id_valid && is_branch) begin
+            // JAL or JALR.
+            fw_branch_predict   = branch_predict;
+            fw_branch_target    = branch_target;
+            $strobe("BRANCH from %x to %x", if_id_pc, fw_branch_target);
+        end else begin
+            // Not a control transfer.
+            fw_branch_predict   = 0;
+            fw_branch_target    = 'bx;
+        end
+    end
+    
+    
+    /* ==== Data hazard avoidance ==== */
     // Can forward from EX.
     logic[31:0] fw_ex_rd;
     // Forwarding output from EX.
@@ -166,7 +195,7 @@ module boa32_cpu#(
     boa_stage_if#(.entrypoint(entrypoint)) st_if(
         clk, rst, pbus,
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
-        0, 0, // Branch predict and target.
+        fw_branch_predict, fw_branch_target, // Branch predict and target.
         fw_stall_if, fw_stall_id, 0, 0 // Branch correct and alt.
     );
     boa_stage_id st_id(
@@ -174,7 +203,7 @@ module boa32_cpu#(
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
-        0, 0, 0, // Write-back port.
+        mem_wb_valid && mem_wb_use_rd, mem_wb_insn[11:7], mem_wb_rd_val,
         fw_stall_id, fw_stall_ex, bt_use_rs1, 0, // RS1 for JAL and JALR.
         0, 0, 0 // Forwarding port.
     );
@@ -183,7 +212,7 @@ module boa32_cpu#(
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         fw_stall_ex, fw_stall_mem,
-        mem_wb_valid && mem_wb_use_rd, mem_wb_insn[11:7], mem_wb_rd_val,
+        0, 0, 0, // Forwarding port.
         fw_ex_rd, fw_ex_out
     );
     boa_stage_mem st_mem(

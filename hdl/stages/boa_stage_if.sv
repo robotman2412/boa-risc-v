@@ -51,20 +51,21 @@ module boa_stage_if#(
     // Branch correction address.
     input  logic[31:1]  fw_branch_alt
 );
-    // Next instruction to load.
+    // Current program counter.
     logic[31:1] pc      = entrypoint;
+    // Next program counter.
+    wire [31:1] next_pc;
+    assign next_pc[31:1] = pc[31:1] + pbus.ready*2;
     // Next memory read is valid.
     logic       valid   = 0;
     
     // Program bus logic.
-    assign pbus.re      = !fw_stall_if;
-    assign pbus.we      = 0;
-    assign pbus.addr    = pc;
+    assign pbus.re          = !fw_stall_if;
+    assign pbus.we          = 0;
+    assign pbus.addr[31:2]  = id_branch_predict ? id_branch_target[31:2] : next_pc[31:2];
     
     // Pipeline barrier logic.
-    assign q_insn       = pbus.rdata;
-    assign q_valid      = valid && pbus.ready && !q_trap;
-    always @(posedge clk) q_pc <= pc;
+    assign q_valid      = valid && !q_trap;
     assign q_trap       = valid && q_pc[1];
     assign q_cause      = `RV_ECAUSE_IALIGN;
     
@@ -75,17 +76,18 @@ module boa_stage_if#(
             valid   <= 0;
         end else if(!fw_stall_if) begin
             if (fw_branch_correct) begin
-                pc      <= fw_branch_alt;
-                valid <= 0;
+                pc          <= fw_branch_alt;
+                valid       <= 0;
             end else if (id_branch_predict) begin
-                pc      <= id_branch_target;
-                valid   <= 0;
-            end else if (!pbus.ready) begin
-                valid   <= 0;
+                pc          <= id_branch_target;
+                valid       <= 0;
+            end else if (pbus.ready) begin
+                pc          <= next_pc;
+                valid       <= 1;
             end else begin
-                pc      <= pc + 4;
-                valid   <= 1;
+                valid       <= 0;
             end
+            q_insn <= pbus.rdata;
         end else begin
             valid <= valid && fw_stall_id;
         end

@@ -20,6 +20,8 @@ module boa_stage_if#(
     input  logic        clk,
     // Synchronous reset.
     input  logic        rst,
+    // Invalidate results and clear traps.
+    input  logic        clear,
     
     // Program memory bus.
     boa_mem_bus.CPU     pbus,
@@ -37,10 +39,12 @@ module boa_stage_if#(
     output logic[3:0]   q_cause,
     
     
-    // ID/IF: Branch predicted.
-    input  logic        id_branch_predict,
-    // ID/IF: Branch target address.
-    input  logic[31:1]  id_branch_target,
+    // Unconditional control transfer or branch predicted as taken.
+    input  logic        fw_branch_predict,
+    // Branch target address.
+    input  logic[31:1]  fw_branch_target,
+    // Address of the next instruction.
+    output logic[31:1]  if_next_pc,
     
     // Stall IF stage.
     input  logic        fw_stall_if,
@@ -53,8 +57,9 @@ module boa_stage_if#(
 );
     // Current program counter.
     logic[31:1] pc      = entrypoint;
+    assign if_next_pc = pc;
     // Next program counter.
-    wire [31:1] next_pc;
+    logic[31:1] next_pc;
     assign next_pc[31:1] = pc[31:1] + pbus.ready*2;
     // Next memory read is valid.
     logic       valid   = 0;
@@ -62,34 +67,35 @@ module boa_stage_if#(
     // Program bus logic.
     assign pbus.re          = !fw_stall_if;
     assign pbus.we          = 0;
-    assign pbus.addr[31:2]  = id_branch_predict ? id_branch_target[31:2] : next_pc[31:2];
+    always @(*) begin
+        if (fw_branch_correct) begin
+            pbus.addr[31:2] = fw_branch_alt[31:2];
+        end else if (fw_branch_predict) begin
+            pbus.addr[31:2] = fw_branch_target[31:2];
+        end else if (pbus.ready) begin
+            pbus.addr[31:2] = next_pc[31:2];
+        end else begin
+            pbus.addr[31:2] = pc[31:2];
+        end
+    end
     
     // Pipeline barrier logic.
-    assign q_valid      = valid && !q_trap;
+    assign q_valid      = valid && !q_pc[1];
     assign q_trap       = valid && q_pc[1];
     assign q_cause      = `RV_ECAUSE_IALIGN;
     
     always @(posedge clk) begin
         q_pc <= pc;
         if (rst) begin
-            pc      <= entrypoint;
-            valid   <= 0;
+            pc[31:1]    <= entrypoint[31:1];
+            valid       <= 0;
         end else if(!fw_stall_if) begin
-            if (fw_branch_correct) begin
-                pc          <= fw_branch_alt;
-                valid       <= 0;
-            end else if (id_branch_predict) begin
-                pc          <= id_branch_target;
-                valid       <= 0;
-            end else if (pbus.ready) begin
-                pc          <= next_pc;
-                valid       <= 1;
-            end else begin
-                valid       <= 0;
-            end
-            q_insn <= pbus.rdata;
+            valid       <= pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
+            pc[31:2]    <= pbus.addr[31:2];
+            pc[1]       <= 0;
+            q_insn      <= pbus.rdata;
         end else begin
-            valid <= valid && fw_stall_id;
+            valid       <= valid && fw_stall_id;
         end
     end
 endmodule

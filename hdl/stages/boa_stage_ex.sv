@@ -17,6 +17,8 @@ module boa_stage_ex(
     input  logic        clk,
     // Synchronous reset.
     input  logic        rst,
+    // Invalidate results and clear traps.
+    input  logic        clear,
     
     
     // ID/EX: Result valid.
@@ -58,6 +60,9 @@ module boa_stage_ex(
     // EX/MEM: Trap cause.
     output logic[3:0]   q_cause,
     
+    
+    // EX/IF: Mispredicted branch.
+    output logic        fw_branch_correct,
     
     // Stall EX stage.
     input  logic        fw_stall_ex,
@@ -129,6 +134,10 @@ module boa_stage_ex(
     // The comparator.
     wire        cmp_eq = add_res[31:0] == 0;
     wire        cmp_lt = !cmp_eq && !add_res[32];
+    
+    // Branch condition evaluation.
+    wire   branch_cond       = d_insn[12] ^ (d_insn[14] ? cmp_lt : cmp_eq);
+    assign fw_branch_correct = d_valid && d_insn[6:2] == `RV_OP_BRANCH && branch_cond != d_branch_predict;
     
     // Output LHS multiplexer.
     logic[31:0] out_mux;

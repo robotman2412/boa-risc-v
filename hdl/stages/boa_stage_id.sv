@@ -17,6 +17,8 @@ module boa_stage_id(
     input  logic        clk,
     // Synchronous reset.
     input  logic        rst,
+    // Invalidate results and clear traps.
+    input  logic        clear,
     
     
     // IF/ID: Result valid.
@@ -129,7 +131,7 @@ module boa_stage_id(
             q_trap              <= 0;
             q_cause             <= 'bx;
         end else if (!fw_stall_id) begin
-            q_valid             <= d_valid && insn_valid && insn_legal;
+            q_valid             <= d_valid && !clear && insn_valid && insn_legal;
             q_pc                <= d_pc;
             q_insn              <= d_insn;
             q_use_rd            <= use_rd;
@@ -137,7 +139,7 @@ module boa_stage_id(
             q_rs2_val           <= fw_rs2 ? fw_val : rs2_val;
             q_branch            <= is_branch;
             q_branch_predict    <= branch_predict;
-            q_trap              <= d_trap || d_valid && (!insn_valid || !insn_legal);
+            q_trap              <= !clear && (d_trap || d_valid && (!insn_valid || !insn_legal));
             q_cause             <= d_trap ? d_cause : `RV_ECAUSE_IILLEGAL;
         end else begin
             q_valid <= q_valid && !fw_stall_ex;
@@ -255,7 +257,8 @@ module boa_branch_decoder(
             is_xret         = 0;
             is_branch       = 1;
             is_jump         = 0;
-            add_lhs         = rs1_val;
+            add_lhs[31:1]   = pc_val[31:1];
+            add_lhs[0]      = 0;
             add_rhs[0]      = 0;
             add_rhs[4:1]    = insn[11:8];
             add_rhs[10:5]   = insn[30:25];

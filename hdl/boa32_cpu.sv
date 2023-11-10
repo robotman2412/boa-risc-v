@@ -126,6 +126,15 @@ module boa32_cpu#(
     
     
     /* ==== Control transfer logic ==== */
+    // Clear results from IF.
+    logic       clear_if;
+    // Clear results from ID.
+    logic       clear_id;
+    // Clear results from EX.
+    logic       clear_ex;
+    // Clear results from MEM.
+    logic       clear_mem;
+    
     // MRET or SRET instruction.
     logic       is_xret;
     // Is SRET instead of MRET.
@@ -145,8 +154,28 @@ module boa32_cpu#(
     logic       fw_branch_predict;
     // Target address of control transfer.
     logic[31:1] fw_branch_target;
+    // Address of the next instruction.
+    logic[31:1] if_next_pc;
+    // Mispredicted branch.
+    logic       fw_branch_correct;
+    // Branch correction address.
+    logic[31:1] fw_branch_alt;
+    
+    assign clear_if  = 0;
+    assign clear_id  = fw_branch_correct;
+    assign clear_ex  = 0;
+    assign clear_mem = 0;
+    
+    always @(posedge clk) begin
+        if (is_branch) begin
+            fw_branch_alt <= fw_branch_predict ? if_next_pc : fw_branch_target;
+        end
+    end
     
     always @(*) begin
+        if (fw_branch_correct) begin
+            $strobe("Branch correction to %x", fw_branch_alt<<1);
+        end
         if (if_id_valid && is_xret) begin
             // TODO.
             fw_branch_predict   = 1;
@@ -157,12 +186,12 @@ module boa32_cpu#(
             // JAL or JALR.
             fw_branch_predict   = 1;
             fw_branch_target    = branch_target;
-            $strobe("JAL(R) from %x to %x", if_id_pc, fw_branch_target);
+            $strobe("JAL(R) from %x to %x", if_id_pc<<1, fw_branch_target<<1);
         end else if (if_id_valid && is_branch) begin
             // JAL or JALR.
             fw_branch_predict   = branch_predict;
             fw_branch_target    = branch_target;
-            $strobe("BRANCH from %x to %x", if_id_pc, fw_branch_target);
+            $strobe("BRANCH from %x to %x", if_id_pc<<1, fw_branch_target<<1);
         end else begin
             // Not a control transfer.
             fw_branch_predict   = 0;
@@ -195,13 +224,13 @@ module boa32_cpu#(
     
     /* ==== Pipeline stages ==== */
     boa_stage_if#(.entrypoint(entrypoint)) st_if(
-        clk, rst, pbus,
+        clk, rst, clear_id, pbus,
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
-        fw_branch_predict, fw_branch_target, // Branch predict and target.
-        fw_stall_if, fw_stall_id, 0, 0 // Branch correct and alt.
+        fw_branch_predict, fw_branch_target, if_next_pc,
+        fw_stall_if, fw_stall_id, fw_branch_correct, fw_branch_alt
     );
     boa_stage_id st_id(
-        clk, rst,
+        clk, rst, clear_id,
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
@@ -210,15 +239,15 @@ module boa32_cpu#(
         0, 0, 0 // Forwarding port.
     );
     boa_stage_ex st_ex(
-        clk, rst,
+        clk, rst, clear_ex,
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
-        fw_stall_ex, fw_stall_mem,
+        fw_branch_correct, fw_stall_ex, fw_stall_mem,
         0, 0, 0, // Forwarding port.
         fw_ex_rd, fw_ex_out
     );
     boa_stage_mem st_mem(
-        clk, rst, dbus,
+        clk, rst, clear_mem, dbus,
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         mem_wb_valid, mem_wb_pc, mem_wb_insn, mem_wb_use_rd, mem_wb_rd_val, mem_wb_trap, mem_wb_cause,
         fw_stall_mem, fw_mem_out

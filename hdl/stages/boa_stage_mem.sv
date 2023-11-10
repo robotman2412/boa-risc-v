@@ -17,6 +17,8 @@ module boa_stage_mem(
     input  logic        clk,
     // Synchronous reset.
     input  logic        rst,
+    // Invalidate results and clear traps.
+    input  logic        clear,
     
     // Data memory bus.
     boa_mem_bus.CPU     dbus,

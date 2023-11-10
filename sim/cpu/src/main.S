@@ -8,14 +8,17 @@
 */
 
 _start:
-    j lolol
-    lui a0, 0xdeadc
+    addi x1, x0, 3
+    addi x2, x0, 5
     nop
     nop
     nop
-    addi a0, a0, 0xfffffeef
     nop
     nop
+_br:
+    bgt x1, x2, _start
+nono:
+    j nono
     nop
 lolol:
     j lolol

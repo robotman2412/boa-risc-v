@@ -183,7 +183,7 @@ endmodule
 
 
 
-// Write-first RV32 register file.
+// Read-first RV32 register file.
 module boa_regfile(
     // CPU clock.
     input  logic        clk,
@@ -211,8 +211,8 @@ module boa_regfile(
     logic[31:0] storage[31:1];
     
     // Read logic.
-    assign q1 = (rs1 == 0) ? 0 : we && (rs1 == rd) ? wdata : storage[rs1];
-    assign q2 = (rs2 == 0) ? 0 : we && (rs2 == rd) ? wdata : storage[rs2];
+    assign q1 = (rs1 == 0) ? 0 : storage[rs1];
+    assign q2 = (rs2 == 0) ? 0 : storage[rs2];
     
     // Write logic.
     always @(posedge clk) begin

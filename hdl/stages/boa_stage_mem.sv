@@ -50,7 +50,7 @@ module boa_stage_mem(
     output logic[31:0]  q_insn,
     // MEM/WB: Stores to register RD.
     output logic        q_use_rd,
-    // MEM/WB: Value to store to register Rd.
+    // MEM/WB: Value to store to register RD.
     output logic[31:0]  q_rd_val,
     // MEM/WB: Trap raised.
     output logic        q_trap,
@@ -59,14 +59,51 @@ module boa_stage_mem(
     
     
     // Stall MEM stage.
-    input  logic        fw_stall_mem,
-    
-    // Forwarding output.
-    output logic[31:0]  fw_out
+    input  logic        fw_stall_mem
 );
-    assign fw_out = 0;
+    // EX/MEM: Result valid.
+    logic       r_valid;
+    // EX/MEM: Current instruction PC.
+    logic[31:1] r_pc;
+    // EX/MEM: Current instruction word.
+    logic[31:0] r_insn;
+    // EX/MEM: Stores to register RD.
+    logic       r_use_rd;
+    // EX/MEM: Value from RS1 register / ALU result / memory address.
+    logic[31:0] r_rs1_val;
+    // EX/MEM: Value from RS2 register / memory write data.
+    logic[31:0] r_rs2_val;
+    // EX/MEM: Trap raised.
+    logic       r_trap;
+    // EX/MEM: Trap cause.
+    logic[3:0]  r_cause;
+    
+    // Pipeline barrier register.
+    always @(posedge clk) begin
+        if (rst) begin
+            r_valid     <= 0;
+            r_pc        <= 'bx;
+            r_insn      <= 'bx;
+            r_use_rd    <= 'bx;
+            r_rs1_val   <= 'bx;
+            r_rs2_val   <= 'bx;
+            r_trap      <= 0;
+            r_cause     <= 'bx;
+        end else if (!fw_stall_mem) begin
+            r_valid     <= d_valid;
+            r_pc        <= d_pc;
+            r_insn      <= d_insn;
+            r_use_rd    <= d_use_rd;
+            r_rs1_val   <= d_rs1_val;
+            r_rs2_val   <= d_rs2_val;
+            r_trap      <= d_trap;
+            r_cause     <= d_cause;
+        end
+    end
+    
+    
     // Is it a LOAD or STORE instruction?
-    wire is_mem = (d_insn[6:2] == `RV_OP_LOAD) || (d_insn[6:2] == `RV_OP_STORE);
+    wire is_mem = (r_insn[6:2] == `RV_OP_LOAD) || (r_insn[6:2] == `RV_OP_STORE);
     // Is it a CSR access instruction?
     wire is_csr = 0;
     
@@ -78,27 +115,35 @@ module boa_stage_mem(
     assign cause = 0;
     
     // Pipeline barrier logic.
-    always @(posedge clk) begin
-        if (rst) begin
-            q_valid             <= 0;
-            q_pc                <= 'bx;
-            q_insn              <= 'bx;
-            q_use_rd            <= 'bx;
-            q_rd_val            <= 'bx;
-            q_trap              <= 0;
-            q_cause             <= 'bx;
-        end else if (!fw_stall_mem) begin
-            q_valid             <= d_valid && !trap;
-            q_pc                <= d_pc;
-            q_insn              <= d_insn;
-            q_use_rd            <= d_use_rd;
-            q_rd_val            <= d_rs1_val;
-            q_trap              <= d_trap || trap;
-            q_cause             <= d_trap ? d_cause : cause;
-        end else begin
-            q_valid             <= 0;
-        end
-    end
+    assign  q_valid     = r_valid && !trap && !clear;
+    assign  q_pc        = r_pc;
+    assign  q_insn      = r_insn;
+    assign  q_use_rd    = r_use_rd;
+    assign  q_rd_val    = r_rs1_val;
+    assign  q_trap      = (r_trap || trap) && !clear;
+    assign  q_cause     = r_trap ? r_cause : cause;
+    
+    // always @(posedge clk) begin
+    //     if (rst) begin
+    //         q_valid             <= 0;
+    //         q_pc                <= 'bx;
+    //         q_insn              <= 'bx;
+    //         q_use_rd            <= 'bx;
+    //         q_rd_val            <= 'bx;
+    //         q_trap              <= 0;
+    //         q_cause             <= 'bx;
+    //     end else if (!fw_stall_mem) begin
+    //         q_valid             <= d_valid && !trap;
+    //         q_pc                <= d_pc;
+    //         q_insn              <= d_insn;
+    //         q_use_rd            <= d_use_rd;
+    //         q_rd_val            <= d_rs1_val;
+    //         q_trap              <= d_trap || trap;
+    //         q_cause             <= d_trap ? d_cause : cause;
+    //     end else begin
+    //         q_valid             <= 0;
+    //     end
+    // end
 endmodule
 
 // Boa³² pipline stage forwarding helper: MEM (memory and CSR access).

@@ -45,13 +45,13 @@ module boa_stage_if#(
     input  logic[31:1]  fw_branch_target,
     // Address of the next instruction.
     output logic[31:1]  if_next_pc,
-    
-    // Stall IF stage.
-    input  logic        fw_stall_if,
     // Branch to be corrected.
     input  logic        fw_branch_correct,
     // Branch correction address.
-    input  logic[31:1]  fw_branch_alt
+    input  logic[31:1]  fw_branch_alt,
+    
+    // Stall IF stage.
+    input  logic        fw_stall_if
 );
     // Current program counter.
     logic[31:1] pc      = entrypoint;
@@ -83,6 +83,7 @@ module boa_stage_if#(
     assign q_cause  = `RV_ECAUSE_IALIGN;
     
     assign valid    = pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
+    assign q_pc     = pc;
     assign q_insn   = pbus.rdata;
     always @(posedge clk) begin
         if (rst) begin

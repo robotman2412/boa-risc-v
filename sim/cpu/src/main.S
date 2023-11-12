@@ -7,16 +7,13 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+    .global _start
 _start:
-    la x1, ohno
-_jalr:
-    jalr x2, 0(x1)
-    nop
-    nop
-    nop
-    nop
-    nop
-lolol:
-    j lolol
-ohno:
-    j ohno
+    li x1, 0
+    li x2, 1
+    li x3, 0
+fibs:
+    add x3, x1, x2
+    mv x1, x2
+    mv x2, x3
+    j fibs

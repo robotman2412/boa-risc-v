@@ -158,7 +158,7 @@ module boa_stage_ex(
     
     // Adder mode.
     wire        cmp           = (r_insn[6:2] == `RV_OP_BRANCH) || (is_op && ((r_insn[14:12] == `RV_ALU_SLT) || (r_insn[14:12] == `RV_ALU_SLTU)));
-    wire        xorh          = cmp && r_insn[4] ? !r_insn[12] : !r_insn[13];
+    wire        xorh          = cmp && (r_insn[4] ? !r_insn[12] : !r_insn[13]);
     wire        sub           = cmp || ((r_insn[6:2] == `RV_OP_OP) && r_insn[30]);
     
     // Adder operands.
@@ -257,7 +257,7 @@ module boa_stage_ex(
     assign q_pc             = r_pc;
     assign q_insn           = r_insn;
     assign q_use_rd         = r_use_rd;
-    assign q_rs1_val        = r_rs1_val;
+    assign q_rs1_val        = out_mux;
     assign q_rs2_val        = r_rs2_val;
     assign q_trap           = !clear && r_trap;
     assign q_cause          = r_cause;

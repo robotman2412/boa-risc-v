@@ -286,7 +286,7 @@ module boa32_cpu#(
         clk, rst, clear_id, pbus,
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
         fw_branch_predict, fw_branch_target, if_next_pc,
-        fw_stall_if, fw_stall_id, fw_branch_correct, fw_branch_alt
+        fw_stall_if, fw_branch_correct, fw_branch_alt
     );
     boa_stage_id st_id(
         clk, rst, clear_id,
@@ -294,14 +294,14 @@ module boa32_cpu#(
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         mem_wb_valid && mem_wb_use_rd, mem_wb_insn[11:7], mem_wb_rd_val,
-        fw_stall_id, fw_stall_ex, use_rs1_bt, fw_rs1_bt,
+        fw_stall_id, use_rs1_bt, fw_rs1_bt,
         fw_rs1_ex, fw_rs2_ex, fw_in_ex
     );
     boa_stage_ex st_ex(
         clk, rst, clear_ex,
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
-        fw_branch_correct, fw_stall_ex, fw_stall_mem,
+        fw_branch_correct, fw_stall_ex,
         fw_rs1_mem, fw_rs2_mem, fw_in_mem,
         fw_rd_ex, fw_out_ex
     );

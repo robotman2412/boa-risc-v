@@ -76,75 +76,109 @@ module boa_stage_id(
     
     // Stall ID stage.
     input  logic        fw_stall_id,
-    // Stall EX stage.
-    input  logic        fw_stall_ex,
     
     // Branch target address uses RS1.
     output logic        use_rs1_bt,
     // Forward RS1 to branch target address.
     input  logic        fw_rs1_bt,
-    
-    // Forward value to RS1.
-    input  logic        fw_rs1,
-    // Forward value to RS2.
-    input  logic        fw_rs2,
     // Forwarding value.
     input  logic[31:0]  fw_val
 );
+    // IF/ID: Result valid.
+    logic       r_valid;
+    // IF/ID: Current instruction PC.
+    logic[31:1] r_pc;
+    // IF/ID: Current instruction word.
+    logic[31:0] r_insn;
+    // IF/ID: Trap raised.
+    logic       r_trap;
+    // IF/ID: Trap cause.
+    logic[3:0]  r_cause;
+    
+    // Pipline barrier register.
+    always @(posedge clk) begin
+        if (rst) begin
+            r_valid <= 0;
+            r_pc    <= 'bx;
+            r_insn  <= 'bx;
+            r_trap  <= 0;
+            r_cause <= 'bx;
+        end else if (!fw_stall_id) begin
+            r_valid <= d_valid;
+            r_pc    <= d_pc;
+            r_insn  <= d_insn;
+            r_trap  <= d_trap;
+            r_cause <= d_cause;
+        end
+    end
+    
+    
     // Register file.
     logic[31:0] rs1_val;
     logic[31:0] rs2_val;
     boa_regfile regfile(
         clk, rst,
         wb_we, wb_rd, wb_wdata,
-        d_insn[19:15], rs1_val,
-        d_insn[24:20], rs2_val
+        r_insn[19:15], rs1_val,
+        r_insn[24:20], rs2_val
     );
     
     // Instruction validator.
     wire insn_valid, insn_legal;
     boa_insn_validator#(.has_m(1), .has_zicsr(1)) validator(
-        d_insn, 2'b11, 0, 32'hffff_ffff,
+        r_insn, 2'b11, 0, 32'hffff_ffff,
         insn_valid, insn_legal
     );
     
     // Register decoder.
     wire use_rs1, use_rs2, use_rs3, use_rd;
-    boa_reg_decoder reg_decd(d_insn, use_rs1, use_rs2, use_rs3, use_rd);
+    boa_reg_decoder reg_decd(r_insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
-    boa_branch_decoder branch_decd(d_insn, d_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);
-    assign branch_predict = d_insn[31];
-    assign is_sret        = !d_insn[29];
+    boa_branch_decoder branch_decd(r_insn, r_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);
+    assign branch_predict = r_insn[31];
+    assign is_sret        = !r_insn[29];
+    
+    // Pipeline output logic.
+    assign q_valid          = r_valid && !clear && insn_legal && insn_valid;
+    assign q_pc             = r_pc;
+    assign q_insn           = r_insn;
+    assign q_use_rd         = use_rd;
+    assign q_rs1_val        = rs1_val;
+    assign q_rs2_val        = rs2_val;
+    assign q_branch         = is_branch;
+    assign q_branch_predict = branch_predict;
+    assign q_trap           = !clear && (r_trap || r_valid && (!insn_valid || !insn_legal));
+    assign q_cause          = r_trap ? r_cause : `RV_ECAUSE_IILLEGAL;
     
     // Pipeline barrier logic.
-    always @(posedge clk) begin
-        if (rst) begin
-            q_valid             <= 0;
-            q_pc                <= 'bx;
-            q_insn              <= 'bx;
-            q_use_rd            <= 'bx;
-            q_rs1_val           <= 'bx;
-            q_rs2_val           <= 'bx;
-            q_branch            <= 'bx;
-            q_branch_predict    <= 'bx;
-            q_trap              <= 0;
-            q_cause             <= 'bx;
-        end else if (!fw_stall_id) begin
-            q_valid             <= d_valid && !clear && insn_valid && insn_legal;
-            q_pc                <= d_pc;
-            q_insn              <= d_insn;
-            q_use_rd            <= use_rd;
-            q_rs1_val           <= fw_rs1 ? fw_val : rs1_val;
-            q_rs2_val           <= fw_rs2 ? fw_val : rs2_val;
-            q_branch            <= is_branch;
-            q_branch_predict    <= branch_predict;
-            q_trap              <= !clear && (d_trap || d_valid && (!insn_valid || !insn_legal));
-            q_cause             <= d_trap ? d_cause : `RV_ECAUSE_IILLEGAL;
-        end else begin
-            q_valid <= q_valid && !fw_stall_ex;
-        end
-    end
+    // always @(posedge clk) begin
+    //     if (rst) begin
+    //         q_valid             <= 0;
+    //         q_pc                <= 'bx;
+    //         q_insn              <= 'bx;
+    //         q_use_rd            <= 'bx;
+    //         q_rs1_val           <= 'bx;
+    //         q_rs2_val           <= 'bx;
+    //         q_branch            <= 'bx;
+    //         q_branch_predict    <= 'bx;
+    //         q_trap              <= 0;
+    //         q_cause             <= 'bx;
+    //     end else if (!fw_stall_id) begin
+    //         q_valid             <= d_valid && !clear && insn_valid && insn_legal;
+    //         q_pc                <= d_pc;
+    //         q_insn              <= d_insn;
+    //         q_use_rd            <= use_rd;
+    //         q_rs1_val           <= fw_rs1 ? fw_val : rs1_val;
+    //         q_rs2_val           <= fw_rs2 ? fw_val : rs2_val;
+    //         q_branch            <= is_branch;
+    //         q_branch_predict    <= branch_predict;
+    //         q_trap              <= !clear && (d_trap || d_valid && (!insn_valid || !insn_legal));
+    //         q_cause             <= d_trap ? d_cause : `RV_ECAUSE_IILLEGAL;
+    //     end else begin
+    //         q_valid <= q_valid && !fw_stall_ex;
+    //     end
+    // end
 endmodule
 
 

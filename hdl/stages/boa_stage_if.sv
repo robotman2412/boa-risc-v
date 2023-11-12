@@ -48,8 +48,6 @@ module boa_stage_if#(
     
     // Stall IF stage.
     input  logic        fw_stall_if,
-    // Stall ID stage.
-    input  logic        fw_stall_id,
     // Branch to be corrected.
     input  logic        fw_branch_correct,
     // Branch correction address.
@@ -79,23 +77,34 @@ module boa_stage_if#(
         end
     end
     
-    // Pipeline barrier logic.
-    assign q_valid      = valid && !q_pc[1];
-    assign q_trap       = valid && q_pc[1];
-    assign q_cause      = `RV_ECAUSE_IALIGN;
+    // Pipeline output logic.
+    assign q_valid  = valid && !q_pc[1];
+    assign q_trap   = valid && q_pc[1];
+    assign q_cause  = `RV_ECAUSE_IALIGN;
     
+    assign valid    = pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
+    assign q_insn   = pbus.rdata;
     always @(posedge clk) begin
-        q_pc <= pc;
         if (rst) begin
             pc[31:1]    <= entrypoint[31:1];
-            valid       <= 0;
         end else if(!fw_stall_if) begin
-            valid       <= pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
             pc[31:2]    <= pbus.addr[31:2];
             pc[1]       <= 0;
-            q_insn      <= pbus.rdata;
-        end else begin
-            valid       <= valid && fw_stall_id;
         end
     end
+    
+    // always @(posedge clk) begin
+    //     q_pc <= pc;
+    //     if (rst) begin
+    //         pc[31:1]    <= entrypoint[31:1];
+    //         valid       <= 0;
+    //     end else if(!fw_stall_if) begin
+    //         valid       <= pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
+    //         pc[31:2]    <= pbus.addr[31:2];
+    //         pc[1]       <= 0;
+    //         q_insn      <= pbus.rdata;
+    //     end else begin
+    //         valid       <= valid && fw_stall_id;
+    //     end
+    // end
 endmodule

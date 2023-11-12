@@ -82,27 +82,28 @@ module boa_stage_ex(
     output logic[31:0]  fw_out
 );
     // Is it an OP or OP-IMM instruction?
-    wire is_op  = d_insn[6:2] == `RV_OP_OP_IMM || d_insn[6:2] == `RV_OP_OP;
+    wire is_op  = (d_insn[6:2] == `RV_OP_OP_IMM) || (d_insn[6:2] == `RV_OP_OP);
     // Is it a LOAD or STORE instruction?
-    wire is_mem = d_insn[6:2] == `RV_OP_LOAD || d_insn[6:2] == `RV_OP_STORE;
+    wire is_mem = (d_insn[6:2] == `RV_OP_LOAD)   || (d_insn[6:2] == `RV_OP_STORE);
     // Is it a JAL or JALR instruction?
-    wire is_jal = d_insn[6:2] == `RV_OP_JAL || d_insn[6:2] == `RV_OP_JALR;
+    wire is_jal = (d_insn[6:2] == `RV_OP_JAL)    || (d_insn[6:2] == `RV_OP_JALR);
     
-    // IMM generation for LUI and AUIPC.
+    // IMM generation.
     logic[31:0] uimm;
     assign uimm[11:0]  = 0;
     assign uimm[31:12] = d_insn[31:12];
     
+    logic[31:0] imm12_i;
+    assign imm12_i[11:0]  = d_insn[31:20];
+    assign imm12_i[31:12] = d_insn[31] * 20'hfffff;
+    
+    logic[31:0] imm12_s;
+    assign imm12_s[4:0]   = d_insn[11:7];
+    assign imm12_s[11:5]  = d_insn[31:25];
+    assign imm12_s[31:12] = d_insn[31] * 20'hfffff;
+    
     // RHS generation for OP-IMM.
-    logic[31:0] rhs;
-    always @(*) begin
-        if (d_insn[5]) begin
-            rhs = d_rs2_val;
-        end else begin
-            rhs[11:0]  = d_insn[31:20];
-            rhs[31:12] = d_insn[31] * 20'hf_ffff;
-        end
-    end
+    wire [31:0] op_rhs_mux = d_insn[5] ? d_rs2_val : imm12_i;
     
     // Computational units.
     wire        mul_u_lhs = d_insn[13] && d_insn[12];
@@ -117,18 +118,44 @@ module boa_stage_ex(
     logic[31:0] shx_res;
     boa_mul_simple mul(mul_u_lhs, mul_u_rhs, d_rs1_val, d_rs2_val, mul_res);
     boa_div_simple div(div_u, d_rs1_val, d_rs2_val, div_res, mod_res);
-    boa_shift_simple shift(shr_arith, shr, d_rs1_val, rhs, shx_res);
+    boa_shift_simple shift(shr_arith, shr, d_rs1_val, op_rhs_mux, shx_res);
     
-    // Adder and comparator.
-    wire        cmp           = (d_insn[6:2] == `RV_OP_BRANCH) || (is_op && (d_insn[14:12] == `RV_ALU_SLT || d_insn[14:12] == `RV_ALU_SLTU));
+    // Adder mode.
+    wire        cmp           = (d_insn[6:2] == `RV_OP_BRANCH) || (is_op && ((d_insn[14:12] == `RV_ALU_SLT) || (d_insn[14:12] == `RV_ALU_SLTU)));
     wire        xorh          = cmp && d_insn[4] ? !d_insn[12] : !d_insn[13];
-    wire        sub           = cmp || (d_insn[6:2] == `RV_OP_OP && d_insn[30]);
+    wire        sub           = cmp || ((d_insn[6:2] == `RV_OP_OP) && d_insn[30]);
+    
+    // Adder operands.
+    logic[31:0] add_lhs_mux;
+    logic[31:0] add_rhs_mux;
+    always @(*) begin
+        if (d_insn[6:2] == `RV_OP_LOAD) begin
+            // LOAD instructions.
+            add_lhs_mux         = d_rs1_val;
+            add_rhs_mux         = imm12_s;
+        end else if (d_insn[6:2] == `RV_OP_STORE) begin
+            // STORE instructions.
+            add_lhs_mux         = d_rs1_val;
+            add_rhs_mux         = imm12_i;
+        end else if ((d_insn[6:2] == `RV_OP_JAL) || (d_insn[6:2] == `RV_OP_JALR)) begin
+            // JAL and JALR instructions.
+            add_lhs_mux[31:1]   = d_pc;
+            add_lhs_mux[0]      = 0;
+            add_rhs_mux         = 4;
+        end else begin
+            // OP and OP-IMM.
+            add_lhs_mux         = d_rs1_val;
+            add_rhs_mux         = op_rhs_mux;
+        end
+    end
+    
+    // Adder.
     logic[31:0] add_lhs;
     logic[31:0] add_rhs;
-    assign      add_lhs[30:0] = d_rs1_val[30:0];
-    assign      add_lhs[31]   = d_rs1_val[31] ^ xorh;
-    assign      add_rhs[30:0] = rhs[30:0] ^ (sub * 31'h7fff_ffff);
-    assign      add_rhs[31]   = rhs[31] ^ xorh ^ sub;
+    assign      add_lhs[30:0] = add_lhs_mux[30:0];
+    assign      add_lhs[31]   = add_lhs_mux[31] ^ xorh;
+    assign      add_rhs[30:0] = add_rhs_mux[30:0] ^ (sub * 31'h7fff_ffff);
+    assign      add_rhs[31]   = add_rhs_mux[31] ^ xorh ^ sub;
     wire [32:0] add_res       = add_lhs + add_rhs + sub;
     
     // The comparator.
@@ -137,7 +164,7 @@ module boa_stage_ex(
     
     // Branch condition evaluation.
     wire   branch_cond       = d_insn[12] ^ (d_insn[14] ? cmp_lt : cmp_eq);
-    assign fw_branch_correct = d_valid && d_insn[6:2] == `RV_OP_BRANCH && branch_cond != d_branch_predict;
+    assign fw_branch_correct = d_valid && (d_insn[6:2] == `RV_OP_BRANCH) && (branch_cond != d_branch_predict);
     
     // Output LHS multiplexer.
     logic[31:0] out_mux;
@@ -159,10 +186,10 @@ module boa_stage_ex(
                     `RV_ALU_SLL:  out_mux = shx_res;
                     `RV_ALU_SLT:  out_mux = cmp_lt;
                     `RV_ALU_SLTU: out_mux = cmp_lt;
-                    `RV_ALU_XOR:  out_mux = d_rs1_val ^ rhs;
+                    `RV_ALU_XOR:  out_mux = d_rs1_val ^ op_rhs_mux;
                     `RV_ALU_SRL:  out_mux = shx_res;
-                    `RV_ALU_OR:   out_mux = d_rs1_val | rhs;
-                    `RV_ALU_AND:  out_mux = d_rs1_val & rhs;
+                    `RV_ALU_OR:   out_mux = d_rs1_val | op_rhs_mux;
+                    `RV_ALU_AND:  out_mux = d_rs1_val & op_rhs_mux;
                 endcase
             end
             fw_rd = d_valid && d_use_rd;
@@ -232,15 +259,15 @@ module boa_stage_ex_fw(
             // OP instructions.
             use_rs1 = 1;
             use_rs2 = 1;
-        end else if (d_insn[6:2] == `RV_OP_BRANCH) begin
-            // BRANCH instructions.
-            use_rs1 = 1;
-            use_rs2 = 1;
         end else if (d_insn[6:2] == `RV_OP_OP_IMM) begin
             // OP-IMM instructions.
             use_rs1 = 1;
             use_rs2 = 0;
-        end else if (d_insn[6:2] == `RV_OP_LOAD || d_insn[6:2] == `RV_OP_STORE) begin
+        end else if (d_insn[6:2] == `RV_OP_BRANCH) begin
+            // BRANCH instructions.
+            use_rs1 = 1;
+            use_rs2 = 1;
+        end else if ((d_insn[6:2] == `RV_OP_LOAD) || (d_insn[6:2] == `RV_OP_STORE)) begin
             // LOAD and STORE instructions.
             use_rs1 = 1;
             use_rs2 = 0;

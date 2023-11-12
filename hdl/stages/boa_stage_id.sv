@@ -80,9 +80,9 @@ module boa_stage_id(
     input  logic        fw_stall_ex,
     
     // Branch target address uses RS1.
-    output logic        bt_use_rs1,
-    // Branch target address forwarding value.
-    input  logic[31:0]  fw_bt_val,
+    output logic        use_rs1_bt,
+    // Forward RS1 to branch target address.
+    input  logic        fw_rs1_bt,
     
     // Forward value to RS1.
     input  logic        fw_rs1,
@@ -113,7 +113,7 @@ module boa_stage_id(
     boa_reg_decoder reg_decd(d_insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
-    boa_branch_decoder branch_decd(d_insn, d_pc, rs1_val, is_xret, is_branch, is_jump, branch_target, bt_use_rs1);
+    boa_branch_decoder branch_decd(d_insn, d_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);
     assign branch_predict = d_insn[31];
     assign is_sret        = !d_insn[29];
     
@@ -177,8 +177,8 @@ module boa_regfile(
     logic[31:0] storage[31:1];
     
     // Read logic.
-    assign q1 = rs1 == 0 ? 0 : we && rs1 == rd ? wdata : storage[rs1];
-    assign q2 = rs2 == 0 ? 0 : we && rs2 == rd ? wdata : storage[rs2];
+    assign q1 = (rs1 == 0) ? 0 : we && (rs1 == rd) ? wdata : storage[rs1];
+    assign q2 = (rs2 == 0) ? 0 : we && (rs2 == rd) ? wdata : storage[rs2];
     
     // Write logic.
     always @(posedge clk) begin
@@ -189,9 +189,10 @@ module boa_regfile(
                 storage[i] <= 0;
             end
             
-        end else if (we && rd != 0) begin
+        end else if (we && (rd != 0)) begin
             // Write a register.
             storage[rd] <= wdata;
+            $display("x%d = 0x%08x", rd, wdata);
         end
     end
 endmodule
@@ -300,6 +301,7 @@ module boa_reg_decoder#(
     always @(*) begin
         has_rs1 = 'b0; has_rs2 = 'b0; has_rs3 = 'b0; has_rd = 'b0;
         case (insn[6:2])
+            default:            begin end
             `RV_OP_LOAD:        begin has_rs1 = 1; has_rs2 = 0; has_rs3 = 0; has_rd = 1; end
             `RV_OP_LOAD_FP:     if (f) begin has_rs1 = 1; has_rs2 = 0; has_rs3 = 0; has_rd = 1; end
             `RV_OP_MISC_MEM:    begin has_rs1 = 0; has_rs2 = 0; has_rs3 = 0; has_rd = 0; end
@@ -385,11 +387,11 @@ module boa_insn_validator#(
     always @(*) begin
         if (insn[14:12] == `RV_ALU_SLL) begin
             // Shift left.
-            valid_op_imm = insn[31:26] == 0 && (rv64 && !insn[3] || !insn[25]);
+            valid_op_imm = (insn[31:26] == 0) && (rv64 && !insn[3] || !insn[25]);
             
         end else if (insn[14:12] == `RV_ALU_SRL) begin
             // Shift right.
-            valid_op_imm = insn[31] == 0 && insn[29:26] == 0 && (rv64 && !insn[5] || !insn[25]);
+            valid_op_imm = (insn[31] == 0) && (insn[29:26] == 0) && (rv64 && !insn[5] || !insn[25]);
             
         end else begin
             // Any other OP-IMM or OP-IMM-32.
@@ -402,26 +404,26 @@ module boa_insn_validator#(
         if (insn[25]) begin
             // Multiply / divide.
             if (rv64 && insn[3]) begin
-                valid_op = insn[31:26] == 0 && (insn[14] || insn[13:12] != 0);
+                valid_op = (insn[31:26] == 0) && (insn[14] || (insn[13:12] != 0));
             end else begin
                 valid_op = insn[31:26] == 0;
             end
             
         end else if (insn[14:12] == `RV_ALU_SLL) begin
             // Shift left.
-            valid_op = insn[31:26] == 0 && (rv64 && !insn[3] || !insn[25]);
+            valid_op = (insn[31:26] == 0) && (rv64 && !insn[3] || !insn[25]);
             
         end else if (insn[14:12] == `RV_ALU_SRL) begin
             // Shift right.
-            valid_op = insn[31] == 0 && insn[29:26] == 0 && (rv64 && !insn[3] || !insn[25]);
+            valid_op = (insn[31] == 0) && (insn[29:26] == 0) && (rv64 && !insn[3] || !insn[25]);
             
         end else if (insn[14:12] == `RV_ALU_ADD) begin
             // Add / subtract.
-            valid_op = insn[31] == 0 && insn[29:26] == 0 && (rv64 && !insn[3] || !insn[25]);
+            valid_op = (insn[31] == 0) && (insn[29:26] == 0) && (rv64 && !insn[3] || !insn[25]);
             
         end else begin
             // Any other OP or OP-32.
-            valid_op = insn[31:25] == 0;
+            valid_op = (insn[31:25] == 0);
         end
     end
     
@@ -456,13 +458,13 @@ module boa_insn_validator#(
             valid = 0;
         end else case (insn[6:2])
             default:            begin valid = 0; end
-            `RV_OP_LOAD:        begin valid = insn[14] ? insn[13:12] < 2 + rv64 : insn[13:12] < 3 + rv64; end
+            `RV_OP_LOAD:        begin valid = insn[14] ? (insn[13:12] < 2) + rv64 : (insn[13:12] < 3) + rv64; end
             `RV_OP_LOAD_FP:     begin valid = 0; $strobe("TODO: validity for LOAD_FP"); end
             `RV_OP_MISC_MEM:    begin valid = insn[14:13] == 0; end
             `RV_OP_OP_IMM:      begin valid = valid_op_imm; end
             `RV_OP_AUIPC:       begin valid = 1; end
             `RV_OP_OP_IMM_32:   begin valid = rv64 && valid_op_imm; end
-            `RV_OP_STORE:       begin valid = insn[14] == 0 && insn[13:12] <= 2 + rv64; end
+            `RV_OP_STORE:       begin valid = (insn[14] == 0) && (insn[13:12] <= 2) + rv64; end
             `RV_OP_STORE_FP:    begin valid = 0; $strobe("TODO: validity for STORE_FP"); end
             `RV_OP_AMO:         begin valid = allow_a; end
             `RV_OP_OP:          begin valid = valid_op; end

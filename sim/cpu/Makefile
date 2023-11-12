@@ -20,7 +20,7 @@ obj_dir/rom.svh: $(SRC) linker.ld
 	riscv32-unknown-elf-objdump -t $@.elf
 
 build: $(HDL) bench.cpp obj_dir/rom.svh
-	verilator -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-VARHIDDEN -Wno-WIDTH -Wno-UNUSED \
+	verilator -Wall -Wno-fatal -Werror-PINNOCONNECT -Werror-IMPLICIT -Wno-DECLFILENAME -Wno-VARHIDDEN -Wno-WIDTH -Wno-UNUSED \
 		--trace --trace-fst --trace-depth 20 --trace-max-array 128 --trace-max-width 128 \
 		-sv --cc --exe --build \
 		-I../../hdl/include -Iobj_dir \

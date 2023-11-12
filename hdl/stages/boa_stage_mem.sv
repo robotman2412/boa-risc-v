@@ -62,10 +62,11 @@ module boa_stage_mem(
     input  logic        fw_stall_mem,
     
     // Forwarding output.
-    input  logic[31:0]  fw_out
+    output logic[31:0]  fw_out
 );
+    assign fw_out = 0;
     // Is it a LOAD or STORE instruction?
-    wire is_mem = d_insn[6:2] == `RV_OP_LOAD || d_insn[6:2] == `RV_OP_STORE;
+    wire is_mem = (d_insn[6:2] == `RV_OP_LOAD) || (d_insn[6:2] == `RV_OP_STORE);
     // Is it a CSR access instruction?
     wire is_csr = 0;
     
@@ -112,5 +113,35 @@ module boa_stage_mem_fw(
 );
     // Usage calculator.
     always @(*) begin
+        if (d_insn[6:2] == `RV_OP_LOAD) begin
+            // LOAD instructions.
+            // RS1 not used because EX calculates the address.
+            use_rs1 = 0;
+            use_rs2 = 0;
+        end else if (d_insn[6:2] == `RV_OP_STORE) begin
+            // STORE instructions.
+            // RS1 not used because EX calculates the address.
+            use_rs1 = 0;
+            use_rs2 = 1;
+        end else if (d_insn[6:2] == `RV_OP_SYSTEM) begin
+            // SYSTEM instructions.
+            if (d_insn[14:12] == 0) begin
+                // Other SYSTEM instructions.
+                use_rs1 = 0;
+                use_rs2 = 0;
+            end else if (d_insn[14]) begin
+                // CSR*I instructions.
+                use_rs1 = 1;
+                use_rs2 = 0;
+            end else begin
+                // CSR* instructions.
+                use_rs1 = 0;
+                use_rs2 = 0;
+            end
+        end else begin
+            // Other instructions.
+            use_rs1 = 0;
+            use_rs2 = 0;
+        end
     end
 endmodule

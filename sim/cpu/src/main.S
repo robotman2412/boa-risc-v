@@ -8,17 +8,15 @@
 */
 
 _start:
-    addi x1, x0, 3
-    addi x2, x0, 5
+    la x1, ohno
+_jalr:
+    jalr x2, 0(x1)
     nop
     nop
     nop
     nop
-    nop
-_br:
-    bgt x1, x2, _start
-nono:
-    j nono
     nop
 lolol:
     j lolol
+ohno:
+    j ohno

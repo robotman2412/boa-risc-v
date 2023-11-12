@@ -147,8 +147,6 @@ module boa32_cpu#(
     logic       branch_predict;
     // Branch target address.
     logic[31:1] branch_target;
-    // Branch target address uses RS1.
-    logic       bt_use_rs1;
     
     // Predicted branch or unconditional control transfer.
     logic       fw_branch_predict;
@@ -201,12 +199,39 @@ module boa32_cpu#(
     
     
     /* ==== Data hazard avoidance ==== */
+    // EX uses RS1 value.
+    logic       use_rs1_ex;
+    // EX uses RS2 value.
+    logic       use_rs2_ex;
+    // MEM uses RS1 value.
+    logic       use_rs1_mem;
+    // MEM uses RS2 value.
+    logic       use_rs2_mem;
+    // Branch target address uses RS1 value.
+    logic       use_rs1_bt;
+    
     // Can forward from EX.
-    logic[31:0] fw_ex_rd;
+    logic       fw_rd_ex;
     // Forwarding output from EX.
-    logic[31:0] fw_ex_out;
+    logic[31:0] fw_out_ex;
     // Forwarding output from MEM.
-    logic[31:0] fw_mem_out;
+    logic[31:0] fw_out_mem;
+    
+    // Forward RS1 to EX.
+    logic       fw_rs1_ex;
+    // Forward RS2 to EX.
+    logic       fw_rs2_ex;
+    // Forward RS1 to MEM.
+    logic       fw_rs1_mem;
+    // Forward RS2 to MEM.
+    logic       fw_rs2_mem;
+    // Forward RS1 to branch target address.
+    logic       fw_rs1_bt;
+    
+    // Forwarding input to EX.
+    logic[31:0] fw_in_ex;
+    // Forwarding input to MEM.
+    logic[31:0] fw_in_mem;
     
     // Stall IF stage.
     logic       fw_stall_if;
@@ -216,10 +241,44 @@ module boa32_cpu#(
     logic       fw_stall_ex;
     // Stall MEM stage.
     logic       fw_stall_mem;
-    assign fw_stall_if = 0;
-    assign fw_stall_id = 0;
-    assign fw_stall_ex = 0;
-    assign fw_stall_mem = 0;
+    
+    // Data dependency resolution.
+    boa_stage_ex_fw st_ex_fw(if_id_insn, use_rs1_ex, use_rs2_ex);
+    boa_stage_mem_fw st_mem_fw(id_ex_insn, use_rs1_mem, use_rs2_mem);
+    assign fw_in_mem = fw_out_mem;
+    assign fw_in_ex  = id_ex_valid && fw_rd_ex ? fw_out_ex : fw_out_mem;
+    always @(*) begin
+        fw_stall_mem = 0;
+        fw_stall_ex  = 0;
+        fw_stall_id  = 0;
+        fw_stall_if  = 0;
+        
+        // Forwarding logic.
+        fw_rs1_mem  = id_ex_valid && ex_mem_valid && ex_mem_use_rd && use_rs1_mem && (id_ex_insn[19:15] == ex_mem_insn[11:7]);
+        fw_rs2_mem  = id_ex_valid && ex_mem_valid && ex_mem_use_rd && use_rs2_mem && (id_ex_insn[24:20] == ex_mem_insn[11:7]);
+        fw_rs1_ex   = if_id_valid && ex_mem_valid && ex_mem_use_rd && use_rs1_ex  && (if_id_insn[19:15] == ex_mem_insn[11:7]);
+        fw_rs2_ex   = if_id_valid && ex_mem_valid && ex_mem_use_rd && use_rs2_ex  && (if_id_insn[24:20] == ex_mem_insn[11:7]);
+        fw_rs1_ex  |= if_id_valid && id_ex_valid  && id_ex_use_rd  && use_rs1_ex  && (if_id_insn[19:15] == id_ex_insn[11:7]);
+        fw_rs2_ex  |= if_id_valid && id_ex_valid  && id_ex_use_rd  && use_rs2_ex  && (if_id_insn[24:20] == id_ex_insn[11:7]);
+        fw_rs1_bt   = if_id_valid && ex_mem_valid && ex_mem_use_rd && use_rs1_bt  && (if_id_insn[19:15] == ex_mem_insn[11:7]);
+        fw_rs1_bt  |= if_id_valid && id_ex_valid  && id_ex_use_rd  && use_rs1_bt  && (if_id_insn[19:15] == id_ex_insn[11:7]);
+        
+        // Stalling logic.
+        if ((fw_rs1_ex || fw_rs2_ex) && id_ex_use_rd && !fw_rd_ex) begin
+            // EX will next need something that has to be processed by MEM first.
+            // Stall ID so that this instruction doesn't enter EX until a result is available.
+            fw_stall_id = 1;
+        end
+        if (fw_rs1_bt && id_ex_use_rd && !fw_rd_ex) begin
+            // Branch target address needs something that has to be processed by MEM first.
+            // Stall ID so that MEM will produce a result that may then be used by the branch target address.
+            fw_stall_id = 1;
+        end
+        
+        fw_stall_ex |= fw_stall_mem;
+        fw_stall_id |= fw_stall_ex;
+        fw_stall_if |= fw_stall_id;
+    end
     
     
     /* ==== Pipeline stages ==== */
@@ -235,21 +294,21 @@ module boa32_cpu#(
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         mem_wb_valid && mem_wb_use_rd, mem_wb_insn[11:7], mem_wb_rd_val,
-        fw_stall_id, fw_stall_ex, bt_use_rs1, 0, // RS1 for JAL and JALR.
-        0, 0, 0 // Forwarding port.
+        fw_stall_id, fw_stall_ex, use_rs1_bt, fw_rs1_bt,
+        fw_rs1_ex, fw_rs2_ex, fw_in_ex
     );
     boa_stage_ex st_ex(
         clk, rst, clear_ex,
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         fw_branch_correct, fw_stall_ex, fw_stall_mem,
-        0, 0, 0, // Forwarding port.
-        fw_ex_rd, fw_ex_out
+        fw_rs1_mem, fw_rs2_mem, fw_in_mem,
+        fw_rd_ex, fw_out_ex
     );
     boa_stage_mem st_mem(
         clk, rst, clear_mem, dbus,
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         mem_wb_valid, mem_wb_pc, mem_wb_insn, mem_wb_use_rd, mem_wb_rd_val, mem_wb_trap, mem_wb_cause,
-        fw_stall_mem, fw_mem_out
+        fw_stall_mem, fw_out_mem
     );
 endmodule

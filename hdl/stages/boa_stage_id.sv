@@ -150,35 +150,6 @@ module boa_stage_id(
     assign q_branch_predict = branch_predict;
     assign q_trap           = !clear && (r_trap || r_valid && (!insn_valid || !insn_legal));
     assign q_cause          = r_trap ? r_cause : `RV_ECAUSE_IILLEGAL;
-    
-    // Pipeline barrier logic.
-    // always @(posedge clk) begin
-    //     if (rst) begin
-    //         q_valid             <= 0;
-    //         q_pc                <= 'bx;
-    //         q_insn              <= 'bx;
-    //         q_use_rd            <= 'bx;
-    //         q_rs1_val           <= 'bx;
-    //         q_rs2_val           <= 'bx;
-    //         q_branch            <= 'bx;
-    //         q_branch_predict    <= 'bx;
-    //         q_trap              <= 0;
-    //         q_cause             <= 'bx;
-    //     end else if (!fw_stall_id) begin
-    //         q_valid             <= d_valid && !clear && insn_valid && insn_legal;
-    //         q_pc                <= d_pc;
-    //         q_insn              <= d_insn;
-    //         q_use_rd            <= use_rd;
-    //         q_rs1_val           <= fw_rs1 ? fw_val : rs1_val;
-    //         q_rs2_val           <= fw_rs2 ? fw_val : rs2_val;
-    //         q_branch            <= is_branch;
-    //         q_branch_predict    <= branch_predict;
-    //         q_trap              <= !clear && (d_trap || d_valid && (!insn_valid || !insn_legal));
-    //         q_cause             <= d_trap ? d_cause : `RV_ECAUSE_IILLEGAL;
-    //     end else begin
-    //         q_valid <= q_valid && !fw_stall_ex;
-    //     end
-    // end
 endmodule
 
 

@@ -93,19 +93,4 @@ module boa_stage_if#(
             pc[1]       <= 0;
         end
     end
-    
-    // always @(posedge clk) begin
-    //     q_pc <= pc;
-    //     if (rst) begin
-    //         pc[31:1]    <= entrypoint[31:1];
-    //         valid       <= 0;
-    //     end else if(!fw_stall_if) begin
-    //         valid       <= pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
-    //         pc[31:2]    <= pbus.addr[31:2];
-    //         pc[1]       <= 0;
-    //         q_insn      <= pbus.rdata;
-    //     end else begin
-    //         valid       <= valid && fw_stall_id;
-    //     end
-    // end
 endmodule

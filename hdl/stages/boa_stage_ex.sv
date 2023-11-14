@@ -261,30 +261,6 @@ module boa_stage_ex(
     assign q_rs2_val        = r_rs2_val;
     assign q_trap           = !clear && r_trap;
     assign q_cause          = r_cause;
-    
-    // always @(posedge clk) begin
-    //     if (rst) begin
-    //         q_valid             <= 0;
-    //         q_pc                <= 'bx;
-    //         q_insn              <= 'bx;
-    //         q_use_rd            <= 'bx;
-    //         q_rs1_val           <= 'bx;
-    //         q_rs2_val           <= 'bx;
-    //         q_trap              <= 0;
-    //         q_cause             <= 'bx;
-    //     end else if (!fw_stall_ex) begin
-    //         q_valid             <= d_valid;
-    //         q_pc                <= d_pc;
-    //         q_insn              <= d_insn;
-    //         q_use_rd            <= d_use_rd;
-    //         q_rs1_val           <= fw_rs1 ? fw_in : out_mux;
-    //         q_rs2_val           <= fw_rs2 ? fw_in : d_rs2_val;
-    //         q_trap              <= d_trap;
-    //         q_cause             <= d_cause;
-    //     end else begin
-    //         q_valid <= q_valid && !fw_stall_mem;
-    //     end
-    // end
 endmodule
 
 // Boa³² pipline stage forwarding helper: EX (ALU and address calculation).

@@ -16,12 +16,14 @@ interface boa_mem_bus#(
     // Address bus size, at least 8.
     parameter alen = 32,
     // Data bus size, 32 or 64.
-    parameter dlen = 32
+    parameter dlen = 32,
+    // Number of write enables.
+    localparam wes = dlen/8
 );
     // CPU -> MEM: Read enable.
     logic           re;
     // CPU -> MEM: Write enable.
-    logic           we;
+    logic[wes-1:0]  we;
     // CPU -> MEM: Address.
     logic[alen-1:2] addr;
     // CPU -> MEM: Write data.

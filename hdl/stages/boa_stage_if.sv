@@ -7,6 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+`timescale 1ns/1ps
 `include "boa_defines.svh"
 
 

@@ -9,11 +9,12 @@
 
     .global _start
 _start:
-    li x1, 0
-    li x2, 1
-    li x3, 0
-fibs:
-    add x3, x1, x2
-    mv x1, x2
-    mv x2, x3
-    j fibs
+    lui x1, 0xdeadc
+    addi x1, x1, 0xfffffeef
+    
+    sb x1, 3(x0)
+    sh x1, 6(x0)
+    sw x1, 8(x0)
+    
+    sh x1, 7(x0)
+    sw x1, 9(x0)

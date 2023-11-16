@@ -7,6 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+`timescale 1ns/1ps
 `include "boa_defines.svh"
 
 
@@ -249,23 +250,23 @@ module boa32_cpu#(
     logic       fw_stall_mem;
     
     // RS1 for branch targte matches RD for EX.
-    wire fw_bt_rs1_ex_rd    = id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
+    wire fw_bt_rs1_ex_rd    = use_rs1_bt  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
     // RS1 for branch targte matches RD for MEM.
-    wire fw_bt_rs1_mem_rd   = id_ex_valid  && ex_mem_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
+    wire fw_bt_rs1_mem_rd   = use_rs1_bt  && id_ex_valid  && ex_mem_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
     
     // RS1 for EX matches RD for EX.
-    wire fw_ex_rs1_ex_rd    = id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
+    wire fw_ex_rs1_ex_rd    = use_rs1_ex  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
     // RS2 for EX matches RD for EX.
-    wire fw_ex_rs2_ex_rd    = id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[24:20]  == ex_mem_insn[11:7]);
+    wire fw_ex_rs2_ex_rd    = use_rs2_ex  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[24:20]  == ex_mem_insn[11:7]);
     // RS1 for EX matches RD for MEM.
-    wire fw_ex_rs1_mem_rd   = id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
+    wire fw_ex_rs1_mem_rd   = use_rs1_ex  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
     // RS2 for EX matches RD for MEM.
-    wire fw_ex_rs2_mem_rd   = id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[24:20]  == mem_wb_insn[11:7]);
+    wire fw_ex_rs2_mem_rd   = use_rs2_ex  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[24:20]  == mem_wb_insn[11:7]);
     
     // RS1 for MEM matches RD for MEM.
-    wire fw_mem_rs1_mem_rd  = ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[19:15] == mem_wb_insn[11:7]);
+    wire fw_mem_rs1_mem_rd  = use_rs1_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[19:15] == mem_wb_insn[11:7]);
     // RS2 for MEM matches RD for MEM.
-    wire fw_mem_rs2_mem_rd  = ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
+    wire fw_mem_rs2_mem_rd  = use_rs2_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
     
     // Data dependency resolution.
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);

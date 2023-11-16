@@ -7,6 +7,10 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+`timescale 1ns/1ps
+
+
+
 module top(
     input logic clk
 );
@@ -17,8 +21,7 @@ module top(
     rom prom(clk, pbus);
     // Dummy data bus.
     boa_mem_bus dbus();
-    assign dbus.ready = 1;
-    assign dbus.rdata = 0;
+    block_ram ram(clk, dbus);
     
     // The CPU.
     boa32_cpu#(.entrypoint(0)) cpu(

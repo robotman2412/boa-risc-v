@@ -7,6 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+`timescale 1ns/1ps
 `include "boa_defines.svh"
 
 
@@ -105,6 +106,8 @@ module boa_stage_mem(
     logic      trap;
     // Trap cause.
     logic[3:0] cause;
+    assign trap  = 0;
+    assign cause = 0;
     
     // Alignment error.
     logic       ealign;
@@ -156,6 +159,7 @@ module boa_stage_mem(
     
     // Memory access logic.
     boa_mem_helper mem_if(
+        clk,
         rsel ? r_re : d_re, rsel ? r_we : d_we, rsel ? r_asize : d_asize, rsel ? r_addr : d_addr, rsel ? r_wdata : d_wdata,
         ealign, ready, rdata,
         dbus
@@ -220,6 +224,9 @@ endmodule
 
 // Memory access helper.
 module boa_mem_helper(
+    // CPU clock.
+    input  logic        clk,
+    
     // Read enable.
     input  logic        re,
     // Write enable.
@@ -236,11 +243,13 @@ module boa_mem_helper(
     // Ready.
     output logic        ready,
     // Read data.
-    output logic        rdata,
+    output logic[31:0]  rdata,
     
     // Memory bus.
     boa_mem_bus.CPU     bus
 );
+    assign ready = bus.ready;
+    
     // Latch the req.
     logic[1:0] asize_reg;
     logic[1:0] addr_reg;
@@ -295,7 +304,6 @@ module boa_mem_helper(
     always @(*) begin
         if (asize == 2'b00) begin
             // 8-bit access.
-            ready           = bus.ready;
             case (addr_reg)
                 2'b00: rdata[7:0] = bus.rdata[7:0];
                 2'b01: rdata[7:0] = bus.rdata[15:8];
@@ -306,7 +314,6 @@ module boa_mem_helper(
             
         end else if (asize == 2'b01) begin
             // 16-bit access.
-            ready           = bus.ready || addr_reg[0];
             if (!addr_reg[1]) begin
                 rdata[15:0] = bus.rdata[15:0];
             end else begin
@@ -316,12 +323,10 @@ module boa_mem_helper(
             
         end else if (asize == 2'b10) begin
             // 32-bit access.
-            ready           = bus.ready || (addr_reg != 2'b00);
             rdata           = bus.rdata;
             
         end else begin
             // Illegal instruction.
-            ready   = 1;
             rdata   = 'bx;
         end
     end

@@ -4,6 +4,8 @@ MAKEFLAGS += --silent --no-print-directory
 .PHONY: all build clean run wave
 
 HDL = 	hdl/top.sv \
+		hdl/raw_block_ram.sv \
+		../../dev/hdl/block_ram.sv \
  		$(shell find ../../hdl -name '*.sv')
 SRC =   src/main.S
 

@@ -363,3 +363,134 @@ module boa32_cpu#(
         wb_insn   <= mem_wb_insn;
     end
 endmodule
+
+
+
+// Boa³² CSR register file.
+module boa32_csrs#(
+    // CSR mhartid value.
+    parameter hartid        = 32'h0000_0000
+)(
+    // CPU clock.
+    input  logic        clk,
+    // Synchronous reset.
+    input  logic        rst,
+    
+    // CSR bus.
+    boa_csr_bus.CSR     csr,
+    // CSR exception bus.
+    boa_csr_ex_bus.CSR  ex
+);
+    /* ==== CSR STORAGE ==== */
+    // CSR mstatus: M-mode previous interrupt enable.
+    logic        csr_mstatus_mpie;
+    // CSR mstatus: M-mode interrupt enable.
+    logic        csr_mstatus_mie;
+    // CSR mcause: Interrupt number / trap number.
+    logic[4:0]   csr_mcause_no;
+    // CSR mcause: Is an interrupt.
+    logic        csr_mcause_int;
+    
+    // CSR mstatus: M-mode status.
+    wire [31:0] csr_mstatus     = (csr_mstatus_mie << 3) | (csr_mstatus_mpie << 7);
+    // CSR misa: M-mode ISA description.
+    wire [31:0] csr_misa        = 32'h4001_0100;
+    // CSR medeleg: M-mode trap delegation.
+    wire [31:0] csr_medeleg     = 0;
+    // CSR medeleg: M-mode interrupt delegation.
+    wire [31:0] csr_mideleg     = 0;
+    // CSR mie: M-mode per-interrupt enable.
+    reg  [31:0] csr_mie;
+    // CSR mtvec: M-mode trap and interrupt vector.
+    reg  [31:2] csr_mtvec;
+    // CSR mstatush: M-mode status.
+    wire [31:0] csr_mstatush    = 0;
+    // CSR mip: M-mode interrupts pending.
+    wire [31:0] csr_mip         = mip;
+    // CSR mscratch: M-mode scratch pad register.
+    reg  [31:0] csr_mscratch;
+    // CSR mepc: M-mode exception program counter.
+    reg  [31:1] csr_mepc;
+    // CSR mcause: M-mode interrupt / trap cause.
+    wire [31:0] csr_mcause      = (csr_mcause_int << 31) | csr_mcause_int;
+    // CSR mtval: M-mode trap value.
+    wire [31:0] csr_mtval       = 0;
+    // CSR mvendorid: M-mode vendor ID.
+    wire [31:0] csr_mvendorid   = 0;
+    // CSR mvendorid: M-mode architecture ID.
+    wire [31:0] csr_marchid     = 0;
+    // CSR mvendorid: M-mode implementation ID.
+    wire [31:0] csr_mipid       = 0;
+    // CSR mvendorid: M-mode implementation ID.
+    wire [31:0] csr_mhartid     = mhartid;
+    // CSR mvendorid: M-mode configuration pointer.
+    wire [31:0] csr_mconfigptr  = 0;
+    
+    
+    
+    /* ==== CSR ACCESS LOGIC ==== */
+    assign csr.priv = 'bx;
+    assign csr.ret_epc = csr_mepc;
+    assign csr.ex_tvec = csr_mtvec;
+    always @(*) begin
+        // CSR read and permission logic.
+        case(csr.addr)
+            `RV_CSR_MSTATUS:    begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mstatus; end
+            `RV_CSR_MISA:       begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_misa; end
+            `RV_CSR_MEDELEG:    begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_medeleg; end
+            `RV_CSR_MIDELEG:    begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mideleg; end
+            `RV_CSR_MIE:        begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mie; end
+            `RV_CSR_MTVEC:      begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mtvec; end
+            `RV_CSR_MSTATUSH:   begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mstatush; end
+            `RV_CSR_MIP:        begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mip; end
+            `RV_CSR_MSCRATCH:   begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mscratch; end
+            `RV_CSR_MEPC:       begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mepc; end
+            `RV_CSR_MCAUSE:     begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mcause; end
+            `RV_CSR_MTVAL:      begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mtval; end
+            `RV_CSR_MVENDORID:  begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mvendorid; end
+            `RV_CSR_MARCHID:    begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_marchid; end
+            `RV_CSR_MIPID:      begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mipid; end
+            `RV_CSR_MHARTID:    begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mhartid; end
+            `RV_CSR_MCONFIGPTR: begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mconfigptr; end
+            default:            begin csr.exists = 0; csr.readonly = 'bx; csr.rdata = 'bx; end
+        endcase
+    end
+    
+    always @(posedge clk) begin
+        if (rst) begin
+            // Rset CSRs to default values.
+            csr_mstatus_mpie    <= 0;
+            csr_mstatus_mie     <= 0;
+            csr_mcause_int      <= 0;
+            csr_mcause_no       <= 0;
+            csr_mie             <= 0;
+            csr_mtvec           <= 0;
+            csr_mscratch        <= 0;
+            csr_mepc            <= 0;
+            
+        end else if (ex.ret) begin
+            // CSR changes of mret instruction.
+            csr_mstatus_mie     <= csr_mstatus_mpie;
+            
+        end else if (ex.ex_trap || ex.ex_irq) begin
+            // CSR changes on trap or interrupt.
+            csr_mstatus_mpie    <= csr_mstatus_mie;
+            csr_mstatus_mie     <= 0;
+            csr_mepc            <= ex.ex_epc;
+            csr_mcause_int      <= ex.ex_irq;
+            csr_mcause_no       <= ex.ex_cause;
+            
+        end else if (we) begin
+            // CSR write logic.
+            case (csr.addr)
+                default:            /* No action required. */;
+                `RV_CSR_MSTATUS:    begin csr_mstatus_mpie <= csr.wdata[7]; csr_mstatus_mie <= csr.wdata[3]; end
+                `RV_CSR_MIE:        begin csr_mie <= csr.wdata; end
+                `RV_CSR_MTVEC:      begin csr_mtvec <= csr.wdata; end
+                `RV_CSR_MSCRATCH:   begin csr_mscratch <= csr.wdata; end
+                `RV_CSR_MEPC:       begin csr_mepc <= csr.wdata; end
+                `RV_CSR_MCAUSE:     begin csr_mcause_int <= csr.wdata[31]; csr_mcause_no <= csr.wdata[4:0]; end
+            endcase
+        end
+    end
+endmodule

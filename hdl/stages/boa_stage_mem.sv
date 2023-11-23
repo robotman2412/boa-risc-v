@@ -23,6 +23,8 @@ module boa_stage_mem(
     
     // Data memory bus.
     boa_mem_bus.CPU     dbus,
+    // CSR access bus.
+    boa_csr_bus.CPU     csr,
     
     
     // EX/MEM: Result valid.
@@ -176,6 +178,8 @@ module boa_stage_mem(
     assign  q_cause     = r_trap ? r_cause : cause;
 endmodule
 
+
+
 // Boa³² pipline stage forwarding helper: MEM (memory and CSR access).
 module boa_stage_mem_fw(
     // Current instruction word.
@@ -220,6 +224,7 @@ module boa_stage_mem_fw(
         end
     end
 endmodule
+
 
 
 // Memory access helper.

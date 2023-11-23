@@ -387,7 +387,6 @@ module boa_insn_validator#(
     wire allow_s_mode   = (misa & `RV_MISA_S) && has_s_mode;
     
     
-    
     // ALU operation verifier.
     logic valid_op_imm;
     always @(*) begin
@@ -434,7 +433,6 @@ module boa_insn_validator#(
     end
     
     
-    
     // SYSTEM opcode verifier.
     logic valid_system;
     logic legal_system;
@@ -454,7 +452,6 @@ module boa_insn_validator#(
             legal_system = 1;
         end
     end
-    
     
     
     // Output multiplexer.

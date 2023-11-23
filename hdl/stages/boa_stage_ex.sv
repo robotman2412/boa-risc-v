@@ -264,6 +264,8 @@ module boa_stage_ex(
     assign q_cause          = r_cause;
 endmodule
 
+
+
 // Boa³² pipline stage forwarding helper: EX (ALU and address calculation).
 module boa_stage_ex_fw(
     // Current instruction word.

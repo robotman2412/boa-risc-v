@@ -21,7 +21,7 @@ interface boa_csr_ex_bus;
     // CPU -> CSR: Exception is serviced in M-mode.
     logic       ex_priv;
     // CPU -> CSR: Exception program counter.
-    logic[31:1] ex_epc;
+    logic[31:2] ex_epc;
     // CPU -> CSR: Exception cause.
     logic[3:0]  ex_cause;
     // CSR -> CPU: Exception vector address.
@@ -33,7 +33,14 @@ interface boa_csr_ex_bus;
     logic       ret_priv;
     // CSR -> CPU: Exception program counter.
     logic[31:1] ret_epc;
+    
+    // Directions from CPU perspective.
+    modport CPU (output ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, input  ex_tvec, output ret, ret_priv, input  ret_epc);
+    // Directions from CSR perspective.
+    modport CPU (input  ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, output ex_tvec, input  ret, ret_priv, output ret_epc);
 endinterface
+
+
 
 // Boa³² CSR access bus.
 // Latency: 0.
@@ -42,10 +49,8 @@ interface boa_csr_bus;
     logic       we;
     // CPU -> CSR: CSR address.
     logic[11:0] addr;
-    // CPU -> CSR: Write mode.
-    logic[1:0]  wmode;
-    // CPU -> CSR: Write mask.
-    logic[31:0] wmask;
+    // CPU -> CSR: Write data.
+    logic[31:0] wdata;
     // CSR -> CPU: CSR exists.
     logic       exists;
     // CSR -> CPU: CSR is read-only.
@@ -56,10 +61,12 @@ interface boa_csr_bus;
     logic[31:0] rdata;
     
     // Directions from CPU perspective.
-    modport CPU (output we, addr, wmode, wdata, input exists, priv, rdata);
+    modport CPU (output we, addr, wdata, input exists, priv, rdata);
     // Directions from CSR perspective.
-    modport CSR (output exists, priv, rdata, input we, addr, wmode, wdata);
+    modport CSR (output exists, priv, rdata, input we, addr, wdata);
 endinterface
+
+
 
 // Boa³² CSR write data helper.
 module boa_csrw_helper(

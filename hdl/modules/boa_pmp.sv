@@ -49,16 +49,8 @@ module boa_pmp#(
     // Synchronous reset.
     input  logic        rst,
     
-    // CSR write enable.
-    input  logic        csr_we,
-    // CSR index.
-    input  logic[11:0]  csr_addr,
-    // CSR write data.
-    input  logic[31:0]  csr_wdata,
-    // PMP CSR present.
-    output logic        csr_present,
-    // CSR read data.
-    output logic[31:0]  csr_rdata,
+    // CSR bus.
+    boa_csr_bus.CSR     csr,
     
     // Access checking ports.
     boa_pmp_bus.PMP     check_ports[checkers]
@@ -82,24 +74,24 @@ module boa_pmp#(
     
     // CSR read interface.
     always @(*) begin
-        csr_rdata   = 0;
-        csr_present = 0;
-        if (csr_addr >= `RV_CSR_PMPCFG0 && csr_addr < `RV_CSR_PMPCFG0 + (depth + 3) / 4) begin
+        csr.rdata   = 0;
+        csr.exists  = 0;
+        if (csr.addr >= `RV_CSR_PMPCFG0 && csr.addr < `RV_CSR_PMPCFG0 + (depth + 3) / 4) begin
             // PMP config CSRs.
-            csr_rdata[4:0]      = pmpcfg[4 * csr_addr[3:0]];
-            csr_rdata[12:8]     = pmpcfg[4 * csr_addr[3:0]+1];
-            csr_rdata[20:16]    = pmpcfg[4 * csr_addr[3:0]+2];
-            csr_rdata[28:24]    = pmpcfg[4 * csr_addr[3:0]+3];
-            csr_rdata[7]        = pmplock[4 * csr_addr[3:0]];
-            csr_rdata[15]       = pmplock[4 * csr_addr[3:0]+1];
-            csr_rdata[23]       = pmplock[4 * csr_addr[3:0]+2];
-            csr_rdata[31]       = pmplock[4 * csr_addr[3:0]+3];
-            csr_present         = 1;
+            csr.rdata[4:0]      = pmpcfg[4 * csr.addr[3:0]];
+            csr.rdata[12:8]     = pmpcfg[4 * csr.addr[3:0]+1];
+            csr.rdata[20:16]    = pmpcfg[4 * csr.addr[3:0]+2];
+            csr.rdata[28:24]    = pmpcfg[4 * csr.addr[3:0]+3];
+            csr.rdata[7]        = pmplock[4 * csr.addr[3:0]];
+            csr.rdata[15]       = pmplock[4 * csr.addr[3:0]+1];
+            csr.rdata[23]       = pmplock[4 * csr.addr[3:0]+2];
+            csr.rdata[31]       = pmplock[4 * csr.addr[3:0]+3];
+            csr.exists          = 1;
             
-        end else if (csr_addr >= `RV_CSR_PMPADDR0 && csr_addr < `RV_CSR_PMPADDR0 + depth) begin
+        end else if (csr.addr >= `RV_CSR_PMPADDR0 && csr.addr < `RV_CSR_PMPADDR0 + depth) begin
             // PMP address CSRs.
-            csr_rdata           = pmpaddr[csr_addr - `RV_CSR_PMPADDR0][alen-1:grain];
-            csr_present         = 1;
+            csr.rdata           = pmpaddr[csr.addr - `RV_CSR_PMPADDR0][alen-1:grain];
+            csr.exists          = 1;
         end
     end
     
@@ -111,22 +103,22 @@ module boa_pmp#(
                 pmpcfg[i]  <= 0;
                 pmpaddr[i] <= 0;
             end
-        end else if (csr_we) begin
-            if (csr_addr >= `RV_CSR_PMPCFG0 && csr_addr < `RV_CSR_PMPCFG0 + (depth + 3) / 4) begin
+        end else if (csr.we) begin
+            if (csr.addr >= `RV_CSR_PMPCFG0 && csr.addr < `RV_CSR_PMPCFG0 + (depth + 3) / 4) begin
                 // PMP config CSRs.
-                if (writeable[4 * csr_addr[3:0]])   pmpcfg[4 * csr_addr[3:0]]   <= csr_wdata[4:0];
-                if (writeable[4 * csr_addr[3:0]+1]) pmpcfg[4 * csr_addr[3:0]+1] <= csr_wdata[12:8];
-                if (writeable[4 * csr_addr[3:0]+2]) pmpcfg[4 * csr_addr[3:0]+2] <= csr_wdata[20:16];
-                if (writeable[4 * csr_addr[3:0]+3]) pmpcfg[4 * csr_addr[3:0]+3] <= csr_wdata[28:24];
-                pmplock[4 * csr_addr[3:0]]   <= pmplock[4 * csr_addr[3:0]]   | csr_wdata[7];
-                pmplock[4 * csr_addr[3:0]+1] <= pmplock[4 * csr_addr[3:0]+1] | csr_wdata[15];
-                pmplock[4 * csr_addr[3:0]+2] <= pmplock[4 * csr_addr[3:0]+2] | csr_wdata[23];
-                pmplock[4 * csr_addr[3:0]+3] <= pmplock[4 * csr_addr[3:0]+3] | csr_wdata[31];
+                if (writeable[4 * csr.addr[3:0]])   pmpcfg[4 * csr.addr[3:0]]   <= csr.wdata[4:0];
+                if (writeable[4 * csr.addr[3:0]+1]) pmpcfg[4 * csr.addr[3:0]+1] <= csr.wdata[12:8];
+                if (writeable[4 * csr.addr[3:0]+2]) pmpcfg[4 * csr.addr[3:0]+2] <= csr.wdata[20:16];
+                if (writeable[4 * csr.addr[3:0]+3]) pmpcfg[4 * csr.addr[3:0]+3] <= csr.wdata[28:24];
+                pmplock[4 * csr.addr[3:0]]   <= pmplock[4 * csr.addr[3:0]]   | csr.wdata[7];
+                pmplock[4 * csr.addr[3:0]+1] <= pmplock[4 * csr.addr[3:0]+1] | csr.wdata[15];
+                pmplock[4 * csr.addr[3:0]+2] <= pmplock[4 * csr.addr[3:0]+2] | csr.wdata[23];
+                pmplock[4 * csr.addr[3:0]+3] <= pmplock[4 * csr.addr[3:0]+3] | csr.wdata[31];
                 
-            end else if (csr_addr >= `RV_CSR_PMPADDR0 && csr_addr < `RV_CSR_PMPADDR0 + depth) begin
+            end else if (csr.addr >= `RV_CSR_PMPADDR0 && csr.addr < `RV_CSR_PMPADDR0 + depth) begin
                 // PMP address CSRs.
-                if (writeable[csr_addr - `RV_CSR_PMPADDR0]) begin
-                    pmpaddr[csr_addr - `RV_CSR_PMPADDR0][alen-1:grain] <= csr_wdata;
+                if (writeable[csr.addr - `RV_CSR_PMPADDR0]) begin
+                    pmpaddr[csr.addr - `RV_CSR_PMPADDR0][alen-1:grain] <= csr.wdata;
                 end
             end
         end
@@ -158,7 +150,7 @@ module boa_pmp_checker#(
     input  logic[alen-1:grain]  pmpaddr[depth],
     
     // Access checking port.
-    boa_pmp_bus.PMP                 bus
+    boa_pmp_bus.PMP             bus
 );
     genvar x;
     

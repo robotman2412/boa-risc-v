@@ -169,11 +169,11 @@ module boa_stage_ex(
         if (r_insn[6:2] == `RV_OP_LOAD) begin
             // LOAD instructions.
             add_lhs_mux         = r_rs1_val;
-            add_rhs_mux         = imm12_s;
+            add_rhs_mux         = imm12_i;
         end else if (r_insn[6:2] == `RV_OP_STORE) begin
             // STORE instructions.
             add_lhs_mux         = r_rs1_val;
-            add_rhs_mux         = imm12_i;
+            add_rhs_mux         = imm12_s;
         end else if ((r_insn[6:2] == `RV_OP_JAL) || (r_insn[6:2] == `RV_OP_JALR)) begin
             // JAL and JALR instructions.
             add_lhs_mux[31:1]   = r_pc;

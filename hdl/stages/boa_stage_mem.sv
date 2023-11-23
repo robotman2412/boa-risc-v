@@ -171,7 +171,7 @@ module boa_stage_mem(
     assign  q_pc        = r_pc;
     assign  q_insn      = r_insn;
     assign  q_use_rd    = r_use_rd;
-    assign  q_rd_val    = r_rs1_val;
+    assign  q_rd_val    = r_re ? mem_if.rdata : r_rs1_val;
     assign  q_trap      = (r_trap || trap) && !clear;
     assign  q_cause     = r_trap ? r_cause : cause;
 endmodule
@@ -249,6 +249,7 @@ module boa_mem_helper(
     boa_mem_bus.CPU     bus
 );
     assign ready = bus.ready;
+    assign bus.addr[31:2] = addr[31:2];
     
     // Latch the req.
     logic[1:0] asize_reg;
@@ -277,18 +278,18 @@ module boa_mem_helper(
             // 16-bit access.
             ealign              = addr[0];
             bus.re              = re && !addr[0];
-            bus.we[0]           = we && !addr[0] &&  addr[1];
-            bus.we[1]           = we && !addr[0] &&  addr[1];
-            bus.we[2]           = we && !addr[0] && !addr[1];
-            bus.we[3]           = we && !addr[0] && !addr[1];
+            bus.we[0]           = we && !addr[0] && !addr[1];
+            bus.we[1]           = we && !addr[0] && !addr[1];
+            bus.we[2]           = we && !addr[0] &&  addr[1];
+            bus.we[3]           = we && !addr[0] &&  addr[1];
             bus.wdata[15:0]     = wdata[15:0];
             bus.wdata[31:16]    = wdata[15:0];
             
         end else if (asize == 2'b10) begin
             // 32-bit access.
-            ealign              = addr != 2'b00;
-            bus.re              = re && (addr == 2'b00);
-            bus.we              = we && (addr == 2'b00) ? 4'b1111 : 4'b0000;
+            ealign              = addr[1:0] != 2'b00;
+            bus.re              = re && (addr[1:0] == 2'b00);
+            bus.we              = we && (addr[1:0] == 2'b00) ? 4'b1111 : 4'b0000;
             bus.wdata           = wdata;
             
         end else begin

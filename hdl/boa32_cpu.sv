@@ -267,6 +267,10 @@ module boa32_cpu#(
     wire fw_mem_rs1_mem_rd  = use_rs1_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[19:15] == mem_wb_insn[11:7]);
     // RS2 for MEM matches RD for MEM.
     wire fw_mem_rs2_mem_rd  = use_rs2_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
+    // RS1 for MEM matches RD for WB.
+    wire fw_mem_rs1_wb_rd   = use_rs1_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (mem_wb_insn[19:15] == wb_insn[11:7]);
+    // RS2 for MEM matches RD for WB.
+    wire fw_mem_rs2_wb_rd   = use_rs2_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (mem_wb_insn[24:20] == wb_insn[11:7]);
     
     // Data dependency resolution.
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);
@@ -284,10 +288,10 @@ module boa32_cpu#(
         fw_in_rs1_ex  = fw_ex_rs1_ex_rd ? fw_out_ex : fw_out_mem;
         fw_rs2_ex     = fw_ex_rs2_ex_rd || fw_ex_rs2_mem_rd;
         fw_in_rs2_ex  = fw_ex_rs2_ex_rd ? fw_out_ex : fw_out_mem;
-        fw_rs1_mem    = fw_mem_rs1_mem_rd;
-        fw_in_rs1_mem = fw_out_mem;
-        fw_rs2_mem    = fw_mem_rs2_mem_rd;
-        fw_in_rs2_mem = fw_out_mem;
+        fw_rs1_mem    = fw_mem_rs1_mem_rd || fw_mem_rs1_wb_rd;
+        fw_in_rs1_mem = fw_mem_rs1_mem_rd ? fw_out_mem : wb_rd_val;
+        fw_rs2_mem    = fw_mem_rs2_mem_rd || fw_mem_rs2_wb_rd;
+        fw_in_rs2_mem = fw_mem_rs2_mem_rd ? fw_out_mem : wb_rd_val;
         
         // Stalling logic.
         if ((fw_rs1_ex || fw_rs2_ex) && ex_mem_use_rd && !fw_rd_ex) begin
@@ -348,4 +352,14 @@ module boa32_cpu#(
         // Data hazard avoidance.
         fw_stall_mem
     );
+    logic       wb_valid;
+    logic       wb_use_rd;
+    logic[31:0] wb_rd_val;
+    logic[31:0] wb_insn;
+    always @(posedge clk) begin
+        wb_valid  <= mem_wb_valid;
+        wb_use_rd <= mem_wb_use_rd;
+        wb_rd_val <= mem_wb_rd_val;
+        wb_insn   <= mem_wb_insn;
+    end
 endmodule

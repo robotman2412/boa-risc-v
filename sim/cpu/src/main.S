@@ -18,3 +18,10 @@ _start:
     
     sh x1, 7(x0)
     sw x1, 9(x0)
+    
+    lw x2, 0(x0)
+    lw x3, 4(x0)
+    lw x4, 8(x0)
+
+halt:
+    j halt

@@ -12,6 +12,7 @@
 
 
 // Standard Boa memory interface.
+// Latency: 1 clock cycle.
 interface boa_mem_bus#(
     // Address bus size, at least 8.
     parameter alen = 32,

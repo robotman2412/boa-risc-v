@@ -311,6 +311,23 @@ module boa32_cpu#(
     end
     
     
+    /* ==== CSR logic ==== */
+    boa_csr_bus csr();
+    boa_csr_ex_bus csr_ex();
+    boa32_csrs csrs(clk, rst, csr, csr_ex);
+    
+    
+    /* ==== Exception logic ==== */
+    assign csr_ex.ex_trap   = 0;
+    assign csr_ex.ex_irq    = 0;
+    assign csr_ex.ex_priv   = 1;
+    assign csr_ex.ex_epc    = mem_wb_pc;
+    assign csr_ex.ex_cause  = 0;
+    assign csr_ex.ret       = 0;
+    assign csr_ex.ret_priv  = 1;
+    assign csr_ex.irq_ip    = 0;
+    
+    
     /* ==== Pipeline stages ==== */
     boa_stage_if#(.entrypoint(entrypoint)) st_if(
         clk, rst, clear_if, pbus,
@@ -344,7 +361,7 @@ module boa32_cpu#(
         fw_branch_correct, fw_stall_ex, fw_rd_ex
     );
     boa_stage_mem st_mem(
-        clk, rst, clear_mem, dbus,
+        clk, rst, clear_mem, dbus, csr,
         // Pipeline input.
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, fw_rs1_mem ? fw_in_rs1_mem : ex_mem_rs1_val, fw_rs2_mem ? fw_in_rs2_mem : ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         // Pipeline output.
@@ -406,7 +423,7 @@ module boa32_csrs#(
     // CSR mstatush: M-mode status.
     wire [31:0] csr_mstatush    = 0;
     // CSR mip: M-mode interrupts pending.
-    wire [31:0] csr_mip         = mip;
+    wire [31:0] csr_mip         = ex.irq_ip & csr_mie;
     // CSR mscratch: M-mode scratch pad register.
     reg  [31:0] csr_mscratch;
     // CSR mepc: M-mode exception program counter.
@@ -422,37 +439,41 @@ module boa32_csrs#(
     // CSR mvendorid: M-mode implementation ID.
     wire [31:0] csr_mipid       = 0;
     // CSR mvendorid: M-mode implementation ID.
-    wire [31:0] csr_mhartid     = mhartid;
+    wire [31:0] csr_mhartid     = hartid;
     // CSR mvendorid: M-mode configuration pointer.
     wire [31:0] csr_mconfigptr  = 0;
     
     
     
     /* ==== CSR ACCESS LOGIC ==== */
-    assign csr.priv = 'bx;
-    assign csr.ret_epc = csr_mepc;
-    assign csr.ex_tvec = csr_mtvec;
+    assign csr.priv         = 'bx;
+    assign ex.ret_epc       = csr_mepc;
+    assign ex.ex_tvec       = csr_mtvec;
+    assign ex.irq_mie       = csr_mie;
+    assign ex.irq_medeleg   = 'bx;
+    assign ex.irq_mideleg   = 'bx;
+    assign ex.irq_sie       = 'bx;
     always @(*) begin
         // CSR read and permission logic.
         case(csr.addr)
-            `RV_CSR_MSTATUS:    begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mstatus; end
-            `RV_CSR_MISA:       begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_misa; end
-            `RV_CSR_MEDELEG:    begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_medeleg; end
-            `RV_CSR_MIDELEG:    begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mideleg; end
-            `RV_CSR_MIE:        begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mie; end
-            `RV_CSR_MTVEC:      begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mtvec; end
-            `RV_CSR_MSTATUSH:   begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mstatush; end
-            `RV_CSR_MIP:        begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mip; end
-            `RV_CSR_MSCRATCH:   begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mscratch; end
-            `RV_CSR_MEPC:       begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mepc; end
-            `RV_CSR_MCAUSE:     begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mcause; end
-            `RV_CSR_MTVAL:      begin csr.exists = 1; csr.readonly = 0; csr.rdata = csr_mtval; end
-            `RV_CSR_MVENDORID:  begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mvendorid; end
-            `RV_CSR_MARCHID:    begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_marchid; end
-            `RV_CSR_MIPID:      begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mipid; end
-            `RV_CSR_MHARTID:    begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mhartid; end
-            `RV_CSR_MCONFIGPTR: begin csr.exists = 1; csr.readonly = 1; csr.rdata = csr_mconfigptr; end
-            default:            begin csr.exists = 0; csr.readonly = 'bx; csr.rdata = 'bx; end
+            `RV_CSR_MSTATUS:    begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mstatus; end
+            `RV_CSR_MISA:       begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_misa; end
+            `RV_CSR_MEDELEG:    begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_medeleg; end
+            `RV_CSR_MIDELEG:    begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mideleg; end
+            `RV_CSR_MIE:        begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mie; end
+            `RV_CSR_MTVEC:      begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mtvec; end
+            `RV_CSR_MSTATUSH:   begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mstatush; end
+            `RV_CSR_MIP:        begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mip; end
+            `RV_CSR_MSCRATCH:   begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mscratch; end
+            `RV_CSR_MEPC:       begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mepc; end
+            `RV_CSR_MCAUSE:     begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mcause; end
+            `RV_CSR_MTVAL:      begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mtval; end
+            `RV_CSR_MVENDORID:  begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mvendorid; end
+            `RV_CSR_MARCHID:    begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_marchid; end
+            `RV_CSR_MIPID:      begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mipid; end
+            `RV_CSR_MHARTID:    begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mhartid; end
+            `RV_CSR_MCONFIGPTR: begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mconfigptr; end
+            default:            begin csr.exists = 0; csr.rdonly = 'bx; csr.rdata = 'bx; end
         endcase
     end
     
@@ -480,7 +501,7 @@ module boa32_csrs#(
             csr_mcause_int      <= ex.ex_irq;
             csr_mcause_no       <= ex.ex_cause;
             
-        end else if (we) begin
+        end else if (csr.we) begin
             // CSR write logic.
             case (csr.addr)
                 default:            /* No action required. */;

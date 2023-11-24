@@ -111,6 +111,8 @@ module boa_stage_mem(
     assign trap  = 0;
     assign cause = 0;
     
+    
+    /* ==== Memory access logic ==== */
     // Alignment error.
     logic       ealign;
     // Ready.
@@ -166,6 +168,23 @@ module boa_stage_mem(
         ealign, ready, rdata,
         dbus
     );
+    
+    
+    /* ==== CSR access logic ==== */
+    assign csr.addr     = d_insn[31:20];
+    assign csr.wdata    = d_insn[14] ? d_insn[19:15] : d_rs1_val;
+    logic  csr_re;
+    always @(*) begin
+        if (d_valid && d_insn[6:2] == `RV_OP_SYSTEM && d_insn[14:12] != 2'b00) begin
+            // CSR instruction.
+            csr_re = 1;
+            csr.we = d_insn[14] || (d_insn[19:15] != 0);
+        end else begin
+            // Not CSR instruction.
+            csr_re = 0;
+            csr.we = 0;
+        end
+    end
     
     
     // Pipeline barrier logic.

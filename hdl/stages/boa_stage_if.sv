@@ -64,8 +64,9 @@ module boa_stage_if#(
     logic       valid   = 0;
     
     // Program bus logic.
-    assign pbus.re          = !fw_stall_if;
-    assign pbus.we          = 0;
+    assign pbus.re      = !fw_stall_if;
+    assign pbus.we      = 0;
+    assign pbus.wdata   = 'bx;
     always @(*) begin
         if (fw_branch_correct) begin
             pbus.addr[31:2] = fw_branch_alt[31:2];

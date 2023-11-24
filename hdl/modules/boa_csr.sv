@@ -34,10 +34,21 @@ interface boa_csr_ex_bus;
     // CSR -> CPU: Exception program counter.
     logic[31:1] ret_epc;
     
+    // CPU -> CSR: Interrupts pending.
+    logic[31:0] irq_ip;
+    // CSR -> CPU: M-mode interrupts enabled.
+    logic[31:0] irq_mie;
+    // CSR -> CPU: M-mode interrupts delegated.
+    logic[31:0] irq_mideleg;
+    // CSR -> CPU: M-mode exceptions delegated.
+    logic[31:0] irq_medeleg;
+    // CSR -> CPU: Masked interrupts pending.
+    logic[31:0] irq_sie;
+    
     // Directions from CPU perspective.
-    modport CPU (output ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, input  ex_tvec, output ret, ret_priv, input  ret_epc);
+    modport CPU (output ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, input  ex_tvec, output ret, ret_priv, input  ret_epc, output irq_ip, input  irq_mie, irq_mideleg, irq_medeleg, irq_sie);
     // Directions from CSR perspective.
-    modport CPU (input  ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, output ex_tvec, input  ret, ret_priv, output ret_epc);
+    modport CSR (input  ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, output ex_tvec, input  ret, ret_priv, output ret_epc, input  irq_ip, output irq_mie, irq_mideleg, irq_medeleg, irq_sie);
 endinterface
 
 
@@ -61,9 +72,9 @@ interface boa_csr_bus;
     logic[31:0] rdata;
     
     // Directions from CPU perspective.
-    modport CPU (output we, addr, wdata, input exists, priv, rdata);
+    modport CPU (output we, addr, wdata, input exists, rdonly, priv, rdata);
     // Directions from CSR perspective.
-    modport CSR (output exists, priv, rdata, input we, addr, wdata);
+    modport CSR (output exists, rdonly, priv, rdata, input we, addr, wdata);
 endinterface
 
 

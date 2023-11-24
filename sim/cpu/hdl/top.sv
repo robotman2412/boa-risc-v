@@ -24,7 +24,7 @@ module top(
     block_ram ram(clk, dbus);
     
     // The CPU.
-    boa32_cpu#(.entrypoint(0)) cpu(
+    boa32_cpu#(.hartid(32'hdeadbeef), .entrypoint(0)) cpu(
         clk, rst,
         pbus, dbus,
         16'h0000

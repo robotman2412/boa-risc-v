@@ -161,7 +161,6 @@ module boa_stage_mem(
         end
     end
     
-    // Memory access logic.
     boa_mem_helper mem_if(
         clk,
         rsel ? r_re : d_re, rsel ? r_we : d_we, rsel ? r_asize : d_asize, rsel ? r_addr : d_addr, rsel ? r_wdata : d_wdata,
@@ -186,15 +185,49 @@ module boa_stage_mem(
         end
     end
     
+    logic       r_csr_re;
+    logic[31:0] r_csr_rdata;
+    always @(posedge clk) begin
+        r_csr_re    <= csr_re;
+        r_csr_rdata <= csr.rdata;
+    end
+    
+    
+    /* ==== Trap generation logic ==== */
+    always @(*) begin
+        if ((mem_if.re || mem_if.we) && mem_if.ealign) begin
+            // Memory alignment error.
+            trap    = mem_if.ealign;
+            cause   = mem_if.we ? `RV_ECAUSE_SALIGN : `RV_ECAUSE_LALIGN;
+            
+        end else if ((csr_re && !csr.exists) || (csr.we && csr.rdonly)) begin
+            // CSR access error.
+            trap    = 1;
+            cause   = `RV_ECAUSE_IILLEGAL;
+            
+        end else begin
+            trap    = 0;
+            cause   = 'bx;
+        end
+    end
+    
     
     // Pipeline barrier logic.
     assign  q_valid     = r_valid && !trap && !clear;
     assign  q_pc        = r_pc;
     assign  q_insn      = r_insn;
     assign  q_use_rd    = r_use_rd;
-    assign  q_rd_val    = r_re ? mem_if.rdata : r_rs1_val;
     assign  q_trap      = (r_trap || trap) && !clear;
-    assign  q_cause     = r_trap ? r_cause : cause;
+    assign  q_cause     = trap ? cause : r_cause;
+    always @(*) begin
+        if (r_csr_re && !r_re) begin
+            q_rd_val = r_csr_rdata;
+        end else if (r_re && !r_csr_re) begin
+            q_rd_val = mem_if.rdata;
+        end else begin
+            q_rd_val = 'bx;
+        end
+    end
 endmodule
 
 
@@ -227,7 +260,7 @@ module boa_stage_mem_fw(
                 // Other SYSTEM instructions.
                 use_rs1 = 0;
                 use_rs2 = 0;
-            end else if (d_insn[14]) begin
+            end else if (!d_insn[14]) begin
                 // CSR*I instructions.
                 use_rs1 = 1;
                 use_rs2 = 0;

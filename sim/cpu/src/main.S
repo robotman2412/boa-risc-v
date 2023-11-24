@@ -9,19 +9,9 @@
 
     .global _start
 _start:
-    lui x1, 0xdeadc
-    addi x1, x1, 0xfffffeef
-    
-    sb x1, 3(x0)
-    sh x1, 6(x0)
-    sw x1, 8(x0)
-    
-    sh x1, 7(x0)
-    sw x1, 9(x0)
-    
-    lw x2, 0(x0)
-    lw x3, 4(x0)
-    lw x4, 8(x0)
+    csrr x1, mhartid
+    csrw mscratch, x1
+    csrr x2, mscratch
 
 halt:
     j halt

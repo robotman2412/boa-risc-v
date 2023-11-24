@@ -314,7 +314,7 @@ module boa32_cpu#(
     /* ==== CSR logic ==== */
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
-    boa32_csrs csrs(clk, rst, csr, csr_ex);
+    boa32_csrs#(.hartid(hartid)) csrs(clk, rst, csr, csr_ex);
     
     
     /* ==== Exception logic ==== */

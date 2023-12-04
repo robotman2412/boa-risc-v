@@ -30,7 +30,7 @@ module top(
     boa32_cpu#(.hartid(32'hdeadbeef), .entrypoint(0)) cpu(
         clk, rst,
         pbus, dbus,
-        div >= 10 ? 16'h8001 : 16'h0000
+        div >= 10 && div < 20 ? 16'h8001 : 16'h0000
     );
 endmodule
 

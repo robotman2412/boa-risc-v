@@ -50,16 +50,20 @@ module boa_stage_if#(
     input  logic        fw_branch_correct,
     // Branch correction address.
     input  logic[31:1]  fw_branch_alt,
+    // Exception occurred.
+    input  logic        fw_exception,
+    // Exception vector.
+    input  logic[31:2]  fw_tvec,
     
     // Stall IF stage.
     input  logic        fw_stall_if
 );
-    // Current program counter.
-    logic[31:1] pc      = entrypoint;
     assign if_next_pc = pc;
+    
+    // Current program counter.
+    logic[31:1] pc      = entrypoint[31:1];
     // Next program counter.
-    logic[31:1] next_pc;
-    assign next_pc[31:1] = pc[31:1] + pbus.ready*2;
+    wire [31:1] next_pc = pc[31:1] + pbus.ready*2;
     // Next memory read is valid.
     logic       valid   = 0;
     
@@ -68,7 +72,9 @@ module boa_stage_if#(
     assign pbus.we      = 0;
     assign pbus.wdata   = 'bx;
     always @(*) begin
-        if (fw_branch_correct) begin
+        if (fw_exception) begin
+            pbus.addr[31:2] = fw_tvec[31:2];
+        end else if (fw_branch_correct) begin
             pbus.addr[31:2] = fw_branch_alt[31:2];
         end else if (fw_branch_predict) begin
             pbus.addr[31:2] = fw_branch_target[31:2];
@@ -90,7 +96,7 @@ module boa_stage_if#(
     always @(posedge clk) begin
         if (rst) begin
             pc[31:1]    <= entrypoint[31:1];
-        end else if(!fw_stall_if) begin
+        end else if (!fw_stall_if) begin
             pc[31:2]    <= pbus.addr[31:2];
             pc[1]       <= 0;
         end

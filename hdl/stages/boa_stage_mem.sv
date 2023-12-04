@@ -76,10 +76,6 @@ module boa_stage_mem(
     logic[31:0] r_rs1_val;
     // EX/MEM: Value from RS2 register / memory write data.
     logic[31:0] r_rs2_val;
-    // EX/MEM: Trap raised.
-    logic       r_trap;
-    // EX/MEM: Trap cause.
-    logic[3:0]  r_cause;
     
     // Pipeline barrier register.
     always @(posedge clk) begin
@@ -90,8 +86,6 @@ module boa_stage_mem(
             r_use_rd    <= 'bx;
             r_rs1_val   <= 'bx;
             r_rs2_val   <= 'bx;
-            r_trap      <= 0;
-            r_cause     <= 'bx;
         end else if (!fw_stall_mem) begin
             r_valid     <= d_valid;
             r_pc        <= d_pc;
@@ -99,8 +93,6 @@ module boa_stage_mem(
             r_use_rd    <= d_use_rd;
             r_rs1_val   <= d_rs1_val;
             r_rs2_val   <= d_rs2_val;
-            r_trap      <= d_trap;
-            r_cause     <= d_cause;
         end
     end
     
@@ -108,8 +100,6 @@ module boa_stage_mem(
     logic      trap;
     // Trap cause.
     logic[3:0] cause;
-    assign trap  = 0;
-    assign cause = 0;
     
     
     /* ==== Memory access logic ==== */
@@ -121,9 +111,9 @@ module boa_stage_mem(
     logic       rdata;
     
     // Read enable.
-    wire        d_re    = d_valid && d_insn[6:2] == `RV_OP_LOAD;
+    wire        d_re    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_LOAD;
     // Write enable.
-    wire        d_we    = d_valid && d_insn[6:2] == `RV_OP_STORE;
+    wire        d_we    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_STORE;
     // Access size.
     wire [1:0]  d_asize = d_insn[13:12];
     // Memory access address.
@@ -194,20 +184,25 @@ module boa_stage_mem(
     
     
     /* ==== Trap generation logic ==== */
-    always @(*) begin
-        if ((mem_if.re || mem_if.we) && mem_if.ealign) begin
+    always @(posedge clk) begin
+        if (d_trap) begin
+            // Trap from an earlier stage.
+            trap    <= 1;
+            cause   <= d_cause;
+            
+        end else if ((mem_if.re || mem_if.we) && mem_if.ealign) begin
             // Memory alignment error.
-            trap    = mem_if.ealign;
-            cause   = mem_if.we ? `RV_ECAUSE_SALIGN : `RV_ECAUSE_LALIGN;
+            trap    <= mem_if.ealign;
+            cause   <= mem_if.we ? `RV_ECAUSE_SALIGN : `RV_ECAUSE_LALIGN;
             
         end else if ((csr_re && !csr.exists) || (csr.we && csr.rdonly)) begin
             // CSR access error.
-            trap    = 1;
-            cause   = `RV_ECAUSE_IILLEGAL;
+            trap    <= 1;
+            cause   <= `RV_ECAUSE_IILLEGAL;
             
         end else begin
-            trap    = 0;
-            cause   = 'bx;
+            trap    <= 0;
+            cause   <= 'bx;
         end
     end
     
@@ -217,15 +212,15 @@ module boa_stage_mem(
     assign  q_pc        = r_pc;
     assign  q_insn      = r_insn;
     assign  q_use_rd    = r_use_rd;
-    assign  q_trap      = (r_trap || trap) && !clear;
-    assign  q_cause     = trap ? cause : r_cause;
+    assign  q_trap      = trap;
+    assign  q_cause     = cause;
     always @(*) begin
         if (r_csr_re && !r_re) begin
             q_rd_val = r_csr_rdata;
         end else if (r_re && !r_csr_re) begin
             q_rd_val = mem_if.rdata;
         end else begin
-            q_rd_val = 'bx;
+            q_rd_val = r_rs1_val;
         end
     end
 endmodule

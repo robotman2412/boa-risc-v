@@ -32,13 +32,13 @@ SECTIONS
     __stop_text = .;
     
     __start_rodata = .;
-    .rodata : AT(__stop_text - __start_text) { *(.rodata) *(.srodata) } :rodataseg
+    .rodata : AT(__stop_text) { *(.rodata) *(.srodata) } :rodataseg
     . = ALIGN(16);
     __stop_rodata = .;
     
     . = __start_sram;
     __start_data = .;
-    .data : AT(__stop_rodata - __start_text) { *(.data) *(.sdata) } :dataseg
+    .data : AT(__stop_rodata) { *(.data) *(.sdata) } :dataseg
     . = ALIGN(16);
     __stop_data = .;
     __global_pointer$ = .;

@@ -150,7 +150,7 @@ module boa_stage_id(
     assign q_branch         = is_branch;
     assign q_branch_predict = branch_predict;
     assign q_trap           = !clear && (r_trap || r_valid && (!insn_valid || !insn_legal));
-    assign q_cause          = (!insn_valid || !insn_legal) ? `RV_ECAUSE_IILLEGAL : r_cause;
+    assign q_cause          = !r_trap ? `RV_ECAUSE_IILLEGAL : r_cause;
 endmodule
 
 

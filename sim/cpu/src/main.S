@@ -9,9 +9,17 @@
 
     .global _start
 _start:
-    csrr x1, mhartid
-    csrw mscratch, x1
-    csrr x2, mscratch
+    la t0, isr
+    csrw mtvec, t0
+    csrsi mstatus, 8
+    li t0, -1
+    csrs mie, t0
 
 halt:
     j halt
+
+
+
+isr:
+    li a0, 0xdeadbeef
+    mret

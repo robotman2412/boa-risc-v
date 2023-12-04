@@ -63,6 +63,11 @@ module boa32_cpu#(
     genvar x;
     
     /* ==== Pipeline barriers ==== */
+    // IF: Exception occurred.
+    logic       fw_exception;
+    // IF: Exception vector.
+    logic[31:1] fw_tvec;
+    
     // IF/ID: Result valid.
     logic       if_id_valid;
     // IF/ID: Current instruction PC.
@@ -128,6 +133,12 @@ module boa32_cpu#(
     logic[3:0]  mem_wb_cause;
     
     
+    /* ==== CSR logic ==== */
+    boa_csr_bus csr();
+    boa_csr_ex_bus csr_ex();
+    boa32_csrs#(.hartid(hartid)) csrs(clk, rst, csr, csr_ex);
+    
+    
     /* ==== Control transfer logic ==== */
     // Clear results from IF.
     logic       clear_if;
@@ -162,11 +173,6 @@ module boa32_cpu#(
     // Branch correction address.
     logic[31:1] fw_branch_alt;
     
-    assign clear_if  = 0;
-    assign clear_id  = fw_branch_correct;
-    assign clear_ex  = 0;
-    assign clear_mem = 0;
-    
     always @(posedge clk) begin
         if (is_branch) begin
             fw_branch_alt <= fw_branch_predict ? if_next_pc : fw_branch_target;
@@ -178,23 +184,26 @@ module boa32_cpu#(
             $strobe("Branch correction to %x", fw_branch_alt<<1);
         end
         if (id_ex_valid && is_xret) begin
-            // TODO.
+            // MRET.
+            csr_ex.ret          = 1;
             fw_branch_predict   = 1;
-            fw_branch_target    = 'bx;
-            $display("TODO: MRET");
-            $finish;
+            fw_branch_target    = csr_ex.ret_epc<<1;
+            $display("MRET from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else if (id_ex_valid && is_jump) begin
             // JAL or JALR.
+            csr_ex.ret          = 0;
             fw_branch_predict   = 1;
             fw_branch_target    = branch_target;
             $strobe("JAL(R) from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else if (id_ex_valid && is_branch) begin
             // JAL or JALR.
+            csr_ex.ret          = 0;
             fw_branch_predict   = branch_predict;
             fw_branch_target    = branch_target;
             $strobe("BRANCH from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else begin
             // Not a control transfer.
+            csr_ex.ret          = 0;
             fw_branch_predict   = 0;
             fw_branch_target    = 'bx;
         end
@@ -313,30 +322,25 @@ module boa32_cpu#(
     end
     
     
-    /* ==== CSR logic ==== */
-    boa_csr_bus csr();
-    boa_csr_ex_bus csr_ex();
-    boa32_csrs#(.hartid(hartid)) csrs(clk, rst, csr, csr_ex);
-    
-    
     /* ==== Exception logic ==== */
-    assign csr_ex.ex_trap       = 0;
-    assign csr_ex.ex_irq        = 0;
     assign csr_ex.ex_priv       = 1;
-    assign csr_ex.ex_epc        = mem_wb_pc;
-    assign csr_ex.ex_cause      = 0;
-    assign csr_ex.ret           = 0;
+    assign csr_ex.ex_epc[31:2]  = mem_wb_pc[31:2];
     assign csr_ex.ret_priv      = 1;
-    assign csr_ex.irq_ip[31:16] = irq[31:16];
-    assign csr_ex.irq_ip[15:0]  = 0;
+    
+    // Interrupt latching logic.
+    always @(posedge clk) begin
+        csr_ex.irq_ip[31:16] <= irq[31:16];
+        csr_ex.irq_ip[15:0]  <= 0;
+    end
     
     // Interrupt prioritization logic.
+    wire [31:0] irq_mask = csr_ex.irq_ip & csr_ex.irq_mie;
     logic[31:0] irq_pri;
     logic[4:0]  irq_cause;
     generate
-        assign irq_pri[0] = csr_ex.irq_ip[0];
+        assign irq_pri[0] = irq_mask[0];
         for (x = 1; x < 32; x = x + 1) begin
-            assign irq_pri[x] = csr_ex.irq_ip[x] && (csr_ex.irq_ip[x-1:0] == 0);
+            assign irq_pri[x] = irq_mask[x] && (irq_mask[x-1:0] == 0);
         end
     endgenerate
     always @(*) begin
@@ -347,11 +351,41 @@ module boa32_cpu#(
         end
     end
     
-    // Interrupt latching logic.
-    logic[31:0] r_ip;
-    always @(posedge clk) begin
-        r_ip[31:16] <= r_ip[31:16] | csr_ex.irq_ip;
+    // Exception dispatch logic.
+    assign fw_exception = csr_ex.ex_irq | csr_ex.ex_trap;
+    assign fw_tvec      = csr_ex.ex_tvec;
+    logic p_mie;
+    always @(posedge clk) p_mie <= csrs.csr_mstatus_mie;
+    always @(*) begin
+        if (irq_cause != 0 && p_mie && csrs.csr_mstatus_mie && st_ex.r_valid) begin
+            // Interrupt triggered.
+            csr_ex.ex_irq       = 1;
+            csr_ex.ex_trap      = 0;
+            csr_ex.ex_cause     = irq_cause;
+            csr_ex.ex_epc[31:2] = ex_mem_pc[31:2];
+            $display("Interrupt triggered");
+            
+        end else if (mem_wb_trap) begin
+            // Trap raised.
+            csr_ex.ex_irq       = 0;
+            csr_ex.ex_trap      = 1;
+            csr_ex.ex_cause     = mem_wb_cause;
+            csr_ex.ex_epc[31:2] = mem_wb_pc[31:2];
+            $display("Trap raised");
+            
+        end else begin
+            // Nothing is happening.
+            csr_ex.ex_irq       = 0;
+            csr_ex.ex_trap      = 0;
+            csr_ex.ex_cause     = 'bx;
+            csr_ex.ex_epc[31:2] = 'bx;
+        end
     end
+    
+    assign clear_if  = fw_exception;
+    assign clear_id  = fw_exception | fw_branch_correct;
+    assign clear_ex  = fw_exception;
+    assign clear_mem = fw_exception;
     
     
     /* ==== Pipeline stages ==== */
@@ -360,7 +394,7 @@ module boa32_cpu#(
         // Pipeline output.
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
         // Control transfer.
-        fw_branch_predict, fw_branch_target, if_next_pc, fw_branch_correct, fw_branch_alt,
+        fw_branch_predict, fw_branch_target, if_next_pc, fw_branch_correct, fw_branch_alt, fw_exception, fw_tvec,
         // Data hazard avoicance.
         fw_stall_if
     );
@@ -533,9 +567,9 @@ module boa32_csrs#(
                 default:            /* No action required. */;
                 `RV_CSR_MSTATUS:    begin csr_mstatus_mpie <= csr.wdata[7]; csr_mstatus_mie <= csr.wdata[3]; end
                 `RV_CSR_MIE:        begin csr_mie <= csr.wdata; end
-                `RV_CSR_MTVEC:      begin csr_mtvec <= csr.wdata; end
+                `RV_CSR_MTVEC:      begin csr_mtvec[31:2] <= csr.wdata[31:2]; end
                 `RV_CSR_MSCRATCH:   begin csr_mscratch <= csr.wdata; end
-                `RV_CSR_MEPC:       begin csr_mepc <= csr.wdata; end
+                `RV_CSR_MEPC:       begin csr_mepc[31:1] <= csr.wdata[31:1]; end
                 `RV_CSR_MCAUSE:     begin csr_mcause_int <= csr.wdata[31]; csr_mcause_no <= csr.wdata[4:0]; end
             endcase
         end

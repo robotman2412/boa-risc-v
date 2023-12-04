@@ -23,7 +23,7 @@ interface boa_csr_ex_bus;
     // CPU -> CSR: Exception program counter.
     logic[31:2] ex_epc;
     // CPU -> CSR: Exception cause.
-    logic[3:0]  ex_cause;
+    logic[4:0]  ex_cause;
     // CSR -> CPU: Exception vector address.
     logic[31:1] ex_tvec;
     

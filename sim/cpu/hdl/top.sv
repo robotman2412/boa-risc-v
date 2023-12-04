@@ -16,6 +16,9 @@ module top(
 );
     wire rst = 0;
     
+    logic[31:0] div = 0;
+    always @(posedge clk) div <= div + 1;
+    
     // Program bus.
     boa_mem_bus pbus();
     rom prom(clk, pbus);
@@ -27,7 +30,7 @@ module top(
     boa32_cpu#(.hartid(32'hdeadbeef), .entrypoint(0)) cpu(
         clk, rst,
         pbus, dbus,
-        16'h0000
+        div >= 10 ? 16'h8001 : 16'h0000
     );
 endmodule
 

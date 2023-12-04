@@ -58,8 +58,10 @@ module boa32_cpu#(
     boa_mem_bus.CPU dbus,
     
     // External interrupts 16 to 31.
-    input  logic[15:0] irq
+    input  logic[31:16] irq
 );
+    genvar x;
+    
     /* ==== Pipeline barriers ==== */
     // IF/ID: Result valid.
     logic       if_id_valid;
@@ -318,14 +320,38 @@ module boa32_cpu#(
     
     
     /* ==== Exception logic ==== */
-    assign csr_ex.ex_trap   = 0;
-    assign csr_ex.ex_irq    = 0;
-    assign csr_ex.ex_priv   = 1;
-    assign csr_ex.ex_epc    = mem_wb_pc;
-    assign csr_ex.ex_cause  = 0;
-    assign csr_ex.ret       = 0;
-    assign csr_ex.ret_priv  = 1;
-    assign csr_ex.irq_ip    = 0;
+    assign csr_ex.ex_trap       = 0;
+    assign csr_ex.ex_irq        = 0;
+    assign csr_ex.ex_priv       = 1;
+    assign csr_ex.ex_epc        = mem_wb_pc;
+    assign csr_ex.ex_cause      = 0;
+    assign csr_ex.ret           = 0;
+    assign csr_ex.ret_priv      = 1;
+    assign csr_ex.irq_ip[31:16] = irq[31:16];
+    assign csr_ex.irq_ip[15:0]  = 0;
+    
+    // Interrupt prioritization logic.
+    logic[31:0] irq_pri;
+    logic[4:0]  irq_cause;
+    generate
+        assign irq_pri[0] = csr_ex.irq_ip[0];
+        for (x = 1; x < 32; x = x + 1) begin
+            assign irq_pri[x] = csr_ex.irq_ip[x] && (csr_ex.irq_ip[x-1:0] == 0);
+        end
+    endgenerate
+    always @(*) begin
+        integer i;
+        irq_cause = 0;
+        for (i = 0; i < 32; i = i + 1) begin
+            irq_cause |= irq_pri[i] ? i : 0;
+        end
+    end
+    
+    // Interrupt latching logic.
+    logic[31:0] r_ip;
+    always @(posedge clk) begin
+        r_ip[31:16] <= r_ip[31:16] | csr_ex.irq_ip;
+    end
     
     
     /* ==== Pipeline stages ==== */

@@ -74,6 +74,8 @@ module boa_stage_if#(
     always @(*) begin
         if (rst) begin
             pbus.addr[31:2] = entrypoint[31:2];
+        end else if (fw_stall_if) begin
+            pbus.addr[31:2] = pc[31:2];
         end else if (fw_exception) begin
             pbus.addr[31:2] = fw_tvec[31:2];
         end else if (fw_branch_correct) begin

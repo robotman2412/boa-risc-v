@@ -7,6 +7,14 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+/* Demultiplexer arbitration algorithms. */
+// Round-robin arbiter.
+`define BOA_ARBITER_RR      0
+// Static prioritization arbiter.
+`define BOA_ARBITER_STATIC  1
+
+
+
 // RISC-V opcodes.
 `define RV_OP_LOAD          'b00000
 `define RV_OP_LOAD_FP       'b00001

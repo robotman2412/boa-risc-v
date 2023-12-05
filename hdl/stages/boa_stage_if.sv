@@ -72,7 +72,9 @@ module boa_stage_if#(
     assign pbus.we      = 0;
     assign pbus.wdata   = 'bx;
     always @(*) begin
-        if (fw_exception) begin
+        if (rst) begin
+            pbus.addr[31:2] = entrypoint[31:2];
+        end else if (fw_exception) begin
             pbus.addr[31:2] = fw_tvec[31:2];
         end else if (fw_branch_correct) begin
             pbus.addr[31:2] = fw_branch_alt[31:2];
@@ -94,9 +96,7 @@ module boa_stage_if#(
     assign q_pc     = pc;
     assign q_insn   = pbus.rdata;
     always @(posedge clk) begin
-        if (rst) begin
-            pc[31:1]    <= entrypoint[31:1];
-        end else if (!fw_stall_if) begin
+        if (!fw_stall_if || rst) begin
             pc[31:2]    <= pbus.addr[31:2];
             pc[1]       <= 0;
         end

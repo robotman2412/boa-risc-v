@@ -259,6 +259,8 @@ module boa32_cpu#(
     logic       fw_stall_ex;
     // Stall MEM stage.
     logic       fw_stall_mem;
+    // Stall request from MEM stage.
+    logic       mem_stall_req;
     
     // RS1 for branch targte matches RD for EX.
     wire fw_bt_rs1_ex_rd    = use_rs1_bt  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
@@ -287,7 +289,7 @@ module boa32_cpu#(
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);
     boa_stage_mem_fw st_mem_fw(ex_mem_insn, use_rs1_mem, use_rs2_mem);
     always @(*) begin
-        fw_stall_mem = 0;
+        fw_stall_mem = mem_stall_req;
         fw_stall_ex  = 0;
         fw_stall_id  = 0;
         fw_stall_if  = 0;
@@ -427,7 +429,7 @@ module boa32_cpu#(
         // Pipeline output.
         mem_wb_valid, mem_wb_pc, mem_wb_insn, mem_wb_use_rd, mem_wb_rd_val, mem_wb_trap, mem_wb_cause,
         // Data hazard avoidance.
-        fw_stall_mem
+        fw_stall_mem, mem_stall_req
     );
     logic       wb_valid;
     logic       wb_use_rd;

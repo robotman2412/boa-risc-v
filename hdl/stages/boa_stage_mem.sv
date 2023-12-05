@@ -62,7 +62,9 @@ module boa_stage_mem(
     
     
     // Stall MEM stage.
-    input  logic        fw_stall_mem
+    input  logic        fw_stall_mem,
+    // Stall request.
+    output logic        stall_req
 );
     // EX/MEM: Result valid.
     logic       r_valid;
@@ -208,6 +210,7 @@ module boa_stage_mem(
     
     
     // Pipeline barrier logic.
+    assign  stall_req   = (r_re || r_we) && !mem_if.ready;
     assign  q_valid     = r_valid && !trap && !clear;
     assign  q_pc        = r_pc;
     assign  q_insn      = r_insn;
@@ -355,7 +358,7 @@ module boa_mem_helper(
     
     // Response logic.
     always @(*) begin
-        if (asize == 2'b00) begin
+        if (asize_reg == 2'b00) begin
             // 8-bit access.
             case (addr_reg)
                 2'b00: rdata[7:0] = bus.rdata[7:0];
@@ -365,7 +368,7 @@ module boa_mem_helper(
             endcase
             rdata[31:8]     = 'bx;
             
-        end else if (asize == 2'b01) begin
+        end else if (asize_reg == 2'b01) begin
             // 16-bit access.
             if (!addr_reg[1]) begin
                 rdata[15:0] = bus.rdata[15:0];
@@ -374,7 +377,7 @@ module boa_mem_helper(
             end
             rdata[31:16]    = 'bx;
             
-        end else if (asize == 2'b10) begin
+        end else if (asize_reg == 2'b10) begin
             // 32-bit access.
             rdata           = bus.rdata;
             

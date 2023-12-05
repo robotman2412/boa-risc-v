@@ -283,9 +283,9 @@ module boa32_cpu#(
     // RS2 for MEM matches RD for MEM.
     wire fw_mem_rs2_mem_rd  = use_rs2_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
     // RS1 for MEM matches RD for WB.
-    wire fw_mem_rs1_wb_rd   = use_rs1_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (mem_wb_insn[19:15] == wb_insn[11:7]);
+    wire fw_mem_rs1_wb_rd   = use_rs1_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[19:15] == wb_insn[11:7]);
     // RS2 for MEM matches RD for WB.
-    wire fw_mem_rs2_wb_rd   = use_rs2_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (mem_wb_insn[24:20] == wb_insn[11:7]);
+    wire fw_mem_rs2_wb_rd   = use_rs2_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[24:20] == wb_insn[11:7]);
     
     // Data dependency resolution.
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);
@@ -405,7 +405,7 @@ module boa32_cpu#(
     boa_stage_id#(.debug(debug)) st_id(
         clk, rst, clear_id,
         // Pipeline input.
-        if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
+        if_id_valid && !fw_stall_if, if_id_pc, if_id_insn, if_id_trap && !fw_stall_if, if_id_cause,
         // Pipeline output.
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         // Control transfer.
@@ -418,7 +418,7 @@ module boa32_cpu#(
     boa_stage_ex st_ex(
         clk, rst, clear_ex,
         // Pipeline input.
-        id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
+        id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,
         // Pipeline output.
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         // Data hazard avoidance.
@@ -427,7 +427,7 @@ module boa32_cpu#(
     boa_stage_mem st_mem(
         clk, rst, clear_mem, dbus, csr,
         // Pipeline input.
-        ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, fw_rs1_mem ? fw_in_rs1_mem : ex_mem_rs1_val, fw_rs2_mem ? fw_in_rs2_mem : ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
+        ex_mem_valid && !fw_stall_ex, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, fw_rs1_mem ? fw_in_rs1_mem : ex_mem_rs1_val, fw_rs2_mem ? fw_in_rs2_mem : ex_mem_rs2_val, ex_mem_trap && !fw_stall_ex, ex_mem_cause,
         // Pipeline output.
         mem_wb_valid, mem_wb_pc, mem_wb_insn, mem_wb_use_rd, mem_wb_rd_val, mem_wb_trap, mem_wb_cause,
         // Data hazard avoidance.

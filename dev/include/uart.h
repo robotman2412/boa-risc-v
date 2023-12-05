@@ -1,0 +1,49 @@
+/*
+    Copyright © 2023, Julian Scheffers
+
+    This work ("Boa³²") is licensed under a Creative Commons
+    Attribution-NonCommercial 4.0 International License:
+
+    https://creativecommons.org/licenses/by-nc/4.0/
+*/
+
+#pragma once
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+// UART status register.
+typedef struct {
+    // Transmitter is currently sending.
+    uint32_t tx_busy   : 1;
+    // Transmitter has data in its buffer.
+    uint32_t tx_hasdat : 1;
+    // Transmitter can accept more data.
+    uint32_t tx_hascap : 1;
+    // Padding.
+    uint32_t _padding0 : 13;
+    // Receiver is currently receiving.
+    uint32_t rx_busy   : 1;
+    // Receiver has data in its buffer.
+    uint32_t rx_hasdat : 1;
+    // Receiver can accept more data.
+    uint32_t rx_hascap : 1;
+    // Padding.
+    uint32_t _padding1 : 13;
+} uart_status_t;
+_Static_assert(sizeof(uart_status_t) == 4);
+
+// UART peripheral.
+typedef struct {
+    // Write to send data, read to receive.
+    uint8_t volatile fifo;
+    // Padding.
+    uint8_t volatile _padding0[3];
+    // Status register.
+    uart_status_t volatile status;
+} uart_t;
+_Static_assert(sizeof(uart_t) == 8);
+
+// UART 0 address.
+extern uart_t UART0 asm("__uart0_base");

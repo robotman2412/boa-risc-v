@@ -36,7 +36,8 @@ module unbuffered_uart_tx(
     always @(posedge clk) begin
         if (state == 0 && tx_trig) begin
             // Initialise transmitter state.
-            $write("%c", tx_byte);
+            if (tx_byte == 8'h0a) $display();
+            else $write("%c", tx_byte);
             tx_buf[0]    <= 0;
             tx_buf[8:1]  <= tx_byte;
             tx_buf[10:9] <= 3;

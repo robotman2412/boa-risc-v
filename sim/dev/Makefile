@@ -15,7 +15,7 @@ build:
 	$(MAKE) -C ../../dev build
 	echo $(HDL)
 	verilator -Wall -Wno-fatal -Werror-PINNOCONNECT -Werror-IMPLICIT -Wno-DECLFILENAME -Wno-VARHIDDEN -Wno-WIDTH -Wno-UNUSED \
-		--trace --trace-fst --trace-depth 20 --trace-max-array 8192 --trace-max-width 128 \
+		--trace --trace-fst --trace-depth 20 --trace-max-array 256 --trace-max-width 128 \
 		-sv --cc --exe --build \
 		-I../../hdl/include \
 		--top-module top \

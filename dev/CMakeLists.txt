@@ -16,7 +16,7 @@ set(target rom.elf)
 project(axo_dev_rom C ASM)
 
 add_compile_options(
-    -ffreestanding -nostdlib -nodefaultlibs
+    -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2
     -march=rv32im_zicsr -mabi=ilp32
 )
 
@@ -25,6 +25,12 @@ add_link_options(
     -T${CMAKE_CURRENT_LIST_DIR}/linker.ld
 )
 
+include_directories(SYSTEM include/system)
+include_directories(include)
+
 add_executable(${target}
     src/main.S
+    src/int64.S
+    
+    src/main.c
 )

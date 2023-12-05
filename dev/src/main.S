@@ -7,62 +7,68 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+    .global main
+
+    .section ".text"
+    .align 2
     .global _start
+    .global halt
 _start:
-    la t0, isr
-    csrw mtvec, t0
-    li t0, 0x00010000
-    csrs mie, t0
+    # Set up registers.
+    .option push
+    .option norelax
+    la gp, __global_pointer$
+    la sp, __stack_top
+    .option pop
     
-    li t0, 0x800
+    # Zero BSS.
+    la a0, __start_bss
+    la a1, __stop_bss
+_start_bss_loop:
+    sw x0,  0(a0)
+    sw x0,  4(a0)
+    sw x0,  8(a0)
+    sw x0, 12(a0)
+    addi a0, a0, 16
+    blt a0, a1, _start_bss_loop
+_stop_bss_loop:
     
-    li a0, 'H'
-    sb a0, 0(t0)
-    li a0, 'e'
-    sb a0, 0(t0)
-    li a0, 'l'
-    sb a0, 0(t0)
-    li a0, 'l'
-    sb a0, 0(t0)
-    li a0, 'o'
-    sb a0, 0(t0)
-    li a0, ','
-    sb a0, 0(t0)
-    # csrsi mstatus, 8
-    li a0, ' '
-    sb a0, 0(t0)
-    li a0, 'W'
-    sb a0, 0(t0)
-    li a0, 'o'
-    sb a0, 0(t0)
-    li a0, 'r'
-    sb a0, 0(t0)
-    li a0, 'l'
-    sb a0, 0(t0)
-    li a0, 'd'
-    sb a0, 0(t0)
-    li a0, '!'
-    sb a0, 0(t0)
-    li a0, '\r'
-    sb a0, 0(t0)
-    li a0, '\n'
-    sb a0, 0(t0)
-
+    # Initialize DATA.
+    la a0, __start_data
+    la a1, __start_data_rom
+    la a2, __stop_data
+_start_data_loop:
+    lw t0,  0(a1)
+    lw t1,  4(a1)
+    lw t2,  8(a1)
+    lw t3, 12(a1)
+    sw t0,  0(a0)
+    sw t1,  4(a0)
+    sw t2,  8(a0)
+    sw t3, 12(a0)
+    addi a0, a0, 16
+    addi a1, a1, 16
+    blt a0, a2, _start_data_loop
+_stop_data_loop:
+    
+    # Jump to main function.
+    jal main
+    
 halt:
-    j halt
-
-
-
-isr:
-    li a0, 0xdeadbeef
-ok:
-    j ok
-
-haha:
-    .word 0xcafebabe
-
+    # Wait for UART0 to finish sending.
+    lw a0, __uart0_base+4
+    andi a0, a0, 3
+    bgt a0, x0, halt
+    
+    # Send PMU poweroff command.
+    li a0, 2
+    sw a0, __pmu_base, t0
+_halt:
+    j _halt
 
 
     .section ".bss"
-    .align 2
-    .lcomm dest, 4
+    .align 4
+    .equ __stack_size, 128
+    .lcomm __stack_bottom, __stack_size
+    .equ __stack_top, __stack_bottom + __stack_size

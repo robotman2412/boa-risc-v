@@ -176,7 +176,7 @@ module boa_stage_ex(
             add_rhs_mux         = imm12_s;
         end else if ((r_insn[6:2] == `RV_OP_JAL) || (r_insn[6:2] == `RV_OP_JALR)) begin
             // JAL and JALR instructions.
-            add_lhs_mux[31:1]   = r_pc;
+            add_lhs_mux[31:1]   = r_pc[31:1];
             add_lhs_mux[0]      = 0;
             add_rhs_mux         = 4;
         end else begin

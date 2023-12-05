@@ -411,7 +411,7 @@ module boa32_cpu#(
         // Control transfer.
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         // Write-back.
-        mem_wb_valid && mem_wb_use_rd, mem_wb_insn[11:7], mem_wb_rd_val,
+        mem_wb_valid && mem_wb_use_rd && !fw_stall_mem, mem_wb_insn[11:7], mem_wb_rd_val,
         // Data hazard avoidance.
         fw_stall_id, use_rs1_bt, fw_rs1_bt, fw_in_bt
     );
@@ -438,10 +438,12 @@ module boa32_cpu#(
     logic[31:0] wb_rd_val;
     logic[31:0] wb_insn;
     always @(posedge clk) begin
-        wb_valid  <= mem_wb_valid;
-        wb_use_rd <= mem_wb_use_rd;
-        wb_rd_val <= mem_wb_rd_val;
-        wb_insn   <= mem_wb_insn;
+        if (!fw_stall_mem) begin
+            wb_valid  <= mem_wb_valid;
+            wb_use_rd <= mem_wb_use_rd;
+            wb_rd_val <= mem_wb_rd_val;
+            wb_insn   <= mem_wb_insn;
+        end
     end
 endmodule
 

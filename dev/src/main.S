@@ -16,12 +16,8 @@ _start:
     csrs mie, t0
     
     lw a0, haha
-    li x1, 1
-    li x2, 2
-    li x3, 3
-    li x4, 4
-    li x5, 5
-    li x6, 6
+    sw a0, dest, t0
+    lb a1, dest+1
 
 halt:
     j halt
@@ -34,3 +30,9 @@ isr:
 
 haha:
     .word 0xcafebabe
+
+
+
+    .section ".bss"
+    .align 2
+    .lcomm dest, 4

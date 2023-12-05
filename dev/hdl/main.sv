@@ -19,16 +19,21 @@ module main(
 );
     `include "boa_fileio.svh"
     
-    boa_mem_bus cbus[2]();
-    boa_mem_bus rbus();
+    // Memory buses.
+    boa_mem_bus pbus();
+    boa_mem_bus dbus();
+    boa_mem_bus mux_a_bus[2]();
+    boa_mem_bus mux_b_bus[2]();
     
     // Program ROM.
-    block_ram#(8, {boa_parentdir(`__FILE__), "/../build/rom.mem"}, 1) rom(clk, rbus);
+    dp_block_ram#(10, {boa_parentdir(`__FILE__), "/../build/rom.mem"}, 0) rom(clk, mux_a_bus[0], mux_b_bus[0]);
     // RAM.
-    // block_ram#(8, "", 0) ram(clk, dbus);
+    dp_block_ram#(10, "", 0) ram(clk, mux_a_bus[1], mux_b_bus[1]);
     
-    boa_mem_demux mux(clk, rst, cbus, rbus);
+    // Memory interconnects.
+    boa_mem_mux mux_a(clk, rst, pbus, mux_a_bus, {'h000, 'h400}, {10, 10});
+    boa_mem_mux mux_b(clk, rst, dbus, mux_b_bus, {'h000, 'h400}, {10, 10});
     
     // CPU.
-    boa32_cpu#(0, 0) cpu(clk, rst, cbus[0], cbus[1], 0);
+    boa32_cpu#(0, 0) cpu(clk, rst, pbus, dbus, 0);
 endmodule

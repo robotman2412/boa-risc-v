@@ -61,9 +61,9 @@ module boa_mem_mux#(
     input  logic            rst,
     
     // CPU port.
-    boa_mem_bus.CPU         cpu,
+    boa_mem_bus.MEM         cpu,
     // MEM ports.
-    boa_mem_bus.MEM         mem[mems],
+    boa_mem_bus.CPU         mem[mems],
     // MEM port addresses, naturally aligned.
     input  logic[alen-1:2]  addr[mems],
     // MEM port size in log2(size_bytes/4).
@@ -91,6 +91,14 @@ module boa_mem_mux#(
             assign mem[x].wdata = cpu.wdata;
         end
     endgenerate
+    logic           ready_mask[mems];
+    logic[dlen-1:0] rdata_mask[mems];
+    generate
+        for (x = 0; x < mems; x = x + 1) begin
+            assign ready_mask[x] = r_sel[x] ? mem[x].ready : 0;
+            assign rdata_mask[x] = r_sel[x] ? mem[x].rdata : 0;
+        end
+    endgenerate
     always @(*) begin
         integer i;
         if (r_sel == 0) begin
@@ -103,8 +111,8 @@ module boa_mem_mux#(
             cpu.ready = 0;
             cpu.rdata = 0;
             for (i = 0; i < mems; i = i + 1) begin
-                cpu.ready |= r_sel[i] & mem[i].ready;
-                cpu.rdata |= r_sel[i] ? mem[i].rdata : 0;
+                cpu.ready |= ready_mask[i];
+                cpu.rdata |= rdata_mask[i];
             end
         end
     end

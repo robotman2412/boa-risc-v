@@ -13,7 +13,10 @@
 
 
 // Boa³² pipline stage: ID (instruction decode).
-module boa_stage_id(
+module boa_stage_id#(
+    // Print debug messages about CPU state.
+    parameter debug         = 0
+)(
     // CPU clock.
     input  logic        clk,
     // Synchronous reset.
@@ -117,7 +120,7 @@ module boa_stage_id(
     // Register file.
     logic[31:0] rs1_val;
     logic[31:0] rs2_val;
-    boa_regfile regfile(
+    boa_regfile#(.debug(debug)) regfile(
         clk, rst,
         wb_we, wb_rd, wb_wdata,
         r_insn[19:15], rs1_val,
@@ -156,7 +159,10 @@ endmodule
 
 
 // Read-first RV32 register file.
-module boa_regfile(
+module boa_regfile#(
+    // Print debug messages about CPU state.
+    parameter debug         = 0
+)(
     // CPU clock.
     input  logic        clk,
     // Synchronous reset.
@@ -198,7 +204,7 @@ module boa_regfile(
         end else if (we && (rd != 0)) begin
             // Write a register.
             storage[rd] <= wdata;
-            $display("x%d = 0x%08x", rd, wdata);
+            if (debug) $display("x%d = 0x%08x", rd, wdata);
         end
     end
 endmodule

@@ -109,11 +109,6 @@ module raw_block_ram#(
             end
         end
     endgenerate
-    always @(posedge clk) begin
-        if (we != 0) begin
-            $display("[%x] = %x", addr, smask);
-        end
-    end
 endmodule
 
 

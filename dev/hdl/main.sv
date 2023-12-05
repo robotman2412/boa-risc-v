@@ -37,12 +37,18 @@ module main(
     dp_block_ram#(10, "", 0) ram(clk, mux_a_bus[1], mux_b_bus[1]);
     // UART.
     logic rx_full, tx_empty;
-    boa_peri_uart uart(clk, rst, mux_b_bus[2], uart_clk, txd, rxd, rx_full, tx_empty);
+    boa_peri_uart uart(clk, rst, mux_b_bus[2], uart_clk, txd, rxd, tx_empty, rx_full);
     
     // Memory interconnects.
     boa_mem_mux mux_a(clk, rst, pbus, mux_a_bus, {'h000, 'h400}, {10, 10});
     boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {'h000, 'h400, 'h800}, {10, 10, 10});
     
     // CPU.
-    boa32_cpu#(0, 0) cpu(clk, rst, pbus, dbus, 0);
+    logic[31:16] irq;
+    boa32_cpu#(0, 0) cpu(clk, rst, pbus, dbus, irq);
+    
+    // Interrupts.
+    assign irq[16] = tx_empty;
+    assign irq[17] = rx_full;
+    assign irq[31:18] = 0;
 endmodule

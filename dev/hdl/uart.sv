@@ -36,7 +36,7 @@ module unbuffered_uart_tx(
     always @(posedge clk) begin
         if (state == 0 && tx_trig) begin
             // Initialise transmitter state.
-            $display("STARTING");
+            $write("%c", tx_byte);
             tx_buf[0]    <= 0;
             tx_buf[8:1]  <= tx_byte;
             tx_buf[10:9] <= 3;
@@ -119,9 +119,9 @@ endmodule
 // Takes a clock that is 4x baudrate (e.g. 9600 baud means a 38400Hz clock).
 module boa_peri_uart#(
     // TX buffer depth, must be a power of 2 >= 4.
-    parameter tx_depth      = 16,
+    parameter tx_depth      = 4,
     // RX buffer depth, must be a power of 2 >= 4.
-    parameter rx_depth      = 16,
+    parameter rx_depth      = 4,
     // Stall writes on TX buffer full.
     parameter tx_full_stall = 1
 )(
@@ -139,10 +139,10 @@ module boa_peri_uart#(
     // Received data pin.
     input  logic        rxd,
     
-    // UART receive buffer is no longer empty.
-    output logic        rx_full,
     // UART transmit buffer has emptied.
-    output logic        tx_empty
+    output logic        tx_empty,
+    // UART receive buffer is no longer empty.
+    output logic        rx_full
 );
     genvar i;
     localparam tx_exp = $clog2(tx_depth) - 1;

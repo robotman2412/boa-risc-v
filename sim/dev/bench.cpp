@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     trace->open("obj_dir/sim.fst");
     
     // Run a number of clock cycles.
-    for (int i = 0; i <= 100 && !contextp->gotFinish(); i++) {
+    for (int i = 0; i <= 1000 && !contextp->gotFinish(); i++) {
         top->eval();
         trace->dump(i*10);
         top->clk ^= 1;

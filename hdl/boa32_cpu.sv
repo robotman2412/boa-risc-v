@@ -45,7 +45,9 @@ module boa32_cpu#(
     // Entrypoint address.
     parameter entrypoint    = 32'h4000_0000,
     // CSR mhartid value.
-    parameter hartid        = 32'h0000_0000
+    parameter hartid        = 32'h0000_0000,
+    // Print debug messages about CPU state.
+    parameter debug         = 0
 )(
     // CPU clock.
     input  logic    clk,
@@ -180,7 +182,7 @@ module boa32_cpu#(
     end
     
     always @(*) begin
-        if (fw_branch_correct) begin
+        if (fw_branch_correct && debug) begin
             $strobe("Branch correction to %x", fw_branch_alt<<1);
         end
         if (id_ex_valid && is_xret) begin
@@ -188,19 +190,19 @@ module boa32_cpu#(
             csr_ex.ret          = 1;
             fw_branch_predict   = 1;
             fw_branch_target    = csr_ex.ret_epc<<1;
-            $display("MRET from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
+            if (debug) $strobe("MRET from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else if (id_ex_valid && is_jump) begin
             // JAL or JALR.
             csr_ex.ret          = 0;
             fw_branch_predict   = 1;
             fw_branch_target    = branch_target;
-            $strobe("JAL(R) from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
+            if (debug) $strobe("JAL(R) from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else if (id_ex_valid && is_branch) begin
             // JAL or JALR.
             csr_ex.ret          = 0;
             fw_branch_predict   = branch_predict;
             fw_branch_target    = branch_target;
-            $strobe("BRANCH from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
+            if (debug) $strobe("BRANCH from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else begin
             // Not a control transfer.
             csr_ex.ret          = 0;
@@ -365,7 +367,7 @@ module boa32_cpu#(
             csr_ex.ex_trap      = 0;
             csr_ex.ex_cause     = irq_cause;
             csr_ex.ex_epc[31:2] = ex_mem_pc[31:2];
-            $display("Interrupt triggered");
+            if (debug) $display("Interrupt triggered");
             
         end else if (mem_wb_trap) begin
             // Trap raised.
@@ -373,7 +375,7 @@ module boa32_cpu#(
             csr_ex.ex_trap      = 1;
             csr_ex.ex_cause     = mem_wb_cause;
             csr_ex.ex_epc[31:2] = mem_wb_pc[31:2];
-            $display("Trap raised");
+            if (debug) $display("Trap raised");
             
         end else begin
             // Nothing is happening.
@@ -400,7 +402,7 @@ module boa32_cpu#(
         // Data hazard avoicance.
         fw_stall_if
     );
-    boa_stage_id st_id(
+    boa_stage_id#(.debug(debug)) st_id(
         clk, rst, clear_id,
         // Pipeline input.
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,

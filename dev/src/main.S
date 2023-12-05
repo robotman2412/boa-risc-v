@@ -11,13 +11,17 @@
 _start:
     la t0, isr
     csrw mtvec, t0
-    csrsi mstatus, 8
-    li t0, -1
-    csrs mie, t0
     
-    lw a0, haha
-    sw a0, dest, t0
-    lb a1, dest+1
+    li t0, 0x800
+    
+    li a0, 'H'
+    sb a0, 0(t0)
+    li a0, 'i'
+    sb a0, 0(t0)
+    li a0, '\r'
+    sb a0, 0(t0)
+    li a0, '\n'
+    sb a0, 0(t0)
 
 halt:
     j halt

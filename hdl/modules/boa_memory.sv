@@ -65,8 +65,8 @@ module boa_mem_mux#(
     // MEM ports.
     boa_mem_bus.CPU         mem[mems],
     // MEM port addresses, naturally aligned.
-    input  logic[alen-1:2]  addr[mems],
-    // MEM port size in log2(size_bytes/4).
+    input  logic[alen-1:0]  addr[mems],
+    // MEM port size in log2(size_bytes).
     input  logic[elen-1:0]  size[mems]
 );
     genvar x;
@@ -77,8 +77,8 @@ module boa_mem_mux#(
     always @(posedge clk) r_sel <= sel;
     generate
         for (x = 0; x < mems; x = x + 1) begin
-            wire[alen-1:2]  tmp     = (64'b1 << size[x]) - 1;
-            assign          sel[x]  = (cpu.addr | tmp) == (addr[x] | tmp);
+            wire[alen-1:2]  tmp     = (64'b1 << (size[x]-2)) - 1;
+            assign          sel[x]  = (cpu.addr | tmp) == (addr[x][alen-1:2] | tmp);
         end
     endgenerate
     

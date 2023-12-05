@@ -15,9 +15,8 @@ module top(
     input logic clk
 );
     logic rst = 1;
-    
-    logic[31:0] div = 0;
     always @(negedge clk) rst <= 0;
-    
-    main main(clk, rst);
+    logic txd, rxd;
+    assign rxd = 1;
+    main main(clk, rst, clk, txd, rxd);
 endmodule

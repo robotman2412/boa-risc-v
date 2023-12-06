@@ -77,6 +77,7 @@ module raw_block_ram#(
                 end
             end
             storage[waddr] = tmp;
+            $display("Loaded %d words", waddr+1);
         end
     end
     
@@ -189,6 +190,7 @@ module raw_dp_block_ram#(
                 end
             end
             storage[waddr] = tmp;
+            $display("Loaded %d words", waddr+1);
         end
     end
     

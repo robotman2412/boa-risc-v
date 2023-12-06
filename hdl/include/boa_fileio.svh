@@ -34,6 +34,10 @@ function automatic string boa_load_file(string path);
         string data, tmp;
         data = "";
         fd = $fopen(path, "r");
+        if (!fd) begin
+            $display("Error opening %s", path);
+            return "";
+        end
         while (1) begin
             data = {data, tmp};
             tmp  = "";

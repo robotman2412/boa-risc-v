@@ -11,7 +11,10 @@
 
 
 
-module main(
+module main#(
+    // ROM image file.
+    parameter string rom_file = ""
+)(
     // CPU clock.
     input  wire clk,
     // Synchronous reset.
@@ -37,7 +40,7 @@ module main(
     boa_mem_bus peri_bus[2]();
     
     // Program ROM.
-    dp_block_ram#(10, {boa_parentdir(`__FILE__), "/../build/rom.mem"}, 1) rom(clk, mux_a_bus[0], mux_b_bus[0]);
+    dp_block_ram#(10, rom_file, 1) rom(clk, mux_a_bus[0], mux_b_bus[0]);
     // RAM.
     dp_block_ram#(10, "", 0) ram(clk, mux_a_bus[1], mux_b_bus[1]);
     // UART.
@@ -47,13 +50,13 @@ module main(
     boa_peri_pmu  pmu(clk, rst, peri_bus[1], pmb);
     
     // Memory interconnects.
-    boa_mem_mux#(.mems(2)) mux_a(clk, rst, pbus, mux_a_bus, {'h0000, 'h1000}, {12, 12});
-    boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {'h0000, 'h1000, 'h2000}, {12, 12, 12});
-    boa_mem_mux#(.mems(2)) mux_p(clk, rst, mux_b_bus[2], peri_bus, {'h2000, 'h2100}, {8, 8});
+    boa_mem_mux#(.mems(2)) mux_a(clk, rst, pbus, mux_a_bus, {'h1000, 'h2000}, {12, 12});
+    boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {'h1000, 'h2000, 'h3000}, {12, 12, 12});
+    boa_mem_mux#(.mems(2)) mux_p(clk, rst, mux_b_bus[2], peri_bus, {'h3000, 'h3100}, {8, 8});
     
     // CPU.
     logic[31:16] irq;
-    boa32_cpu#(0, 0, 0) cpu(clk, rst, pbus, dbus, irq);
+    boa32_cpu#('h1000, 0, 0) cpu(clk, rst, pbus, dbus, irq);
     
     // Interrupts.
     assign irq[16] = tx_empty;

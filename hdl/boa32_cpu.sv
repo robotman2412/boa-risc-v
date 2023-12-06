@@ -264,28 +264,53 @@ module boa32_cpu#(
     // Stall request from MEM stage.
     logic       mem_stall_req;
     
-    // RS1 for branch targte matches RD for EX.
-    wire fw_bt_rs1_ex_rd    = use_rs1_bt  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
-    // RS1 for branch targte matches RD for MEM.
-    wire fw_bt_rs1_mem_rd   = use_rs1_bt  && id_ex_valid  && ex_mem_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
+    // RS1 for branch target matches RD for ID.
+    wire eq_bt_rs1_id_rd    = use_rs1_bt  && id_ex_valid  && id_ex_valid  && id_ex_use_rd  && (id_ex_insn[19:15]  == id_ex_insn [11:7]);
+    // RS1 for branch target matches RD for EX.
+    wire eq_bt_rs1_ex_rd    = use_rs1_bt  && id_ex_valid  && ex_mem_valid && ex_mem_use_rd && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
+    // RS1 for branch target matches RD for MEM.
+    wire eq_bt_rs1_mem_rd   = use_rs1_bt  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
     
     // RS1 for EX matches RD for EX.
-    wire fw_ex_rs1_ex_rd    = use_rs1_ex  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
+    wire eq_ex_rs1_ex_rd    = use_rs1_ex  && id_ex_valid  && ex_mem_valid && ex_mem_use_rd && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);
     // RS2 for EX matches RD for EX.
-    wire fw_ex_rs2_ex_rd    = use_rs2_ex  && id_ex_valid  && ex_mem_valid && fw_rd_ex      && (id_ex_insn[24:20]  == ex_mem_insn[11:7]);
+    wire eq_ex_rs2_ex_rd    = use_rs2_ex  && id_ex_valid  && ex_mem_valid && ex_mem_use_rd && (id_ex_insn[24:20]  == ex_mem_insn[11:7]);
     // RS1 for EX matches RD for MEM.
-    wire fw_ex_rs1_mem_rd   = use_rs1_ex  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
+    wire eq_ex_rs1_mem_rd   = use_rs1_ex  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[19:15]  == mem_wb_insn[11:7]);
     // RS2 for EX matches RD for MEM.
-    wire fw_ex_rs2_mem_rd   = use_rs2_ex  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[24:20]  == mem_wb_insn[11:7]);
+    wire eq_ex_rs2_mem_rd   = use_rs2_ex  && id_ex_valid  && mem_wb_valid && mem_wb_use_rd && (id_ex_insn[24:20]  == mem_wb_insn[11:7]);
     
     // RS1 for MEM matches RD for MEM.
-    wire fw_mem_rs1_mem_rd  = use_rs1_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[19:15] == mem_wb_insn[11:7]);
+    wire eq_mem_rs1_mem_rd  = use_rs1_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[19:15] == mem_wb_insn[11:7]);
     // RS2 for MEM matches RD for MEM.
-    wire fw_mem_rs2_mem_rd  = use_rs2_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
+    wire eq_mem_rs2_mem_rd  = use_rs2_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
     // RS1 for MEM matches RD for WB.
-    wire fw_mem_rs1_wb_rd   = use_rs1_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[19:15] == wb_insn[11:7]);
+    wire eq_mem_rs1_wb_rd   = use_rs1_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[19:15] == wb_insn[11:7]);
     // RS2 for MEM matches RD for WB.
-    wire fw_mem_rs2_wb_rd   = use_rs2_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[24:20] == wb_insn[11:7]);
+    wire eq_mem_rs2_wb_rd   = use_rs2_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[24:20] == wb_insn[11:7]);
+    
+    // Forward RD from EX to RS1 from branch target.
+    wire fw_bt_rs1_ex_rd    = eq_bt_rs1_ex_rd   && fw_rd_ex;
+    // Forward RD from MEM to RS1 from branch target.
+    wire fw_bt_rs1_mem_rd   = eq_bt_rs1_mem_rd;
+    
+    // Forward RD from EX to RS1 from EX.
+    wire fw_ex_rs1_ex_rd    = eq_ex_rs1_ex_rd   && fw_rd_ex;
+    // Forward RD from EX to RS2 from EX.
+    wire fw_ex_rs2_ex_rd    = eq_ex_rs2_ex_rd   && fw_rd_ex;
+    // Forward RD from MEM to RS1 from EX.
+    wire fw_ex_rs1_mem_rd   = eq_ex_rs1_mem_rd;
+    // Forward RD from MEM to RS2 from EX.
+    wire fw_ex_rs2_mem_rd   = eq_ex_rs2_mem_rd;
+    
+    // Forward RD from MEM to RS1 from MEM.
+    wire fw_mem_rs1_mem_rd  = eq_mem_rs1_mem_rd;
+    // Forward RD from MEM to RS2 from MEM.
+    wire fw_mem_rs2_mem_rd  = eq_mem_rs2_mem_rd;
+    // Forward RD from WB to RS1 from MEM.
+    wire fw_mem_rs1_wb_rd   = eq_mem_rs1_wb_rd;
+    // Forward RD from WB to RS2 from MEM.
+    wire fw_mem_rs2_wb_rd   = eq_mem_rs2_wb_rd;
     
     // Data dependency resolution.
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);
@@ -309,13 +334,13 @@ module boa32_cpu#(
         fw_in_rs2_mem = fw_mem_rs2_mem_rd ? fw_out_mem : wb_rd_val;
         
         // Stalling logic.
-        if ((fw_rs1_ex || fw_rs2_ex) && ex_mem_use_rd && !fw_rd_ex) begin
+        if ((eq_ex_rs1_ex_rd && !fw_rd_ex) || (eq_ex_rs2_ex_rd && !fw_rd_ex)) begin
             // EX will next need something that has to be processed by MEM first.
             // Stall ID so that this instruction doesn't enter EX until a result is available.
             fw_stall_id = 1;
         end
-        if (fw_rs1_bt && ex_mem_use_rd && !fw_rd_ex) begin
-            // Branch target address needs something that has to be processed by MEM first.
+        if ((eq_bt_rs1_ex_rd && !fw_rd_ex) || eq_bt_rs1_id_rd) begin
+            // Branch target address needs something that has to be processed by EX or MEM first.
             // Stall ID so that MEM will produce a result that may then be used by the branch target address.
             fw_stall_id = 1;
         end

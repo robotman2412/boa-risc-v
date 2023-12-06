@@ -8,8 +8,9 @@
 */
 
     .global main
+    .global __isr_handler
 
-    .section ".text"
+    .section ".boot.text"
     .align 2
     .global _start
     .global halt
@@ -24,6 +25,7 @@ _start:
     # Zero BSS.
     la a0, __start_bss
     la a1, __stop_bss
+    bge a0, a1, _stop_bss_loop
 _start_bss_loop:
     sw x0,  0(a0)
     sw x0,  4(a0)
@@ -37,6 +39,7 @@ _stop_bss_loop:
     la a0, __start_data
     la a1, __start_data_rom
     la a2, __stop_data
+    bge a0, a2, _stop_data_loop
 _start_data_loop:
     lw t0,  0(a1)
     lw t1,  4(a1)
@@ -50,6 +53,10 @@ _start_data_loop:
     addi a1, a1, 16
     blt a0, a2, _start_data_loop
 _stop_data_loop:
+    
+    # Set ISR handler.
+    la t0, __isr_handler
+    csrw mtvec, t0
     
     # Jump to main function.
     jal main

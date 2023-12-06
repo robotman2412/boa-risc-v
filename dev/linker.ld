@@ -30,7 +30,7 @@ SECTIONS
     
     . = __start_rom;
     __start_text = .;
-    .text : AT(0) { *(.text) } :codeseg
+    .text : AT(0) { *(.boot.text) *(.text) } :codeseg
     . = ALIGN(16);
     __stop_text = .;
     

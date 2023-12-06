@@ -16,6 +16,11 @@ _start:
     csrs mie, t0
 
 halt:
+    addi x1, x1, 0
+    addi x2, x2, 0
+    addi x3, x3, 0
+    addi x4, x4, 0
+    addi x5, x5, 0
     j halt
 
 

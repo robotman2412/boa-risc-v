@@ -378,18 +378,24 @@ module boa32_cpu#(
         end
     end
     
+    // Interrupt enable logic.
+    localparam p_mie_depth = 2;
+    logic[p_mie_depth-1:0] p_mie;
+    wire fw_irq_en = (p_mie == (1 << p_mie_depth) - 1) && csrs.csr_mstatus_mie;
+    always @(posedge clk) begin
+        p_mie <= (p_mie << 1) | csrs.csr_mstatus_mie;
+    end
+    
     // Exception dispatch logic.
     assign fw_exception = csr_ex.ex_irq | csr_ex.ex_trap;
     assign fw_tvec      = csr_ex.ex_tvec;
-    logic p_mie;
-    always @(posedge clk) p_mie <= csrs.csr_mstatus_mie;
     always @(*) begin
-        if (irq_cause != 0 && p_mie && csrs.csr_mstatus_mie && st_ex.r_valid) begin
+        if (irq_cause != 0 && fw_irq_en && st_mem.r_valid) begin
             // Interrupt triggered.
             csr_ex.ex_irq       = 1;
             csr_ex.ex_trap      = 0;
             csr_ex.ex_cause     = irq_cause;
-            csr_ex.ex_epc[31:2] = ex_mem_pc[31:2];
+            csr_ex.ex_epc[31:2] = mem_wb_pc[31:2];
             if (debug) $display("Interrupt triggered");
             
         end else if (mem_wb_trap) begin

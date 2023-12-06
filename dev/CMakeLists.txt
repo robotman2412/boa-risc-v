@@ -29,8 +29,9 @@ include_directories(SYSTEM include/system)
 include_directories(include)
 
 add_executable(${target}
-    src/main.S
     src/int64.S
+    src/isr.S
+    src/main.S
     
     src/main.c
 )

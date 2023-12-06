@@ -12,13 +12,13 @@
 
 
 module top(
-    input logic clk
+    input  logic clk,
+    output logic tx,
+    input  logic rx
 );
     logic[1:0] rst = 3;
-    logic txd, rxd;
-    assign rxd = 1;
     pmu_bus pmb();
-    main main(clk, rst!=0, clk, txd, rxd, pmb);
+    main main(clk, rst!=0, clk, tx, rx, pmb);
     always @(posedge clk) begin
         if (pmb.shdn) begin $display("PMU poweroff"); $finish; end
         if (pmb.rst) rst <= 3;

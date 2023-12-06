@@ -10,15 +10,10 @@
 
 
 	# Unsigned 64-bit division.
-	.global __udivdi3
-	.type __udivdi3, %function
-	.equ __udivdi3, cudivmoddi
-
-
-
-	# Unsigned 64-bit division.
 	.global __umoddi3
 	.type __umoddi3, %function
+	.section ".text.__umoddi3"
+	.align 2
 __umoddi3:
 	# Save regs.
 	addi sp, sp, -16
@@ -38,16 +33,12 @@ __umoddi3:
 
 
 
-	# 64-bit division.
-	.global __divdi3
-	.type __divdi3, %function
-	.equ __divdi3, cdivmoddi
-
-
 
 	# 64-bit division.
 	.global __moddi3
 	.type __moddi3, %function
+	.section ".text.__moddi3"
+	.align 2
 __moddi3:
 	# Save regs.
 	addi sp, sp, -16
@@ -70,24 +61,21 @@ __moddi3:
 	.section ".bss"
 	.align 3
 	# Cached dividend.
-cdividend:
-	.skip 8
+	.lcomm cdividend, 8
 	# Cached divisor.
-cdivisor:
-	.skip 8
+	.lcomm cdivisor, 8
 	# Cached division result.
-cdiv:
-	.skip 8
+	.lcomm cdiv, 8
 	# Cached modulo result.
-cmod:
-	.skip 8
-	.text
+	.lcomm cmod, 8
 
 
 
 	# Cached unsigned 64-bit division and modulo.
 	# Returns division in a0, a1 and modulo in a2, a3.
 	.type cudivmoddi, %function
+	.section ".text.cudivmoddi"
+	.align 2
 cudivmoddi:
 	# Check for 32-bit division.
 	or   t0, a1, a3
@@ -212,9 +200,18 @@ cudivmoddi:
 
 
 
+	# Unsigned 64-bit division.
+	.global __udivdi3
+	.type __udivdi3, %function
+	.equ __udivdi3, cudivmoddi
+
+
+
 	# Cached signed 64-bit division and modulo.
 	# Returns division in a0, a1 and modulo in a2, a3.
 	.type cdivmoddi, %function
+	.section ".text.cdivmoddi"
+	.align 2
 cdivmoddi:
 	addi sp, sp, -16
 	sw ra, 12(sp)
@@ -284,3 +281,10 @@ cdivmoddi:
 	lw   ra, 12(sp)
 	addi sp, sp, 16
 	ret
+
+
+
+	# 64-bit division.
+	.global __divdi3
+	.type __divdi3, %function
+	.equ __divdi3, cdivmoddi

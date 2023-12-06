@@ -13,7 +13,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void print(char const *str) __attribute__((noinline));
 void print(char const *str) {
     while (*str) {
         UART0.fifo = *str;
@@ -21,6 +20,15 @@ void print(char const *str) {
     }
 }
 
+void putd(long value, int decimals) {
+    for (int i = 0; i < decimals; i++) {
+        UART0.fifo  = '0' + value % 10;
+        value      /= 10;
+    }
+}
+
 void main() {
     print("Hello, World!\n");
+    putd(123, 4);
+    print("\n");
 }

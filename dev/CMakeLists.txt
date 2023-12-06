@@ -16,7 +16,7 @@ set(target rom.elf)
 project(axo_dev_rom C ASM)
 
 add_compile_options(
-    -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2
+    -ffreestanding -nostdlib -nodefaultlibs -nostdinc
     -march=rv32im_zicsr -mabi=ilp32
 )
 

@@ -18,5 +18,6 @@ set(target rom.elf)
 add_executable(${target}
     src/main.c
 )
+target_include_directories(${target} PUBLIC include)
 
 include(${CMAKE_CURRENT_LIST_DIR}/../common/CMakeLists.txt)

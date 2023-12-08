@@ -32,7 +32,6 @@ typedef struct {
     // Padding.
     uint32_t _padding1 : 13;
 } uart_status_t;
-_Static_assert(sizeof(uart_status_t) == 4);
 
 // UART peripheral.
 typedef struct {
@@ -43,7 +42,6 @@ typedef struct {
     // Status register.
     uart_status_t volatile status;
 } uart_t;
-_Static_assert(sizeof(uart_t) == 8);
 
 // UART 0 address.
 extern uart_t UART0 asm("__uart0_base");

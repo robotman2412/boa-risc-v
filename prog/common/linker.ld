@@ -18,12 +18,12 @@ SECTIONS
 {
 	/DISCARD/ : { *(.note.gnu.build-id) }
     
-    __start_rom  = 0x00001000;
-    __stop_rom   = 0x00002000;
-    __start_sram = 0x00002000;
-    __stop_sram  = 0x00003000;
-    __start_peri = 0x00003000;
-    __stop_peri  = 0x00004000;
+    __start_rom  = 0x4000f000;
+    __stop_rom   = 0x40010000;
+    __start_sram = 0x40010000;
+    __stop_sram  = 0x40020000;
+    __start_peri = 0x80000000;
+    __stop_peri  = 0x80001000;
     
     __uart0_base = __start_peri + 0x000;
     __pmu_base   = __start_peri + 0x100;
@@ -51,6 +51,8 @@ SECTIONS
     .bss : { *(.bss) *(.sbss) } :NONE
     . = ALIGN(16);
     __stop_bss = .;
+    __start_free_sram = .;
+    __stop_free_sram = __stop_sram;
     
     __start_data_rom = __stop_rodata;
     __stop_data_rom  = __start_data_rom + __stop_data - __start_data;

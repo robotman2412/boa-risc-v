@@ -92,13 +92,21 @@ int main(int argc, char **argv) {
             rx_div = (rx_div + 1) % UART_CLK_DIV;
 
             // Send a bit to DUT RX pin.
-            if (tx_div == 0) {
+            if (rx_div == 0) {
                 if (rx_pending.size()) {
                     top->rx = rx_pending.front();
                     rx_pending.erase(rx_pending.begin());
                 } else {
                     top->rx = 1;
                 }
+            }
+            // Receive a bit from RUT TX pin.
+            if (tx_pending.size() == 0) {
+                if (!top->tx) {
+                    tx_pending.push_back(1);
+                    tx_div = UART_CLK_DIV / 2;
+                }
+            } else if (tx_div == 0) {
             }
         }
     }

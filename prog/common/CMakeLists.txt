@@ -11,6 +11,10 @@ cmake_minimum_required(VERSION 3.10.0)
 
 cmake_policy(SET CMP0076 NEW)
 
+if(NOT DEFINED linkerscript)
+    set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/linker.ld)
+endif()
+
 target_compile_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs -nostdinc
     -march=rv32im_zicsr -mabi=ilp32
@@ -19,7 +23,7 @@ target_compile_options(${target} PUBLIC
 
 target_link_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs
-    -T${CMAKE_CURRENT_LIST_DIR}/linker.ld
+    -T${linkerscript}
     -Wl,--gc-sections
 )
 
@@ -27,7 +31,10 @@ target_include_directories(${target} PUBLIC SYSTEM ${CMAKE_CURRENT_LIST_DIR}/sys
 target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 
 target_sources(${target} PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/src/int64.S
-    ${CMAKE_CURRENT_LIST_DIR}/src/isr.S
-    ${CMAKE_CURRENT_LIST_DIR}/src/start.S
+    ${CMAKE_CURRENT_LIST_DIR}/asm/int64.S
+    ${CMAKE_CURRENT_LIST_DIR}/asm/isr.S
+    ${CMAKE_CURRENT_LIST_DIR}/asm/start.S
+    
+    ${CMAKE_CURRENT_LIST_DIR}/src/print.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/string.c
 )

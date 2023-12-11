@@ -20,4 +20,5 @@ add_executable(${target}
 )
 target_include_directories(${target} PUBLIC include)
 
+set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/linker.ld)
 include(${CMAKE_CURRENT_LIST_DIR}/../common/CMakeLists.txt)

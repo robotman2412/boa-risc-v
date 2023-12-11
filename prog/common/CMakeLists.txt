@@ -16,7 +16,7 @@ if(NOT DEFINED linkerscript)
 endif()
 
 target_compile_options(${target} PUBLIC
-    -ffreestanding -nostdlib -nodefaultlibs -nostdinc
+    -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2
     -march=rv32im_zicsr -mabi=ilp32
     -ffunction-sections
 )
@@ -24,7 +24,7 @@ target_compile_options(${target} PUBLIC
 target_link_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs
     -T${linkerscript}
-    -Wl,--gc-sections
+    -Wl,--gc-sections -Wl,-L${CMAKE_CURRENT_LIST_DIR}
 )
 
 target_include_directories(${target} PUBLIC SYSTEM ${CMAKE_CURRENT_LIST_DIR}/system)

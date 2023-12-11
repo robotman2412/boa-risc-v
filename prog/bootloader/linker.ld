@@ -29,7 +29,7 @@ SECTIONS {
     . = ALIGN(16);
     __stop_rodata = .;
     
-    . = __start_sram;
+    . = __stop_sram - 8192;
     __start_data = .;
     __start_data_rom = __stop_rodata;
     .data : AT(__stop_rodata - __start_rom) { *(.data) *(.sdata) } :dataseg
@@ -41,8 +41,8 @@ SECTIONS {
     .bss : { *(.bss) *(.sbss) } :NONE
     . = ALIGN(16);
     __stop_bss = .;
-    __start_free_sram = .;
-    __stop_free_sram = __stop_sram;
+    __start_free_sram = __start_sram;
+    __stop_free_sram = __start_data;
     
     __start_data_rom = __stop_rodata;
     __stop_data_rom  = __start_data_rom + __stop_data - __start_data;

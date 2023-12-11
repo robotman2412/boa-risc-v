@@ -10,10 +10,11 @@
     .global main
     .global __isr_handler
 
+
+
     .section ".boot.text"
     .align 2
     .global _start
-    .global halt
 _start:
     # Set up registers.
     .option push
@@ -60,7 +61,11 @@ _stop_data_loop:
     
     # Jump to main function.
     jal main
-    
+
+
+
+    .type halt, %function
+    .global halt
 halt:
     # Wait for UART0 to finish sending.
     lw a0, __uart0_base+4
@@ -74,8 +79,9 @@ _halt:
     j _halt
 
 
+
     .section ".bss"
     .align 4
-    .equ __stack_size, 128
+    .equ __stack_size, 4096
     .lcomm __stack_bottom, __stack_size
     .equ __stack_top, __stack_bottom + __stack_size

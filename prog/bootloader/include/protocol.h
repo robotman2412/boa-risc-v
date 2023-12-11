@@ -108,5 +108,4 @@ typedef union {
     p_read_t  p_read;
     p_jump_t  p_jump;
     p_call_t  p_call;
-    uint8_t   raw[4096];
 } p_data_t;

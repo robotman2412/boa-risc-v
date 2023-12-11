@@ -36,6 +36,23 @@ std::vector<bool> tx_pending;
 int               rx_div;
 // Pending bits to send to DUT RX pin.
 std::vector<bool> rx_pending;
+// Do hexadecimal instead of decimal.
+bool              use_hex;
+// Direction, -1 is send to DUT, 1 is receive from DUT.
+int               direction;
+
+// Is a valid hex character?
+bool ishex(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+// Get the value of a hex character.
+int gethex(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else {
+        return (c | 0x20) - 'a' + 0xa;
+    }
+}
 
 // Send a byte to DUT RX pin.
 void uart_add_rx_pending(uint8_t value) {
@@ -44,6 +61,12 @@ void uart_add_rx_pending(uint8_t value) {
     for (int i = 0; i < 8; i++) {
         rx_pending.push_back((value >> i) & 1);
     }
+    if (direction != -1) {
+        printf("\n> ");
+        direction = -1;
+    }
+    printf("%02x ", value);
+    fflush(stdout);
 }
 
 // Receive a byte from DUT RX pin.
@@ -54,7 +77,15 @@ void uart_handle_tx_pending() {
             value <<= 1;
             value  |= tx_pending[7 - i];
         }
-        fputc(value, stdout);
+        if (use_hex) {
+            if (direction != 1) {
+                printf("\n< ");
+                direction = 1;
+            }
+            printf("%02x ", value);
+        } else {
+            fputc(value, stdout);
+        }
         fflush(stdout);
     }
     tx_pending.clear();
@@ -79,13 +110,19 @@ int main(int argc, char **argv) {
     Vtop          *top   = new Vtop{contextp};
     VerilatedFstC *trace = new VerilatedFstC();
 
+    // Check printing type.
+    char const *mode = getenv("UARTMODE");
+    use_hex          = mode && (!strcmp(mode, "HEX") || !strcmp(mode, "hex"));
+    printf(use_hex ? "Hexadecimal UART mode\n" : "Normal UART mode\n");
+
     // Set up the trace.
     contextp->traceEverOn(true);
     top->trace(trace, 5);
     trace->open("obj_dir/sim.fst");
 
     // Run a number of clock cycles.
-    top->rx = 1;
+    top->rx   = 1;
+    char prev = 0;
     for (int i = 0; !contextp->gotFinish(); i++) {
         // Run a simulation tick.
         top->eval();
@@ -97,7 +134,20 @@ int main(int argc, char **argv) {
         if (c == 4) {
             break;
         } else if (c >= 0) {
-            uart_add_rx_pending(c);
+            if (use_hex) {
+                if (prev) {
+                    if (ishex(c)) {
+                        uart_add_rx_pending((gethex(prev) << 4) | gethex(c));
+                    } else {
+                        uart_add_rx_pending(gethex(prev));
+                    }
+                    prev = 0;
+                } else {
+                    prev = ishex(c) ? c : 0;
+                }
+            } else {
+                uart_add_rx_pending(c);
+            }
         }
 
         // UART logic.

@@ -35,6 +35,10 @@ extern char const __stop_sram[];
 // Currently waiting; too much data.
 #define RX_NCAP 5
 
+// Entrypoint function.
+extern void _start() __attribute__((noreturn));
+// ISR handler.
+extern void __isr_handler();
 // Stop el CPU and power off.
 extern void halt();
 
@@ -56,6 +60,11 @@ p_data_t data;
 // Current checksum.
 uint8_t  xsum;
 
+// Write address.
+void  *waddr;
+// Write length.
+size_t wlen;
+
 
 
 // Send a packet.
@@ -65,13 +74,13 @@ void send_packet(phdr_t const *header, void const *data) {
 
     uint8_t const *tx_ptr = (uint8_t const *)header;
     for (size_t i = 0; i < sizeof(phdr_t); i++) {
-        xsum       ^= tx_ptr[i];
+        xsum       += tx_ptr[i];
         UART0.fifo  = tx_ptr[i];
     }
 
     tx_ptr = (uint8_t const *)data;
     for (size_t i = 0; i < header->length; i++) {
-        xsum       ^= tx_ptr[i];
+        xsum       += tx_ptr[i];
         UART0.fifo  = tx_ptr[i];
     }
 
@@ -123,19 +132,14 @@ void p_write() {
         send_ack(A_NCAP);
         return;
     }
-    if (data.p_write.addr < (size_t)__start_sram || data.p_write.addr + data.p_write.length > __stop_sram) {
-        send_ack(A_NCAP);
-        return;
-    }
+    waddr = (void *)data.p_write.addr;
+    wlen  = data.p_write.length;
+    send_ack(A_ACK);
 }
 
 // Handle a P_READ packet.
 void p_read() {
     if (header.length != sizeof(data.p_read)) {
-        send_ack(A_NCAP);
-        return;
-    }
-    if (data.p_read.addr < (size_t)__start_free_sram || data.p_read.addr + data.p_read.length > __stop_free_sram) {
         send_ack(A_NCAP);
         return;
     }
@@ -148,6 +152,7 @@ void p_read() {
 
 // Handle a P_WDATA packet.
 void p_wdata() {
+    send_ack(A_ACK);
 }
 
 // Handle a P_JUMP packet.
@@ -156,6 +161,13 @@ void p_jump() {
         send_ack(A_NCAP);
         return;
     }
+    send_ack(A_ACK);
+    asm("csrci mstatus, 8");
+    asm("csrc mie, %0" ::"r"(0xffffffff));
+    data.p_jump.addr();
+    asm("csrci mstatus, 8");
+    asm("csrc mie, %0" ::"r"(0xffffffff));
+    _start();
 }
 
 // Handle a P_CALL packet.
@@ -164,24 +176,30 @@ void p_call() {
         send_ack(A_NCAP);
         return;
     }
+    send_ack(A_ACK);
+    data.p_jump.addr();
 }
 
 
 
 // Handle a received byte.
-void handle_rx(uint8_t data) {
+void handle_rx(uint8_t rxd) {
     if (rx_type == RX_NONE) {
-        xsum = data;
-        if (data == 2) {
+        xsum = rxd;
+        if (rxd == 2) {
+            rx_len  = 0;
             rx_type = RX_PHDR;
             rx_ptr  = (uint8_t *)&header;
         }
     } else if (rx_type == RX_PHDR) {
-        rx_ptr[rx_len++] = data;
+        rx_ptr[rx_len++] = rxd;
         if (rx_len == sizeof(phdr_t)) {
             rx_len = 0;
-            if (rx_len == 0) {
+            if (header.length == 0) {
                 rx_type = RX_XSUM;
+            } else if (header.type == P_WDATA) {
+                rx_type = RX_DATA;
+                rx_ptr  = (uint8_t *)waddr;
             } else if (header.length > sizeof(data)) {
                 rx_type = RX_NCAP;
             } else {
@@ -189,18 +207,19 @@ void handle_rx(uint8_t data) {
                 rx_ptr  = (uint8_t *)&data;
             }
         }
-        xsum += data;
+        xsum += rxd;
     } else if (rx_type == RX_NCAP) {
+        xsum += rxd;
         rx_len++;
         if (rx_len == header.length)
             rx_type = RX_XSUM;
     } else if (rx_type == RX_DATA) {
-        rx_ptr[rx_len++]  = data;
-        xsum             += data;
+        rx_ptr[rx_len++]  = rxd;
+        xsum             += rxd;
         if (rx_len == header.length)
             rx_type = RX_XSUM;
     } else if (rx_type == RX_XSUM) {
-        if (xsum != data) {
+        if (xsum != rxd) {
             send_ack(A_XSUM);
         } else if (header.length > sizeof(data)) {
             send_ack(A_NCAP);
@@ -213,8 +232,10 @@ void handle_rx(uint8_t data) {
                 case P_WDATA: p_wdata(); break;
                 case P_JUMP: p_jump(); break;
                 case P_CALL: p_call(); break;
+                default: send_ack(A_NCAP); break;
             }
         }
+        rx_type = RX_NONE;
     }
 }
 
@@ -232,4 +253,9 @@ void isr() {
 
 // Does stuff?
 void main() {
+    while (1) {
+        if (UART0.status.rx_hasdat) {
+            handle_rx(UART0.fifo);
+        }
+    }
 }

@@ -29,7 +29,7 @@ void atexit_func() {
 }
 
 // Clock divider value for DUT TX pin.
-int               tx_div;
+int               tx_div = -1;
 // Pending bits to receive from DUT TX pin.
 std::vector<bool> tx_pending;
 // Clock divider value for DUT RX pin.
@@ -44,6 +44,20 @@ void uart_add_rx_pending(uint8_t value) {
     for (int i = 0; i < 8; i++) {
         rx_pending.push_back((value >> i) & 1);
     }
+}
+
+// Receive a byte from DUT RX pin.
+void uart_handle_tx_pending() {
+    if (tx_pending.back()) {
+        uint8_t value = 0;
+        for (int i = 0; i < 8; i++) {
+            value <<= 1;
+            value  |= tx_pending[7 - i];
+        }
+        fputc(value, stdout);
+        fflush(stdout);
+    }
+    tx_pending.clear();
 }
 
 int main(int argc, char **argv) {
@@ -88,7 +102,6 @@ int main(int argc, char **argv) {
 
         // UART logic.
         if (top->clk) {
-            tx_div = (tx_div + 1) % UART_CLK_DIV;
             rx_div = (rx_div + 1) % UART_CLK_DIV;
 
             // Send a bit to DUT RX pin.
@@ -101,12 +114,19 @@ int main(int argc, char **argv) {
                 }
             }
             // Receive a bit from RUT TX pin.
-            if (tx_pending.size() == 0) {
+            if (tx_div == -1) {
                 if (!top->tx) {
-                    tx_pending.push_back(1);
-                    tx_div = UART_CLK_DIV / 2;
+                    tx_div = 0;
                 }
-            } else if (tx_div == 0) {
+            } else {
+                tx_div = (tx_div + 1) % UART_CLK_DIV;
+                if (tx_div == 0) {
+                    tx_pending.push_back(top->tx);
+                    if (tx_pending.size() == 9) {
+                        uart_handle_tx_pending();
+                        tx_div = -1;
+                    }
+                }
             }
         }
     }

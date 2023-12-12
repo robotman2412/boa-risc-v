@@ -164,7 +164,7 @@ void p_jump() {
     send_ack(A_ACK);
     asm("csrci mstatus, 8");
     asm("csrc mie, %0" ::"r"(0xffffffff));
-    data.p_jump.addr();
+    ((void (*)())data.p_jump.addr)();
     asm("csrci mstatus, 8");
     asm("csrc mie, %0" ::"r"(0xffffffff));
     _start();
@@ -177,7 +177,7 @@ void p_call() {
         return;
     }
     send_ack(A_ACK);
-    data.p_jump.addr();
+    ((void (*)())data.p_call.addr)();
 }
 
 

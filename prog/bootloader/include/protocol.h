@@ -13,6 +13,9 @@
 #include <stdint.h>
 
 
+#ifndef DATA_MAX
+#define DATA_MAX 16
+#endif
 
 // Ping packet, can be used to tell if the connection is alive.
 #define P_PING  0x00
@@ -55,9 +58,9 @@
 // Packet header structure.
 typedef struct {
     // Describes the request or data stored in this packet.
-    size_t type;
+    uint32_t type;
     // Length of the remaining data.
-    size_t length;
+    uint32_t length;
 } phdr_t;
 
 // P_PING and P_PONG data format.
@@ -75,29 +78,29 @@ typedef struct {
 // P_WRITE data format.
 typedef struct {
     // Base address to write to.
-    size_t addr;
+    uint32_t addr;
     // Length to write.
-    size_t length;
+    uint32_t length;
 } p_write_t;
 
 // P_READ data format.
 typedef struct {
     // Base address to read from.
-    size_t addr;
+    uint32_t addr;
     // Length to read.
-    size_t length;
+    uint32_t length;
 } p_read_t;
 
 // P_JUMP data format.
 typedef struct {
     // Address to jump to.
-    void (*addr)();
+    uint32_t addr;
 } p_jump_t;
 
 // P_CALL data format.
 typedef struct {
     // Address to call.
-    void (*addr)();
+    uint32_t addr;
 } p_call_t;
 
 // Packet data union.
@@ -108,4 +111,5 @@ typedef union {
     p_read_t  p_read;
     p_jump_t  p_jump;
     p_call_t  p_call;
+    uint8_t   raw[DATA_MAX];
 } p_data_t;

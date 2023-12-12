@@ -1,0 +1,3 @@
+[submodule "tools/programmer/kbelf"]
+	path = tools/programmer/kbelf
+	url = https://robotman2412@github.com/robotman2412/KiloElfLoader

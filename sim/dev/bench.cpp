@@ -16,6 +16,8 @@
 // UART clock divider value.
 #define UART_CLK_DIV 4
 
+// File to use for the UART.
+FILE          *uart;
 // Original fcntl flags.
 int            orig_flags;
 // Original termios config.
@@ -23,9 +25,9 @@ struct termios orig_term;
 
 void atexit_func() {
     // Restore stdin.
-    fcntl(0, F_SETFL, orig_flags);
+    fcntl(fileno(uart), F_SETFL, orig_flags);
     // Restore TTY.
-    tcsetattr(0, TCSANOW, &orig_term);
+    tcsetattr(fileno(uart), TCSANOW, &orig_term);
 }
 
 // Clock divider value for DUT TX pin.
@@ -61,12 +63,14 @@ void uart_add_rx_pending(uint8_t value) {
     for (int i = 0; i < 8; i++) {
         rx_pending.push_back((value >> i) & 1);
     }
-    if (direction != -1) {
-        printf("\n> ");
-        direction = -1;
+    if (use_hex) {
+        if (direction != -1) {
+            printf("\n> ");
+            direction = -1;
+        }
+        printf("%02x ", value);
+        fflush(stdout);
     }
-    printf("%02x ", value);
-    fflush(stdout);
 }
 
 // Receive a byte from DUT RX pin.
@@ -87,6 +91,10 @@ void uart_handle_tx_pending() {
             fputc(value, stdout);
         }
         fflush(stdout);
+        if (uart != stdin) {
+            fputc(value, uart);
+            fflush(uart);
+        }
     }
     tx_pending.clear();
 }
@@ -95,14 +103,26 @@ int main(int argc, char **argv) {
     // Add exit handlers.
     atexit(atexit_func);
 
+    // Check UART file.
+    char const *uart_path = getenv("UART");
+    if (!uart_path || !*uart_path) {
+        uart = stdin;
+    } else {
+        uart = fopen(uart_path, "w+b");
+        if (!uart) {
+            printf("Failed to open %s\n", uart_path);
+            return 1;
+        }
+    }
+
     // Set stdin to nonblocking.
     orig_flags = fcntl(0, F_GETFL);
-    fcntl(0, F_SETFL, orig_flags | O_NONBLOCK);
+    fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
     // Set TTY to character break.
-    tcgetattr(0, &orig_term);
+    tcgetattr(fileno(uart), &orig_term);
     struct termios new_term  = orig_term;
     new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
-    tcsetattr(0, TCSANOW, &new_term);
+    tcsetattr(fileno(uart), TCSANOW, &new_term);
 
     // Create contexts.
     VerilatedContext *contextp = new VerilatedContext;
@@ -130,11 +150,11 @@ int main(int argc, char **argv) {
         top->clk ^= 1;
 
         // Check input.
-        int c = getc(stdin);
-        if (c == 4) {
+        int c = getc(uart);
+        if (c == 4 && uart == stdin) {
             break;
         } else if (c >= 0) {
-            if (use_hex) {
+            if (use_hex && uart == stdin) {
                 if (prev) {
                     if (ishex(c)) {
                         uart_add_rx_pending((gethex(prev) << 4) | gethex(c));

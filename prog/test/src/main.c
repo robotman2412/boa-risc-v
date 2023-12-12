@@ -34,9 +34,10 @@ void main() {
     // Set up interrupts.
     asm("csrs mie, %0" ::"r"(0x00020000));
     asm("csrsi mstatus, 8");
-    print("What's your name?\n> ");
-    while (!done)
-        ;
+    while (!done);
+    done = false;
+    print("Hello, what's your name?\n> ");
+    while (!done);
     print("Hello, ");
     print((char const *)rxbuf);
     print("!\n");

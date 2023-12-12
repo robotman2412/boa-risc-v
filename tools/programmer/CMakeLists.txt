@@ -19,7 +19,6 @@ add_definitions(
     -DKBELF_RISCV_HOST_RVC=0
     -DKBELF_RISCV_HOST_FABI=KBELF_RISCV_FLAG_FABI_SOFT
     -DKBELF_RISCV_HOST_RVE=0
-    -DKBELF_DEBUG
     -DDATA_MAX=65536
 )
 add_subdirectory(kbelf)

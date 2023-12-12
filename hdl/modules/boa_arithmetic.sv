@@ -39,6 +39,38 @@ endmodule
 
 
 
+// Multiple-adder configurable pipelined multiplier.
+module boa_mul_addpl#(
+    // Number of pipeline stages, at least 2.
+    parameter stages = 2
+)(
+    // CPU clock.
+    input  logic       clk,
+    
+    // Left-hand side is unsigned.
+    input  logic       u_lhs,
+    // Right-hand side is unsigned.
+    input  logic       u_rhs,
+    
+    // Left-hand side.
+    input  logic[31:0] lhs,
+    // Right-hand side.
+    input  logic[31:0] rhs,
+    // Multiplication result.
+    output logic[63:0] res
+);
+    // Expand inputs to 64-bit.
+    logic[63:0] tmp_lhs;
+    assign tmp_lhs[31:0]  = lhs;
+    assign tmp_lhs[63:32] = u_lhs ? 0 : lhs[31] * 32'hffff_ffff;
+    logic[63:0] tmp_rhs;
+    assign tmp_rhs[31:0]  = rhs;
+    assign tmp_rhs[63:32] = u_rhs ? 0 : rhs[31] * 32'hffff_ffff;
+    
+endmodule
+
+
+
 // Simple zero latency divider.
 module boa_div_simple(
     // Perform unsigned division.

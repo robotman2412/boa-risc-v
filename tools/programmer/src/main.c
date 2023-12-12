@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <termios.h>
+#include <unistd.h>
 
 // Maximum number of retries.
 #define RETRY_COUNT 3
@@ -44,6 +45,8 @@ phdr_t   header;
 p_data_t data;
 // Current checksum.
 uint8_t  xsum;
+// Received checksum.
+uint8_t  rx_xsum;
 
 // UART handle.
 FILE *uart;
@@ -55,25 +58,30 @@ void handle_ncap();
 // Handle a successfully received packet.
 void handle_packet();
 
-// Send a packet.
-void send_packet(phdr_t const *header, void const *data) {
-    fputc(2, uart);
+// Send a packet to a different stream.
+void send_packet1(FILE *fd, phdr_t const *header, void const *data) {
+    fputc(2, fd);
     uint8_t xsum = 2;
 
     uint8_t const *tx_ptr = (uint8_t const *)header;
-    fwrite(tx_ptr, 1, sizeof(phdr_t), uart);
+    fwrite(tx_ptr, 1, sizeof(phdr_t), fd);
     for (size_t i = 0; i < sizeof(phdr_t); i++) {
         xsum += tx_ptr[i];
     }
 
     tx_ptr = (uint8_t const *)data;
-    fwrite(tx_ptr, 1, header->length, uart);
+    fwrite(tx_ptr, 1, header->length, fd);
     for (size_t i = 0; i < header->length; i++) {
         xsum += tx_ptr[i];
     }
 
-    fputc(xsum, uart);
-    fflush(uart);
+    fputc(xsum, fd);
+    fflush(fd);
+}
+
+// Send a packet.
+void send_packet(phdr_t const *header, void const *data) {
+    send_packet1(uart, header, data);
 }
 
 // Handle a received byte.
@@ -110,6 +118,7 @@ void handle_rx(uint8_t rxd) {
         if (rx_len == header.length)
             rx_type = RX_XSUM;
     } else if (rx_type == RX_XSUM) {
+        rx_xsum = rxd;
         if (xsum != rxd) {
             handle_xsum();
         } else if (header.length > sizeof(data)) {
@@ -127,7 +136,7 @@ static bool awaiting_packet, await_packet_resp;
 
 // Handle a packet with incorrect checksum.
 void handle_xsum() {
-    printf("Checksum error");
+    printf("Received checksum error: %02x vs %02x\n", xsum, rx_xsum);
     awaiting_packet   = 0;
     await_packet_resp = false;
 }
@@ -151,23 +160,32 @@ bool expect_ack(uint8_t type) {
 }
 
 // Await a packet.
-bool await_packet(phdr_t const *header, void const *data) {
+bool await_packet(phdr_t const *phdr, void const *pdat) {
     int try = 0;
     while (1) {
         if (try > RETRY_COUNT) {
+            FILE *fd = fopen("/tmp/boaprog_msg", "wb");
+            if (fd) {
+                send_packet1(fd, phdr, pdat);
+                fclose(fd);
+            }
             return false;
         } else if (try) {
             printf("Retry %d/%d\n", try, RETRY_COUNT);
         }
         awaiting_packet = true;
-        send_packet(header, data);
+        send_packet(phdr, pdat);
         while (awaiting_packet) {
             int c = fgetc(uart);
             if (c >= 0)
                 handle_rx(c);
         }
-        if (await_packet_resp && !expect_ack(A_XSUM)) {
-            return true;
+        if (await_packet_resp) {
+            if (expect_ack(A_XSUM)) {
+                printf("Sent checksum error: %02x vs %02x\n", (data.p_ack.cause >> 8) & 255, data.p_ack.cause & 255);
+            } else {
+                return true;
+            }
         }
         try++;
     }
@@ -314,10 +332,9 @@ int            orig_flags;
 struct termios orig_term;
 
 void atexit_func() {
-    // Restore stdin.
-    // fcntl(fileno(uart), F_SETFL, orig_flags);
-    // Restore TTY.
-    // tcsetattr(fileno(uart), TCSANOW, &orig_term);
+    // Restore UART.
+    fcntl(fileno(uart), F_SETFL, orig_flags);
+    tcsetattr(fileno(uart), TCSANOW, &orig_term);
 }
 
 int main(int argc, char **argv) {
@@ -334,14 +351,16 @@ int main(int argc, char **argv) {
         printf("Failed to open %s\n", argv[1]);
     }
 
-    // // Set UART to nonblocking.
-    // orig_flags = fcntl(0, F_GETFL);
-    // fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
-    // // Set TTY to character break.
-    // tcgetattr(fileno(uart), &orig_term);
-    // struct termios new_term  = orig_term;
-    // new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
-    // tcsetattr(fileno(uart), TCSANOW, &new_term);
+    // Set UART to nonblocking.
+    orig_flags = fcntl(0, F_GETFL);
+    fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
+    // Set TTY to character break.
+    tcgetattr(fileno(uart), &orig_term);
+    struct termios new_term  = orig_term;
+    new_term.c_oflag         = 0;
+    new_term.c_iflag         = 0;
+    new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
+    tcsetattr(fileno(uart), TCSANOW, &new_term);
 
     if (argc == 4 && !strcmp(argv[2], "upload")) {
         return !upload_elf(argv[3], false);

@@ -72,7 +72,9 @@ typedef struct {
 // P_ACK data format.
 typedef struct {
     // Acknowledgement type.
-    uint8_t ack_type;
+    uint8_t  ack_type;
+    // Cause of potential errors.
+    uint32_t cause;
 } p_ack_t;
 
 // P_WRITE data format.

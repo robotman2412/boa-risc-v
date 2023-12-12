@@ -36,6 +36,8 @@ module boa_peri_pmu(
     // Power management bus.
     pmu_bus.CPU     pmb
 );
-    assign pmb.rst  = bus.we[0] && bus.wdata[0];
-    assign pmb.shdn = bus.we[0] && bus.wdata[1];
+    assign pmb.rst   = bus.we[0] && bus.wdata[0];
+    assign pmb.shdn  = bus.we[0] && bus.wdata[1];
+    assign bus.ready = 1;
+    assign bus.rdata = 0;
 endmodule

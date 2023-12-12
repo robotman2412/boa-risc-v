@@ -65,7 +65,7 @@ module boa_stage_if#(
     // Next program counter.
     wire [31:1] next_pc = pc[31:1] + pbus.ready*2;
     // Next memory read is valid.
-    logic       valid   = 0;
+    logic       valid;
     
     // Program bus logic.
     assign pbus.re      = !fw_stall_if;

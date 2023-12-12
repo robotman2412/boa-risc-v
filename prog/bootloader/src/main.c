@@ -87,14 +87,22 @@ void send_packet(phdr_t const *header, void const *data) {
     UART0.fifo = xsum;
 }
 
-// Send an ACK packet.
-void send_ack(uint8_t ack_type) {
+// Send an ACK packet with a cause.
+void send_ack1(uint8_t ack_type, uint32_t cause) {
     phdr_t header = {
         .type   = P_ACK,
         .length = sizeof(p_ack_t),
     };
-    p_ack_t ack = {.ack_type = ack_type};
+    p_ack_t ack = {
+        .ack_type = ack_type,
+        .cause    = cause,
+    };
     send_packet(&header, &ack);
+}
+
+// Send an ACK packet.
+void send_ack(uint8_t ack_type) {
+    send_ack1(ack_type, 0);
 }
 
 
@@ -222,7 +230,7 @@ void handle_rx(uint8_t rxd) {
         }
     } else if (rx_type == RX_XSUM) {
         if (xsum != rxd) {
-            send_ack(A_XSUM);
+            send_ack1(A_XSUM, (rxd << 8) | xsum);
         } else if (header.type != P_WDATA && header.length > sizeof(data)) {
             send_ack(A_NCAP);
         } else {

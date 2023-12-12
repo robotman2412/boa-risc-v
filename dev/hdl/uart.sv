@@ -118,9 +118,9 @@ endmodule
 // Takes a clock that is 4x baudrate (e.g. 9600 baud means a 38400Hz clock).
 module boa_peri_uart#(
     // TX buffer depth, must be a power of 2 >= 4.
-    parameter tx_depth      = 4,
+    parameter tx_depth      = 16,
     // RX buffer depth, must be a power of 2 >= 4.
-    parameter rx_depth      = 4,
+    parameter rx_depth      = 16,
     // Stall writes on TX buffer full.
     parameter tx_full_stall = 1
 )(

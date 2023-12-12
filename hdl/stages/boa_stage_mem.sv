@@ -110,7 +110,7 @@ module boa_stage_mem(
     // Ready.
     logic       ready;
     // Read data.
-    logic       rdata;
+    logic[31:1] rdata;
     
     // Read enable.
     wire        d_re    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_LOAD;

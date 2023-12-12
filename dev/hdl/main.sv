@@ -17,6 +17,8 @@ module main#(
 )(
     // CPU clock.
     input  wire clk,
+    // Timekeeping clock.
+    input  wire rtc_clk,
     // Synchronous reset.
     input  wire rst,
     
@@ -56,7 +58,7 @@ module main#(
     
     // CPU.
     logic[31:16] irq;
-    boa32_cpu#(32'h4000f000, 0, 0) cpu(clk, rst, pbus, dbus, irq);
+    boa32_cpu#(32'h4000f000, 32'hff000000, 0, 0) cpu(clk, rtc_clk, rst, pbus, dbus, irq);
     
     // Interrupts.
     assign irq[16] = tx_empty;

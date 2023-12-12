@@ -21,7 +21,7 @@ module top(
     logic uart_clk;
     param_clk_div#(256, 1) clk_div(clk, uart_clk);
     pmu_bus pmb();
-    main#(.rom_file({boa_parentdir(`__FILE__), "/../obj_dir/rom.mem"})) main(clk, rst!=0, uart_clk, tx, rx, pmb);
+    main#(.rom_file({boa_parentdir(`__FILE__), "/../obj_dir/rom.mem"})) main(clk, clk, rst!=0, uart_clk, tx, rx, pmb);
     always @(posedge clk) begin
         if (pmb.shdn) begin $display("PMU poweroff"); $finish; end
         if (pmb.rst) rst <= 3;

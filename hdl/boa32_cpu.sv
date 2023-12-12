@@ -16,7 +16,7 @@
     Boa³² RV32IM_Zicsr processor.
     
     Pipeline:   5 stages (IF, ID, EX, MEM, WB)
-    IPC:        t.b.d.
+    IPC:        0.33 min, ?.?? avg, 1.00 max
     Interrupts: 16 external, 1 internal
     Privileges: M-mode
     
@@ -40,10 +40,16 @@
         0xf13   mipid       (0)
         0xf14   mhartid     (parameter)
         0xf15   mconfigptr  (0)
+    
+    Implemented MMIO:
+        cpummio + 0x000     mtime
+        cpummio + 0x008     mtimecmp
 */
 module boa32_cpu#(
     // Entrypoint address.
     parameter entrypoint    = 32'h4000_0000,
+    // CPU-local memory-mapped I/O address.
+    parameter cpummio       = 32'hff00_0000,
     // CSR mhartid value.
     parameter hartid        = 32'h0000_0000,
     // Print debug messages about CPU state.
@@ -51,6 +57,8 @@ module boa32_cpu#(
 )(
     // CPU clock.
     input  logic    clk,
+    // Timekeeping clock, must not be faster than CPU clock.
+    input  logic    rtc_clk,
     // Synchronous reset.
     input  logic    rst,
     
@@ -353,11 +361,14 @@ module boa32_cpu#(
     assign csr_ex.ex_priv       = 1;
     assign csr_ex.ex_epc[31:2]  = mem_wb_pc[31:2];
     assign csr_ex.ret_priv      = 1;
+    logic  mtime_irq;
     
     // Interrupt latching logic.
     always @(posedge clk) begin
         csr_ex.irq_ip[31:16] <= irq[31:16];
-        csr_ex.irq_ip[15:0]  <= 0;
+        csr_ex.irq_ip[15:4]  <= 0;
+        csr_ex.irq_ip[3]     <= mtime_irq;
+        csr_ex.irq_ip[2:0]   <= 0;
     end
     
     // Interrupt prioritization logic.
@@ -421,6 +432,24 @@ module boa32_cpu#(
     assign clear_mem = fw_exception;
     
     
+    /* ==== CPU memory mapped I/O ==== */
+    // Internal memory overlay.
+    boa_mem_bus dbus_out[2]();
+    boa_mem_bus dbus_in();
+    boa_mem_overlay overlay(dbus_in, dbus_out);
+    
+    // External memory connection.
+    assign dbus.re           = dbus_out[0].re;
+    assign dbus.we           = dbus_out[0].we;
+    assign dbus.addr         = dbus_out[0].addr;
+    assign dbus.wdata        = dbus_out[0].wdata;
+    assign dbus_out[0].ready = dbus.ready;
+    assign dbus_out[0].rdata = dbus.rdata;
+    
+    // Machine-level timer.
+    boa_mtime#(.addr(cpummio)) mtime(clk, rtc_clk, rst, dbus_out[1], mtime_irq);
+    
+    
     /* ==== Pipeline stages ==== */
     boa_stage_if#(.entrypoint(entrypoint)) st_if(
         clk, rst, clear_if, pbus,
@@ -454,7 +483,7 @@ module boa32_cpu#(
         fw_branch_correct, fw_stall_ex, fw_rd_ex
     );
     boa_stage_mem st_mem(
-        clk, rst, clear_mem, dbus, csr,
+        clk, rst, clear_mem, dbus_in, csr,
         // Pipeline input.
         ex_mem_valid && !fw_stall_ex, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, fw_rs1_mem ? fw_in_rs1_mem : ex_mem_rs1_val, fw_rs2_mem ? fw_in_rs2_mem : ex_mem_rs2_val, ex_mem_trap && !fw_stall_ex, ex_mem_cause,
         // Pipeline output.

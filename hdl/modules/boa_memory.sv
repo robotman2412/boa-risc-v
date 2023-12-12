@@ -7,6 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+`timescale 1ns/1ps
 `include "boa_defines.svh"
 
 
@@ -29,7 +30,7 @@ interface boa_mem_bus#(
     logic[alen-1:2] addr;
     // CPU -> MEM: Write data.
     logic[dlen-1:0] wdata;
-    // MEM -> CPU: Ready.
+    // MEM -> CPU: Ready, must be 1 if not selected.
     logic           ready;
     // MEM -> CPU: Read data.
     logic[dlen-1:0] rdata;
@@ -39,6 +40,49 @@ interface boa_mem_bus#(
     // Directions from MEM perspective.
     modport MEM (output ready, rdata, input re, we, addr, wdata);
 endinterface
+
+
+
+// Boa memory overlay.
+// Used for memories that detect their own addresses.
+module boa_mem_overlay#(
+    // Address bus size, at least 8.
+    parameter alen = 32,
+    // Data bus size, 32 or 64.
+    parameter dlen = 32,
+    // Number of MEM ports, at least 2.
+    parameter mems = 2,
+    // Number of write enables.
+    localparam wes = dlen/8
+)(
+    // CPU port.
+    boa_mem_bus.MEM         cpu,
+    // MEM ports.
+    boa_mem_bus.CPU         mem[mems]
+);
+    genvar x;
+    logic           ready_mask[mems];
+    logic[dlen-1:0] rdata_mask[mems];
+    generate
+        for (x = 0; x < mems; x = x + 1) begin
+            assign mem[x].re     = cpu.re;
+            assign mem[x].we     = cpu.we;
+            assign mem[x].addr   = cpu.addr;
+            assign mem[x].wdata  = cpu.wdata;
+            assign ready_mask[x] = mem[x].ready;
+            assign rdata_mask[x] = mem[x].rdata;
+        end
+    endgenerate
+    always_comb begin
+        integer i;
+        cpu.ready = 0;
+        cpu.rdata = 0;
+        for (i = 0; i < mems; i = i + 1) begin
+            cpu.ready &= ready_mask[i];
+            cpu.rdata |= rdata_mask[i];
+        end
+    end
+endmodule
 
 
 

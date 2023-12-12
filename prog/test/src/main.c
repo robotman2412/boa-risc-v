@@ -14,6 +14,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <string.h>
+
 extern void halt();
 
 size_t rxlen = 0;
@@ -40,5 +42,7 @@ void main() {
     while (!done);
     print("Hello, ");
     print((char const *)rxbuf);
-    print("!\n");
+    print("!\nYour name is ");
+    putd(strlen((char const *)rxbuf), 3);
+    print(" bytes long!\n");
 }

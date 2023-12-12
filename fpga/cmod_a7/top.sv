@@ -30,10 +30,12 @@ module top(
     end
     
     logic uart_clk;
-    param_clk_div#(12000000, 9600*4) clk_div(clk || shdn, uart_clk);
+    param_clk_div#(12000000, 9600*4) uart_div(clk || shdn, uart_clk);
+    logic rtc_clk;
+    param_clk_div#(12000000, 1000000) rtc_div(clk || shdn, rtc_clk);
     
     pmu_bus pmb();
-    main#(.rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"})) main(clk || shdn, rst!=0, uart_clk, txd, rxd, pmb);
+    main#(.rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"})) main(clk || shdn, rtc_clk, rst!=0, uart_clk, txd, rxd, pmb);
     
     always @(posedge clk) begin
         if (pmb.shdn) begin

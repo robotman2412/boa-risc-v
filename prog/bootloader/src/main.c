@@ -7,6 +7,7 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
+#include "mtime.h"
 #include "print.h"
 #include "protocol.h"
 #include "uart.h"
@@ -263,6 +264,11 @@ void isr() {
 
 // Does stuff?
 void main() {
+    // mtimecmp = 1000;
+    // mtime    = 0;
+    // asm("csrwi mie, 4");
+    // asm("csrsi mstatus, 8");
+    // while (1);
     while (1) {
         if (UART0.status.rx_hasdat) {
             handle_rx(UART0.fifo);

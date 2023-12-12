@@ -211,17 +211,19 @@ void handle_rx(uint8_t rxd) {
     } else if (rx_type == RX_NCAP) {
         xsum += rxd;
         rx_len++;
-        if (rx_len == header.length)
+        if (rx_len == header.length) {
             rx_type = RX_XSUM;
+        }
     } else if (rx_type == RX_DATA) {
         rx_ptr[rx_len++]  = rxd;
         xsum             += rxd;
-        if (rx_len == header.length)
+        if (rx_len == header.length) {
             rx_type = RX_XSUM;
+        }
     } else if (rx_type == RX_XSUM) {
         if (xsum != rxd) {
             send_ack(A_XSUM);
-        } else if (header.length > sizeof(data)) {
+        } else if (header.type != P_WDATA && header.length > sizeof(data)) {
             send_ack(A_NCAP);
         } else {
             switch (header.type) {

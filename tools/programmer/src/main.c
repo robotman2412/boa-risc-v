@@ -180,12 +180,14 @@ bool upload_elf(char const *filename, bool run) {
     // Open ELF file.
     kbelf_file file = kbelf_file_open(filename, NULL);
     if (!file) {
+        printf("Failed to open %s\n", filename);
         return false;
     }
 
     // Load ELF segments.
     kbelf_inst inst = kbelf_inst_load(file, 0);
     if (!inst) {
+        printf("Failed to load %s\n", filename);
         kbelf_file_close(file);
         return false;
     }
@@ -193,6 +195,7 @@ bool upload_elf(char const *filename, bool run) {
     // Send write commands.
     for (size_t i = 0; i < kbelf_inst_segment_len(inst); i++) {
         kbelf_segment seg = kbelf_inst_segment_get(inst, i);
+        printf("Writing to 0x%08x (%zu%%)\n", seg.vaddr_req, (i + 1) * 100 / kbelf_inst_segment_len(inst));
 
         // Request a write.
         phdr_t phdr = {
@@ -200,10 +203,11 @@ bool upload_elf(char const *filename, bool run) {
             .length = sizeof(p_write_t),
         };
         p_write_t p_write = {
-            .addr   = seg.laddr,
+            .addr   = seg.vaddr_req,
             .length = seg.size,
         };
         if (!await_packet(&phdr, &p_write) || !expect_ack(A_ACK)) {
+            printf("P_WRITE failed.\n");
             kbelf_inst_unload(inst);
             kbelf_file_close(file);
             return false;
@@ -215,6 +219,7 @@ bool upload_elf(char const *filename, bool run) {
             .length = seg.size,
         };
         if (!await_packet(&phdr, (void const *)seg.laddr) || !expect_ack(A_ACK)) {
+            printf("P_WDATA failed.\n");
             kbelf_inst_unload(inst);
             kbelf_file_close(file);
             return false;
@@ -231,6 +236,7 @@ bool upload_elf(char const *filename, bool run) {
             .addr = kbelf_inst_entrypoint(inst),
         };
         if (!await_packet(&phdr, &p_jump) || !expect_ack(A_ACK)) {
+            printf("P_JUMP failed.\n");
             kbelf_inst_unload(inst);
             kbelf_file_close(file);
             return false;
@@ -311,7 +317,7 @@ void atexit_func() {
     // Restore stdin.
     // fcntl(fileno(uart), F_SETFL, orig_flags);
     // Restore TTY.
-    tcsetattr(fileno(uart), TCSANOW, &orig_term);
+    // tcsetattr(fileno(uart), TCSANOW, &orig_term);
 }
 
 int main(int argc, char **argv) {
@@ -328,11 +334,14 @@ int main(int argc, char **argv) {
         printf("Failed to open %s\n", argv[1]);
     }
 
-    // Set TTY to character break.
-    tcgetattr(fileno(uart), &orig_term);
-    struct termios new_term  = orig_term;
-    new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
-    tcsetattr(fileno(uart), TCSANOW, &new_term);
+    // // Set UART to nonblocking.
+    // orig_flags = fcntl(0, F_GETFL);
+    // fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
+    // // Set TTY to character break.
+    // tcgetattr(fileno(uart), &orig_term);
+    // struct termios new_term  = orig_term;
+    // new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
+    // tcsetattr(fileno(uart), TCSANOW, &new_term);
 
     if (argc == 4 && !strcmp(argv[2], "upload")) {
         return !upload_elf(argv[3], false);

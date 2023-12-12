@@ -50,12 +50,14 @@ bool kbelfx_seg_alloc(kbelf_inst inst, size_t segs_len, kbelf_segment *segs) {
 
     // Compute segment addresses.
     for (size_t i = 0; i < segs_len; i++) {
-        kbelf_addr laddr     = (kbelf_laddr)mem + segs[i].vaddr_req - addr_min;
+        kbelf_laddr laddr    = (kbelf_laddr)mem + segs[i].vaddr_req - addr_min;
         segs[i].alloc_cookie = NULL;
         segs[i].laddr        = laddr;
         segs[i].vaddr_real   = segs[i].vaddr_req;
     }
     segs[0].alloc_cookie = mem;
+
+    return true;
 }
 
 // Memory allocator function to use for loading program segments.
@@ -71,7 +73,8 @@ void kbelfx_seg_free(kbelf_inst inst, size_t segs_len, kbelf_segment *segs) {
 // Open a binary file for reading.
 // User-defined.
 void *kbelfx_open(char const *path) {
-    return fopen(path, "rb");
+    FILE *fd = fopen(path, "rb");
+    return fd;
 }
 
 // Close a file.

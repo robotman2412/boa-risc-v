@@ -7,7 +7,7 @@ HDL   = $(shell find hdl -name '*.sv') \
 		$(shell find ../../dev/hdl -name '*.sv') \
 		$(shell find ../../hdl -name '*.sv')
 SRC   = src/main.S
-PROG ?= test
+PROG ?= bootloader
 
 all: wave
 

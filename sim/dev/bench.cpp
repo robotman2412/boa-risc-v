@@ -14,20 +14,28 @@
 #include <vector>
 
 // UART clock divider value.
-#define UART_CLK_DIV 4
+#define UART_CLK_DIV 1024
 
 // File to use for the UART.
 FILE          *uart;
 // Original fcntl flags.
-int            orig_flags;
+int            uart_orig_flags;
 // Original termios config.
-struct termios orig_term;
+struct termios uart_orig_term;
+// Original fcntl flags.
+int            stdin_orig_flags;
+// Original termios config.
+struct termios stdin_orig_term;
 
 void atexit_func() {
+    if (uart != stdin) {
+        // Restore UART.
+        fcntl(fileno(uart), F_SETFL, uart_orig_flags);
+        tcsetattr(fileno(uart), TCSANOW, &uart_orig_term);
+    }
     // Restore stdin.
-    fcntl(fileno(uart), F_SETFL, orig_flags);
-    // Restore TTY.
-    tcsetattr(fileno(uart), TCSANOW, &orig_term);
+    fcntl(fileno(stdin), F_SETFL, stdin_orig_flags);
+    tcsetattr(fileno(stdin), TCSANOW, &stdin_orig_term);
 }
 
 // Clock divider value for DUT TX pin.
@@ -115,14 +123,25 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Set stdin to nonblocking.
-    orig_flags = fcntl(0, F_GETFL);
-    fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
+    if (uart != stdin) {
+        // Set UART to nonblocking.
+        uart_orig_flags = fcntl(0, F_GETFL);
+        fcntl(fileno(uart), F_SETFL, uart_orig_flags | O_NONBLOCK);
+        // Set TTY to character break.
+        tcgetattr(fileno(uart), &uart_orig_term);
+        struct termios new_term  = uart_orig_term;
+        new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
+        tcsetattr(fileno(uart), TCSANOW, &new_term);
+    }
+
+    // Set UART to nonblocking.
+    stdin_orig_flags = fcntl(0, F_GETFL);
+    fcntl(fileno(stdin), F_SETFL, stdin_orig_flags | O_NONBLOCK);
     // Set TTY to character break.
-    tcgetattr(fileno(uart), &orig_term);
-    struct termios new_term  = orig_term;
+    tcgetattr(fileno(stdin), &stdin_orig_term);
+    struct termios new_term  = stdin_orig_term;
     new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
-    tcsetattr(fileno(uart), TCSANOW, &new_term);
+    tcsetattr(fileno(stdin), TCSANOW, &new_term);
 
     // Create contexts.
     VerilatedContext *contextp = new VerilatedContext;
@@ -150,11 +169,11 @@ int main(int argc, char **argv) {
         top->clk ^= 1;
 
         // Check input.
-        int c = getc(uart);
-        if (c == 4 && uart == stdin) {
+        int c = getc(stdin);
+        if (c == 4) {
             break;
         } else if (c >= 0) {
-            if (use_hex && uart == stdin) {
+            if (use_hex) {
                 if (prev) {
                     if (ishex(c)) {
                         uart_add_rx_pending((gethex(prev) << 4) | gethex(c));
@@ -166,6 +185,12 @@ int main(int argc, char **argv) {
                     prev = ishex(c) ? c : 0;
                 }
             } else {
+                uart_add_rx_pending(c);
+            }
+        }
+        if (uart != stdin) {
+            c = getc(uart);
+            if (c >= 0) {
                 uart_add_rx_pending(c);
             }
         }

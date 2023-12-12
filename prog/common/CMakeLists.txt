@@ -10,10 +10,20 @@
 cmake_minimum_required(VERSION 3.10.0)
 
 cmake_policy(SET CMP0076 NEW)
+cmake_policy(SET CMP0054 NEW)
+cmake_policy(SET CMP0057 NEW)
+
+if(NOT DEFINED memory_layout)
+    set(memory_layout ram)
+endif()
 
 if(NOT DEFINED linkerscript)
-    set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/linker.ld)
+    set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/ld/linker_${memory_layout}.ld)
 endif()
+
+target_compile_definitions(${target} PRIVATE
+    -DMEMORY_LAYOUT=${memory_layout}
+)
 
 target_compile_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2
@@ -24,7 +34,7 @@ target_compile_options(${target} PUBLIC
 target_link_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs
     -T${linkerscript}
-    -Wl,--gc-sections -Wl,-L${CMAKE_CURRENT_LIST_DIR}
+    -Wl,--gc-sections -Wl,-L${CMAKE_CURRENT_LIST_DIR}/ld
 )
 
 target_include_directories(${target} PUBLIC SYSTEM ${CMAKE_CURRENT_LIST_DIR}/system)

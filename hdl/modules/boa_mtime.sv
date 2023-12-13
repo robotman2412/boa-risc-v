@@ -28,6 +28,10 @@ module boa_mtime#(
     // Interrupt signal.
     output logic    irq
 );
+    initial begin
+        bus.ready = 1;
+    end
+    
     // RTC domain: Timer register.
     logic[63:0] rtc_mtime;
     // RTC domain: Comparison register.
@@ -69,35 +73,39 @@ module boa_mtime#(
     
     // Memory-mapped access logic.
     always @(posedge clk) begin
-        if (bus.we == 3) begin
-            // Write access logic.
-            if (bus.addr[31:2] == addr[31:2]) begin
+        // Write access logic.
+        if (bus.we == 15) begin
+            if (!bus.ready) begin
+                cpu_mtime_we        <= cpu_mtime_we & ~cpu_mtime_ack;
+                bus.ready           <= cpu_mtime_we == 0 && cpu_mtime_ack == 0;
+            end else if (bus.addr[31:2] == addr[31:2]) begin
                 cpu_mtime_we[0]     <= 1;
-                bus.ready           <= cpu_mtime_ack[0];
+                bus.ready           <= 0;
             end else if (bus.addr[31:2] == addr[31:2]+1) begin
                 cpu_mtime_we[1]     <= 1;
-                bus.ready           <= cpu_mtime_ack[1];
+                bus.ready           <= 0;
             end else if (bus.addr[31:2] == addr[31:2]+2) begin
                 cpu_mtimecmp[31:0]  <= bus.wdata;
                 bus.ready           <= 1;
             end else if (bus.addr[31:2] == addr[31:2]+3) begin
                 cpu_mtimecmp[63:32] <= bus.wdata;
                 bus.ready           <= 1;
-            end
-            // Read access logic.
-            if (bus.addr[31:2] == addr[31:2]) begin
-                bus.rdata <= cpu_mtime[31:0];
-            end else if (bus.addr[31:2] == addr[31:2]+1) begin
-                bus.rdata <= cpu_mtime[63:32];
-            end else if (bus.addr[31:2] == addr[31:2]+2) begin
-                bus.rdata <= cpu_mtimecmp[31:0];
-            end else if (bus.addr[31:2] == addr[31:2]+3) begin
-                bus.rdata <= cpu_mtimecmp[63:32];
             end else begin
-                bus.rdata <= 0;
+                bus.ready           <= 1;
             end
         end else begin
             bus.ready <= 1;
+        end
+        // Read access logic.
+        if (bus.addr[31:2] == addr[31:2]) begin
+            bus.rdata <= cpu_mtime[31:0];
+        end else if (bus.addr[31:2] == addr[31:2]+1) begin
+            bus.rdata <= cpu_mtime[63:32];
+        end else if (bus.addr[31:2] == addr[31:2]+2) begin
+            bus.rdata <= cpu_mtimecmp[31:0];
+        end else if (bus.addr[31:2] == addr[31:2]+3) begin
+            bus.rdata <= cpu_mtimecmp[63:32];
+        end else begin
             bus.rdata <= 0;
         end
     end

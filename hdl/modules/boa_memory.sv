@@ -75,7 +75,7 @@ module boa_mem_overlay#(
     endgenerate
     always_comb begin
         integer i;
-        cpu.ready = 0;
+        cpu.ready = 1;
         cpu.rdata = 0;
         for (i = 0; i < mems; i = i + 1) begin
             cpu.ready &= ready_mask[i];

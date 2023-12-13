@@ -282,7 +282,7 @@ module boa_branch_decoder(
             
         end else begin
             // Non-branch instructions.
-            is_xret         = insn[6:2] == `RV_OP_SYSTEM && insn[21] && insn[28];
+            is_xret         = insn[6:2] == `RV_OP_SYSTEM && insn[14:12] == 0 && insn[21] && insn[28];
             is_branch       = 0;
             is_jump         = 0;
             add_lhs         = 'bx;

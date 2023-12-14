@@ -36,6 +36,7 @@ _start_bss_loop:
     blt a0, a1, _start_bss_loop
 _stop_bss_loop:
     
+#ifdef ROM_PROGRAM
     # Initialize DATA.
     la a0, __start_data
     la a1, __start_data_rom
@@ -54,6 +55,7 @@ _start_data_loop:
     addi a1, a1, 16
     blt a0, a2, _start_data_loop
 _stop_data_loop:
+#endif
     
     # Set ISR handler.
     la t0, __isr_handler

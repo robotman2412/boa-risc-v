@@ -264,11 +264,6 @@ void isr() {
 
 // Does stuff?
 void main() {
-    mtimecmp = 10000;
-    mtime    = 0;
-    asm("csrwi mie, 8");
-    asm("csrsi mstatus, 8");
-    while (1);
     while (1) {
         if (UART0.status.rx_hasdat) {
             handle_rx(UART0.fifo);

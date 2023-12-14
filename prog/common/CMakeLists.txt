@@ -21,9 +21,11 @@ if(NOT DEFINED linkerscript)
     set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/ld/linker_${memory_layout}.ld)
 endif()
 
-target_compile_definitions(${target} PRIVATE
-    -DMEMORY_LAYOUT=${memory_layout}
-)
+if(${memory_layout} EQUAL "ram")
+    target_compile_definitions(${target} PUBLIC
+        -DROM_PROGRAM
+    )
+endif()
 
 target_compile_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2

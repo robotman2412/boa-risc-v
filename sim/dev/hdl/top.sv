@@ -19,7 +19,7 @@ module top(
     `include "boa_fileio.svh"
     logic[1:0] rst = 3;
     logic uart_clk;
-    param_clk_div#(256, 1) clk_div(clk, uart_clk);
+    param_clk_div#(64, 1) clk_div(clk, uart_clk);
     pmu_bus pmb();
     main#(.rom_file({boa_parentdir(`__FILE__), "/../obj_dir/rom.mem"})) main(clk, clk, rst!=0, uart_clk, tx, rx, pmb);
     always @(posedge clk) begin

@@ -17,11 +17,11 @@ module param_clk_div#(
     output logic clk_slow
 );
     generate
-        if (slow_hz > fast_hz) begin
+        if (slow_hz > fast_hz) begin: gt
             $error("slow_hz must be less than or equal to fast_hz");
-        end else if (slow_hz == fast_hz) begin
+        end else if (slow_hz == fast_hz) begin: eq
             assign clk_slow = clk_fast;
-        end else begin
+        end else begin: lt
             localparam div = fast_hz / slow_hz;
             localparam exp = $clog2(div-1)-1;
             logic[exp:0] div_reg;

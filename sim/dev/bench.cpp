@@ -14,7 +14,7 @@
 #include <vector>
 
 // UART clock divider value.
-#define UART_CLK_DIV 1024
+#define UART_CLK_DIV 256
 
 // File to use for the UART.
 FILE          *uart;

@@ -39,14 +39,16 @@ target_link_options(${target} PUBLIC
     -Wl,--gc-sections -Wl,-L${CMAKE_CURRENT_LIST_DIR}/ld
 )
 
-target_include_directories(${target} PUBLIC SYSTEM ${CMAKE_CURRENT_LIST_DIR}/system)
+target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/system)
 target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 
-target_sources(${target} PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/asm/int64.S
-    ${CMAKE_CURRENT_LIST_DIR}/asm/isr.S
-    ${CMAKE_CURRENT_LIST_DIR}/asm/start.S
-    
-    ${CMAKE_CURRENT_LIST_DIR}/src/print.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/string.c
-)
+if(NOT DEFINED nodefaultsrc)
+    target_sources(${target} PUBLIC
+        ${CMAKE_CURRENT_LIST_DIR}/asm/int64.S
+        ${CMAKE_CURRENT_LIST_DIR}/asm/isr.S
+        ${CMAKE_CURRENT_LIST_DIR}/asm/start.S
+        
+        ${CMAKE_CURRENT_LIST_DIR}/src/print.c
+        ${CMAKE_CURRENT_LIST_DIR}/src/string.c
+    )
+endif()

@@ -1,0 +1,55 @@
+# RV32I
+riscv-tests/isa/rv32ui/lui.S
+riscv-tests/isa/rv32ui/sltu.S
+riscv-tests/isa/rv32ui/sh.S
+riscv-tests/isa/rv32ui/add.S
+riscv-tests/isa/rv32ui/srl.S
+riscv-tests/isa/rv32ui/lbu.S
+riscv-tests/isa/rv32ui/lhu.S
+riscv-tests/isa/rv32ui/sw.S
+riscv-tests/isa/rv32ui/bgeu.S
+riscv-tests/isa/rv32ui/lh.S
+riscv-tests/isa/rv32ui/sb.S
+riscv-tests/isa/rv32ui/srai.S
+riscv-tests/isa/rv32ui/jal.S
+riscv-tests/isa/rv32ui/bge.S
+riscv-tests/isa/rv32ui/sll.S
+riscv-tests/isa/rv32ui/sub.S
+riscv-tests/isa/rv32ui/beq.S
+riscv-tests/isa/rv32ui/blt.S
+riscv-tests/isa/rv32ui/lb.S
+riscv-tests/isa/rv32ui/bltu.S
+riscv-tests/isa/rv32ui/ori.S
+riscv-tests/isa/rv32ui/slt.S
+riscv-tests/isa/rv32ui/auipc.S
+riscv-tests/isa/rv32ui/sra.S
+riscv-tests/isa/rv32ui/slti.S
+riscv-tests/isa/rv32ui/addi.S
+riscv-tests/isa/rv32ui/jalr.S
+riscv-tests/isa/rv32ui/slli.S
+riscv-tests/isa/rv32ui/simple.S
+riscv-tests/isa/rv32ui/and.S
+riscv-tests/isa/rv32ui/sltiu.S
+riscv-tests/isa/rv32ui/or.S
+riscv-tests/isa/rv32ui/xor.S
+riscv-tests/isa/rv32ui/andi.S
+riscv-tests/isa/rv32ui/srli.S
+riscv-tests/isa/rv32ui/lw.S
+riscv-tests/isa/rv32ui/xori.S
+riscv-tests/isa/rv32ui/bne.S
+
+# Unaligned access.
+# riscv-tests/isa/rv32ui/ma_data.S
+
+# Zifencei extension
+# riscv-tests/isa/rv32ui/fence_i.S
+
+# M extension
+riscv-tests/isa/rv32um/mul.S
+riscv-tests/isa/rv32um/mulh.S
+riscv-tests/isa/rv32um/div.S
+riscv-tests/isa/rv32um/mulhsu.S
+riscv-tests/isa/rv32um/rem.S
+riscv-tests/isa/rv32um/mulhu.S
+riscv-tests/isa/rv32um/remu.S
+riscv-tests/isa/rv32um/divu.S

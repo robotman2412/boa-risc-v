@@ -134,8 +134,12 @@ module boa_stage_id#(
         insn_valid, insn_legal
     );
     
+    // ECALL / EBREAK logic.
+    wire is_ecall  = r_insn[6:2] == `RV_OP_SYSTEM && r_insn[14:12] == 0 && r_insn[31:20] == 0;
+    wire is_ebreak = r_insn[6:2] == `RV_OP_SYSTEM && r_insn[14:12] == 0 && r_insn[31:20] == 1;
+    
     // Register decoder.
-    wire use_rs1, use_rs2, use_rs3, use_rd;
+    logic use_rs1, use_rs2, use_rs3, use_rd;
     boa_reg_decoder reg_decd(r_insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
@@ -144,7 +148,6 @@ module boa_stage_id#(
     assign is_sret        = !r_insn[29];
     
     // Pipeline output logic.
-    assign q_valid          = r_valid && !clear && insn_legal && insn_valid;
     assign q_pc             = r_pc;
     assign q_insn           = r_insn;
     assign q_use_rd         = use_rd;
@@ -152,8 +155,29 @@ module boa_stage_id#(
     assign q_rs2_val        = rs2_val;
     assign q_branch         = is_branch;
     assign q_branch_predict = branch_predict;
-    assign q_trap           = !clear && (r_trap || r_valid && (!insn_valid || !insn_legal));
-    assign q_cause          = !r_trap ? `RV_ECAUSE_IILLEGAL : r_cause;
+    always @(*) begin
+        if (r_trap) begin
+            q_valid = 0;
+            q_trap  = !clear;
+            q_cause = r_cause;
+        end else if (r_valid && !insn_valid) begin
+            q_valid = 0;
+            q_trap  = !clear;
+            q_cause = `RV_ECAUSE_IILLEGAL;
+        end else if (r_valid && is_ecall) begin
+            q_valid = 0;
+            q_trap  = !clear;
+            q_cause = `RV_ECAUSE_M_ECALL;
+        end else if (r_valid && is_ebreak) begin
+            q_valid = 0;
+            q_trap  = !clear;
+            q_cause = `RV_ECAUSE_EBREAK;
+        end else begin
+            q_valid = r_valid && !clear;
+            q_trap  = 0;
+            q_cause = 'bx;
+        end
+    end
 endmodule
 
 

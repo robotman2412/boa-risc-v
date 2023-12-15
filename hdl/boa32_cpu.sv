@@ -553,7 +553,7 @@ module boa32_csrs#(
     // CSR mepc: M-mode exception program counter.
     reg  [31:1] csr_mepc;
     // CSR mcause: M-mode interrupt / trap cause.
-    wire [31:0] csr_mcause      = (csr_mcause_int << 31) | csr_mcause_int;
+    wire [31:0] csr_mcause      = (csr_mcause_int << 31) | csr_mcause_no;
     // CSR mtval: M-mode trap value.
     wire [31:0] csr_mtval       = 0;
     // CSR mvendorid: M-mode vendor ID.

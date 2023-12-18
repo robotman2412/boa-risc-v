@@ -7,15 +7,22 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
-    .global main
+#ifndef START_NAME
+#define START_NAME _start
+#endif
+#ifndef MAIN_NAME
+#define MAIN_NAME main
+#endif
+
+    .global MAIN_NAME
     .global __isr_handler
 
 
 
     .section ".boot.text"
     .align 2
-    .global _start
-_start:
+    .global START_NAME
+START_NAME:
     # Set up registers.
     .option push
     .option norelax
@@ -62,7 +69,7 @@ _stop_data_loop:
     csrw mtvec, t0
     
     # Jump to main function.
-    jal main
+    jal MAIN_NAME
 
 
 
@@ -84,6 +91,9 @@ _halt:
 
     .section ".bss"
     .align 4
+    .global __stack_size
+    .global __stack_bottom
+    .global __stack_top
     .equ __stack_size, 4096
     .lcomm __stack_bottom, __stack_size
     .equ __stack_top, __stack_bottom + __stack_size

@@ -52,13 +52,13 @@ module main#(
     boa_peri_pmu  pmu(clk, rst, peri_bus[1], pmb);
     
     // Memory interconnects.
-    boa_mem_mux#(.mems(2)) mux_a(clk, rst, pbus, mux_a_bus, {32'h4000f000, 32'h40010000},               {12, 16});
-    boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {32'h4000f000, 32'h40010000, 32'h80000000}, {12, 16, 12});
+    boa_mem_mux#(.mems(2)) mux_a(clk, rst, pbus, mux_a_bus, {32'h40001000, 32'h40010000},               {12, 16});
+    boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {32'h40001000, 32'h40010000, 32'h80000000}, {12, 16, 12});
     boa_mem_mux#(.mems(2)) mux_p(clk, rst, mux_b_bus[2], peri_bus, {32'h80000000, 32'h80000100}, {8, 8});
     
     // CPU.
     logic[31:16] irq;
-    boa32_cpu#(32'h4000f000, 32'hff000000, 0, 0) cpu(clk, rtc_clk, rst, pbus, dbus, irq);
+    boa32_cpu#(32'h40001000, 32'hff000000, 0, 0) cpu(clk, rtc_clk, rst, pbus, dbus, irq);
     
     // Interrupts.
     assign irq[16] = tx_empty;

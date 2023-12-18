@@ -300,7 +300,7 @@ module boa_branch_decoder(
             add_rhs[4:1]    = insn[11:8];
             add_rhs[10:5]   = insn[30:25];
             add_rhs[11]     = insn[7];
-            add_rhs[12]     = insn[30];
+            add_rhs[12]     = insn[31];
             add_rhs[20:13]  = insn[31] ? 8'hff : 8'h00;
             use_rs1         = 0;
             
@@ -493,7 +493,7 @@ module boa_insn_validator#(
             default:            begin valid = 0; end
             `RV_OP_LOAD:        begin valid = insn[14] ? (insn[13:12] < 2) + rv64 : (insn[13:12] < 3) + rv64; end
             `RV_OP_LOAD_FP:     begin valid = 0; $strobe("TODO: validity for LOAD_FP"); end
-            `RV_OP_MISC_MEM:    begin valid = insn[14:13] == 0; end
+            `RV_OP_MISC_MEM:    begin valid = insn[14:12] == 0; end
             `RV_OP_OP_IMM:      begin valid = valid_op_imm; end
             `RV_OP_AUIPC:       begin valid = 1; end
             `RV_OP_OP_IMM_32:   begin valid = rv64 && valid_op_imm; end

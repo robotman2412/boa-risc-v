@@ -7,8 +7,8 @@
     https://creativecommons.org/licenses/by-nc/4.0/
 */
 
-__start_rom     = 0x4000f000;
-__stop_rom      = 0x40010000;
+__start_rom     = 0x40001000;
+__stop_rom      = 0x40002000;
 __start_sram    = 0x40010000;
 __stop_sram     = 0x40020000;
 __start_peri    = 0x80000000;

@@ -8,7 +8,6 @@
 */
 
 #include "print.h"
-
 #include "uart.h"
 
 
@@ -45,5 +44,15 @@ void putd(unsigned long value, unsigned int decimals) {
     }
     for (int i = decimals - 1; i >= 0; i--) {
         UART0.fifo = '0' + buf[i];
+    }
+}
+
+// Print a hexadecimal number to the UART.
+void putx(unsigned long value, unsigned int decimals) {
+    static char const hextab[] = "0123456789ABCDEF";
+    if (decimals > 8)
+        decimals = 8;
+    for (int i = decimals * 4 - 4; i >= 0; i -= 4) {
+        UART0.fifo = hextab[(value >> i) & 15];
     }
 }

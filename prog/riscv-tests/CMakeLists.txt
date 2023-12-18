@@ -16,11 +16,16 @@ project(axo_test_rom C ASM)
 set(target rom.elf)
 
 add_executable(${target}
+    src/test_end.c
+    src/test_end.S
     $ENV{TEST_PATH}
 )
-target_include_directories(${target} PUBLIC include riscv-tests/env/p)
-target_include_directories(${target} PUBLIC include riscv-tests/isa/macros/scalar)
+target_include_directories(${target} PUBLIC include)
+target_include_directories(${target} PUBLIC riscv-tests/isa/macros/scalar)
 
-set(memory_layout rom)
-set(nodefaultsrc 1)
+target_compile_options(${target} PUBLIC -mno-relax)
+
+set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/linker.ld)
+target_compile_definitions(${target} PUBLIC -DSTART_NAME=__real_start)
+target_compile_definitions(${target} PUBLIC -DMAIN_NAME=_start)
 include(${CMAKE_CURRENT_LIST_DIR}/../common/CMakeLists.txt)

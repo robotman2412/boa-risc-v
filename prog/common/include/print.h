@@ -19,3 +19,5 @@ void putc(char c);
 void print(char const *str);
 // Print a decimal number to the UART.
 void putd(unsigned long value, unsigned int decimals);
+// Print a hexadecimal number to the UART.
+void putx(unsigned long value, unsigned int decimals);

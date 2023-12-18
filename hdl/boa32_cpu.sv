@@ -76,7 +76,7 @@ module boa32_cpu#(
     // IF: Exception occurred.
     logic       fw_exception;
     // IF: Exception vector.
-    logic[31:1] fw_tvec;
+    logic[31:2] fw_tvec;
     
     // IF/ID: Result valid.
     logic       if_id_valid;
@@ -197,7 +197,7 @@ module boa32_cpu#(
             // MRET.
             csr_ex.ret          = 1;
             fw_branch_predict   = 1;
-            fw_branch_target    = csr_ex.ret_epc<<1;
+            fw_branch_target    = csr_ex.ret_epc;
             if (debug) $strobe("MRET from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else if (id_ex_valid && is_jump) begin
             // JAL or JALR.
@@ -360,6 +360,7 @@ module boa32_cpu#(
     /* ==== Exception logic ==== */
     assign csr_ex.ex_priv       = 1;
     assign csr_ex.ex_epc[31:2]  = mem_wb_pc[31:2];
+    assign csr_ex.ex_epc[1]     = 0;
     assign csr_ex.ret_priv      = 1;
     logic  mtime_irq;
     
@@ -585,11 +586,11 @@ module boa32_csrs#(
             `RV_CSR_MEDELEG:    begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_medeleg; end
             `RV_CSR_MIDELEG:    begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mideleg; end
             `RV_CSR_MIE:        begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mie; end
-            `RV_CSR_MTVEC:      begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mtvec; end
+            `RV_CSR_MTVEC:      begin csr.exists = 1; csr.rdonly = 0; csr.rdata[31:2] = csr_mtvec[31:2]; csr.rdata[1:0] = 0; end
             `RV_CSR_MSTATUSH:   begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mstatush; end
             `RV_CSR_MIP:        begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mip; end
             `RV_CSR_MSCRATCH:   begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mscratch; end
-            `RV_CSR_MEPC:       begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mepc; end
+            `RV_CSR_MEPC:       begin csr.exists = 1; csr.rdonly = 0; csr.rdata[31:1] = csr_mepc[31:1]; csr.rdata[0] = 0; end
             `RV_CSR_MCAUSE:     begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mcause; end
             `RV_CSR_MTVAL:      begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mtval; end
             `RV_CSR_MVENDORID:  begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mvendorid; end

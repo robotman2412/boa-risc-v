@@ -1,11 +1,5 @@
-/*
-    Copyright © 2023, Julian Scheffers
-    
-    This work ("Boa³²") is licensed under a Creative Commons
-    Attribution-NonCommercial 4.0 International License:
-    
-    https://creativecommons.org/licenses/by-nc/4.0/
-*/
+
+// Copyright © 2023, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
 `include "boa_defines.svh"

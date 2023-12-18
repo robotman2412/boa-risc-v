@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Copyright © 2023, Julian Scheffers, see LICENSE for more information
+
 import sys, math
 
 def help():

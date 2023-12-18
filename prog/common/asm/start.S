@@ -1,11 +1,5 @@
-/*
-    Copyright © 2023, Julian Scheffers
-    
-    This work ("Boa³²") is licensed under a Creative Commons
-    Attribution-NonCommercial 4.0 International License:
-    
-    https://creativecommons.org/licenses/by-nc/4.0/
-*/
+
+// Copyright © 2023, Julian Scheffers, see LICENSE for more information
 
 #ifndef START_NAME
 #define START_NAME _start

@@ -1,4 +1,6 @@
 
+// Copyright © 2023, Julian Scheffers, see LICENSE for more information
+
 #include <stdio.h>
 #include <stdlib.h>
 

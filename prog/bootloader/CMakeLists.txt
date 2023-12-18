@@ -1,11 +1,6 @@
-#[[
-    Copyright © 2023, Julian Scheffers
 
-    This work ("Boa³²") is licensed under a Creative Commons
-    Attribution-NonCommercial 4.0 International License:
+# Copyright © 2023, Julian Scheffers, see LICENSE for more information
 
-    https://creativecommons.org/licenses/by-nc/4.0/
-#]]
 
 cmake_minimum_required(VERSION 3.10.0)
 

@@ -1,6 +1,7 @@
 
 // Copyright © 2023, Julian Scheffers, see LICENSE for more information
 
+#include "gpio.h"
 #include "mtime.h"
 #include "print.h"
 #include "protocol.h"
@@ -258,6 +259,9 @@ void isr() {
 
 // Does stuff?
 void main() {
+    GPIO.oe         |= 1;
+    GPIO.port        = 1;
+    GPIO.cfg[1].ext  = true;
     while (1) {
         if (UART0.status.rx_hasdat) {
             handle_rx(UART0.fifo);

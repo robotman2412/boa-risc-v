@@ -13,3 +13,4 @@ __mtimecmp      = __start_cpummio + 8;
 
 __uart0_base = __start_peri + 0x000;
 __pmu_base   = __start_peri + 0x100;
+__gpio_base  = __start_peri + 0x200;

@@ -111,6 +111,8 @@ endmodule
 // Basic UART module.
 // Takes a clock that is 4x baudrate (e.g. 9600 baud means a 38400Hz clock).
 module boa_peri_uart#(
+    // Base address to respond to.
+    parameter addr          = 32'h8000_0000,
     // TX buffer depth, must be a power of 2 >= 4.
     parameter tx_depth      = 16,
     // RX buffer depth, must be a power of 2 >= 4.
@@ -170,7 +172,7 @@ module boa_peri_uart#(
             // Reset.
             tx_prod <= 0;
             
-        end else if (tx_prod_next != tx_cons && bus.we[0] && bus.addr[2] == 0) begin
+        end else if (tx_prod_next != tx_cons && bus.we[0] && bus.addr<<2 == addr) begin
             // UART write triggered.
             tx_buf[tx_prod] <= bus.wdata[7:0];
             tx_prod         <= tx_prod_next;
@@ -228,7 +230,7 @@ module boa_peri_uart#(
             // Reset.
             rx_cons <= 0;
             
-        end else if (rx_cons != rx_prod && bus.re && bus.addr[2] == 0) begin
+        end else if (rx_cons != rx_prod && bus.re && bus.addr<<2 == addr) begin
             // UART receive requested.
             rx_cons <= rx_cons_next;
         end
@@ -247,17 +249,17 @@ module boa_peri_uart#(
     assign status[18]       = rx_prod_next == rx_cons;
     assign status[31:19]    = 0;
     always @(posedge clk) begin
-        if (tx_prod_next == tx_cons && bus.we && bus.addr[2] == 0) begin
+        if (tx_prod_next == tx_cons && bus.we[0] && bus.addr<<2 == addr) begin
             // UART write stall.
             bus.ready <= !tx_full_stall;
             bus.rdata <= rx_buf[rx_cons];
             
-        end else if (bus.re && bus.addr[2] == 0) begin
+        end else if (bus.re && bus.addr<<2 == addr) begin
             // UART read.
             bus.ready <= 1;
             bus.rdata <= rx_buf[rx_cons];
             
-        end else if (bus.addr[2] == 1) begin
+        end else if (bus.addr<<2 == addr+4) begin
             // UART status.
             bus.ready <= 1;
             bus.rdata <= status;
@@ -265,7 +267,7 @@ module boa_peri_uart#(
         end else begin
             // Nothing to wait for.
             bus.ready <= 1;
-            bus.rdata <= 'bx;
+            bus.rdata <= 0;
         end
     end 
 endmodule

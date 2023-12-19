@@ -19,7 +19,10 @@ interface pmu_bus();
 endinterface
 
 // Power management unit.
-module boa_peri_pmu(
+module boa_peri_pmu#(
+    // Base address to respond to.
+    parameter addr      = 32'h8000_0000
+)(
     // CPU clock.
     input  logic    clk,
     // Synchronous reset.
@@ -30,8 +33,8 @@ module boa_peri_pmu(
     // Power management bus.
     pmu_bus.CPU     pmb
 );
-    assign pmb.rst   = bus.we[0] && bus.wdata[0];
-    assign pmb.shdn  = bus.we[0] && bus.wdata[1];
+    assign pmb.rst   = bus.addr<<2 == addr && bus.we[0] && bus.wdata[0];
+    assign pmb.shdn  = bus.addr<<2 == addr && bus.we[0] && bus.wdata[1];
     assign bus.ready = 1;
     assign bus.rdata = 0;
 endmodule

@@ -40,8 +40,6 @@ endinterface
 // Boa memory overlay.
 // Used for memories that detect their own addresses.
 module boa_mem_overlay#(
-    // Address bus size, at least 8.
-    parameter alen = 32,
     // Data bus size, 32 or 64.
     parameter dlen = 32,
     // Number of MEM ports, at least 2.

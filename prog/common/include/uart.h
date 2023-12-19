@@ -30,11 +30,11 @@ typedef struct {
 // UART peripheral.
 typedef struct {
     // Write to send data, read to receive.
-    uint8_t volatile fifo;
+    volatile uint8_t       fifo;
     // Padding.
-    uint8_t volatile _padding0[3];
+    volatile uint8_t       _padding0[3];
     // Status register.
-    uart_status_t volatile status;
+    volatile uart_status_t status;
 } uart_t;
 
 // UART 0 address.

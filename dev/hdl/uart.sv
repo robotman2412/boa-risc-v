@@ -122,7 +122,7 @@ module boa_peri_uart#(
 )(
     // Peripheral bus clock.
     input  logic        clk,
-    // Global reset.
+    // Synchronous reset.
     input  logic        rst,
     // Peripheral bus interface.
     boa_mem_bus.MEM     bus,

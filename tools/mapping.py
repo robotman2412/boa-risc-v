@@ -19,6 +19,8 @@ class Mapping:
         self._gen_multimap()
     
     def _parse(self, raw: str):
+        rev = len(raw) and raw[0] == "~"
+        if rev: raw=raw[1:]
         if len(raw) == 0 or raw[0] not in '0123456789':
             raise ValueError("Broken format")
         tmp = []
@@ -50,6 +52,11 @@ class Mapping:
                 if sh-sl != dh-dl: raise ValueError("Broken format")
                 for i in range(sh-sl+1):
                     self.map[sl+i] = dl+i
+        if rev:
+            tmp = {}
+            for s in self.map:
+                tmp[self.map[s]] = s
+            self.map = tmp
     
     def _gen_multimap(self):
         self.multimap = []
@@ -111,9 +118,7 @@ if __name__ == "__main__":
     cur = Mapping(sys.argv[1])
     printed = False
     for i in range(2, len(sys.argv)):
-        if sys.argv[i] == "inv" or sys.argv[i] == "invert":
-            cur = cur.invert()
-        elif sys.argv[i] == "concat":
+        if sys.argv[i] == "concat":
             mm  = cur.invert().multimap
             p   = mm[0][0]+mm[0][2]
             tmp = ""
@@ -139,6 +144,18 @@ if __name__ == "__main__":
             printed = True
         elif sys.argv[i] == "show":
             print(cur)
+            printed = True
+        elif re.match("^0[xX][0-9a-fA-F]+$", sys.argv[i]):
+            print(hex(cur.apply(int(sys.argv[i], 0))))
+            printed = True
+        elif re.match("^0[bB][01]+$", sys.argv[i]):
+            print(bin(cur.apply(int(sys.argv[i], 0))))
+            printed = True
+        elif re.match("^0[oO][0-7]+$", sys.argv[i]):
+            print(oct(cur.apply(int(sys.argv[i], 0))))
+            printed = True
+        elif re.match("^[0-9]+$", sys.argv[i]):
+            print(cur.apply(int(sys.argv[i], 0)))
             printed = True
         else:
             cur = Mapping(sys.argv[i]).apply(cur)

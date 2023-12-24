@@ -22,16 +22,34 @@ class Mapping:
         if len(raw) == 0 or raw[0] not in '0123456789':
             raise ValueError("Broken format")
         tmp = []
-        while len(raw):
-            m   = re.match("[|,]?([0-9]+)(?::([0-9]+))?", raw)
-            if not m: raise ValueError("Broken format")
-            raw = raw[m.end():]
-            if m.group(2):
-                tmp += range(int(m.group(1)), int(m.group(2))-1, -1)
-            else:
-                tmp += [int(m.group(1))]
-        for i in range(len(tmp)):
-            self.map[len(tmp)-1-i] = tmp[i]
+        if re.match("^([|,]?([0-9]+)(:[0-9]+)?)+$", raw):
+            # Relative definition.
+            while len(raw):
+                m   = re.match("[|,]?([0-9]+)(?::([0-9]+))?", raw)
+                if not m: raise ValueError("Broken format")
+                raw = raw[m.end():]
+                if m.group(2):
+                    if int(m.group(1)) < int(m.group(2)): raise ValueError("Broken format")
+                    tmp += range(int(m.group(1)), int(m.group(2))-1, -1)
+                else:
+                    tmp += [int(m.group(1))]
+            for i in range(len(tmp)):
+                self.map[len(tmp)-1-i] = tmp[i]
+        else:
+            # Absolute definition.
+            while len(raw):
+                m   = re.match("[|,]?([0-9]+)(?::([0-9]+))?\\s*(?:to|->)\\s*([0-9]+)(?::([0-9]+))?", raw)
+                if not m: raise ValueError("Broken format")
+                raw = raw[m.end():]
+                sh = int(m.group(1))
+                sl = int(m.group(2) or m.group(1))
+                dh = int(m.group(3))
+                dl = int(m.group(4) or m.group(3))
+                if sl>sh: raise ValueError("Broken format")
+                if dl>dh: raise ValueError("Broken format")
+                if sh-sl != dh-dl: raise ValueError("Broken format")
+                for i in range(sh-sl+1):
+                    self.map[sl+i] = dl+i
     
     def _gen_multimap(self):
         self.multimap = []

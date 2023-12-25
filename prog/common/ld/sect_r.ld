@@ -1,7 +1,6 @@
 
 /* Copyright © 2023, Julian Scheffers, see LICENSE for more information */
 
-
 __start_text = .;
 .text : AT(0) { *(.boot.text) *(.text) *(.text.*) } :codeseg
 . = ALIGN(16);

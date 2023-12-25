@@ -10,68 +10,95 @@
 
 
 // RISC-V opcodes.
-`define RV_OP_LOAD          'b00000
-`define RV_OP_LOAD_FP       'b00001
-`define RV_OP_custom_0      'b00010
-`define RV_OP_MISC_MEM      'b00011
-`define RV_OP_OP_IMM        'b00100
-`define RV_OP_AUIPC         'b00101
-`define RV_OP_OP_IMM_32     'b00110
-`define RV_OP_STORE         'b01000
-`define RV_OP_STORE_FP      'b01001
-`define RV_OP_custom_1      'b01010
-`define RV_OP_AMO           'b01011
-`define RV_OP_OP            'b01100
-`define RV_OP_LUI           'b01101
-`define RV_OP_OP_32         'b01110
-`define RV_OP_MADD          'b10000
-`define RV_OP_MSUB          'b10001
-`define RV_OP_NMSUB         'b10010
-`define RV_OP_NMADD         'b10011
-`define RV_OP_OP_FP         'b10100
-`define RV_OP_custom_2      'b10110
-`define RV_OP_BRANCH        'b11000
-`define RV_OP_JALR          'b11001
-`define RV_OP_JAL           'b11011
-`define RV_OP_SYSTEM        'b11100
-`define RV_OP_custom_3      'b11110
+`define RV_OP_LOAD          5'b00000
+`define RV_OP_LOAD_FP       5'b00001
+`define RV_OP_custom_0      5'b00010
+`define RV_OP_MISC_MEM      5'b00011
+`define RV_OP_OP_IMM        5'b00100
+`define RV_OP_AUIPC         5'b00101
+`define RV_OP_OP_IMM_32     5'b00110
+`define RV_OP_STORE         5'b01000
+`define RV_OP_STORE_FP      5'b01001
+`define RV_OP_custom_1      5'b01010
+`define RV_OP_AMO           5'b01011
+`define RV_OP_OP            5'b01100
+`define RV_OP_LUI           5'b01101
+`define RV_OP_OP_32         5'b01110
+`define RV_OP_MADD          5'b10000
+`define RV_OP_MSUB          5'b10001
+`define RV_OP_NMSUB         5'b10010
+`define RV_OP_NMADD         5'b10011
+`define RV_OP_OP_FP         5'b10100
+`define RV_OP_custom_2      5'b10110
+`define RV_OP_BRANCH        5'b11000
+`define RV_OP_JALR          5'b11001
+`define RV_OP_JAL           5'b11011
+`define RV_OP_SYSTEM        5'b11100
+`define RV_OP_custom_3      5'b11110
+
+// RISC-V compressed opcodes.
+`define RV_OPC_ADDI4SPN     5'b00000
+`define RV_OPC_FLD          5'b00001
+`define RV_OPC_LW           5'b00010
+`define RV_OPC_FLW_LD       5'b00011
+`define RV_OPC_FSD          5'b00101
+`define RV_OPC_SW           5'b00110
+`define RV_OPC_FSW_SD       5'b00111
+
+`define RV_OPC_ADDI         5'b01000
+`define RV_OPC_JAL_ADDIW    5'b01001
+`define RV_OPC_LI           5'b01010
+`define RV_OPC_LUI_ADDI16SP 5'b01011
+`define RV_OPC_ALU          5'b01100
+`define RV_OPC_J            5'b01101
+`define RV_OPC_BEQZ         5'b01110
+`define RV_OPC_BNEZ         5'b01111
+
+`define RV_OPC_SLLI         5'b10000
+`define RV_OPC_FLDSP        5'b10001
+`define RV_OPC_LWSP         5'b10010
+`define RV_OPC_FLWSP_LDSP   5'b10011
+`define RV_OPC_JR_MV_ADD    5'b10100
+`define RV_OPC_FSDSP        5'b10101
+`define RV_OPC_SWSP         5'b10110
+`define RV_OPC_FSWSP_SDSP   5'b10111
 
 // RISC-V branch FUNCT3 values.
-`define RV_BRANCH_BEQ       'b000
-`define RV_BRANCH_BNE       'b001
-`define RV_BRANCH_BLT       'b100
-`define RV_BRANCH_BGE       'b101
-`define RV_BRANCH_BLTU      'b110
-`define RV_BRANCH_BGEU      'b111
+`define RV_BRANCH_BEQ       3'b000
+`define RV_BRANCH_BNE       3'b001
+`define RV_BRANCH_BLT       3'b100
+`define RV_BRANCH_BGE       3'b101
+`define RV_BRANCH_BLTU      3'b110
+`define RV_BRANCH_BGEU      3'b111
 
 // RISC-V ALU FUNCT3 values.
-`define RV_ALU_ADD          'b000
-`define RV_ALU_SLL          'b001
-`define RV_ALU_SLT          'b010
-`define RV_ALU_SLTU         'b011
-`define RV_ALU_XOR          'b100
-`define RV_ALU_SRL          'b101
-`define RV_ALU_OR           'b110
-`define RV_ALU_AND          'b111
+`define RV_ALU_ADD          3'b000
+`define RV_ALU_SLL          3'b001
+`define RV_ALU_SLT          3'b010
+`define RV_ALU_SLTU         3'b011
+`define RV_ALU_XOR          3'b100
+`define RV_ALU_SRL          3'b101
+`define RV_ALU_OR           3'b110
+`define RV_ALU_AND          3'b111
 
 // RISC-V MULDIV FUNCT3 values.
-`define RV_MULDIV_MUL       'b000
-`define RV_MULDIV_MULH      'b001
-`define RV_MULDIV_MULHSU    'b010
-`define RV_MULDIV_MULHU     'b011
-`define RV_MULDIV_DIV       'b100
-`define RV_MULDIV_DIVU      'b101
-`define RV_MULDIV_REM       'b110
-`define RV_MULDIV_REMU      'b111
+`define RV_MULDIV_MUL       3'b000
+`define RV_MULDIV_MULH      3'b001
+`define RV_MULDIV_MULHSU    3'b010
+`define RV_MULDIV_MULHU     3'b011
+`define RV_MULDIV_DIV       3'b100
+`define RV_MULDIV_DIVU      3'b101
+`define RV_MULDIV_REM       3'b110
+`define RV_MULDIV_REMU      3'b111
 
 // RISC-V SYSTEM FUNCT3 values.
-`define RV_SYSTEM_ECALL     'b000
-`define RV_SYSTEM_CSRRW     'b001
-`define RV_SYSTEM_CSRRS     'b010
-`define RV_SYSTEM_CSRRC     'b011
-`define RV_SYSTEM_CSRRWI    'b101
-`define RV_SYSTEM_CSRRSI    'b110
-`define RV_SYSTEM_CSRRCI    'b111
+`define RV_SYSTEM_ECALL     3'b000
+`define RV_SYSTEM_CSRRW     3'b001
+`define RV_SYSTEM_CSRRS     3'b010
+`define RV_SYSTEM_CSRRC     3'b011
+`define RV_SYSTEM_CSRRWI    3'b101
+`define RV_SYSTEM_CSRRSI    3'b110
+`define RV_SYSTEM_CSRRCI    3'b111
 
 
 

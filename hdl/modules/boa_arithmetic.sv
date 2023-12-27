@@ -69,6 +69,9 @@ endmodule
 
 
 
+/* verilator lint_off UNOPTFLAT */
+/* Also: really, verilator? */
+
 // Generic explicit divider bit.
 module boa_div_part#(
     // Bit shift position of divisor.
@@ -132,8 +135,8 @@ module boa_div_part#(
     assign q_divisor = r_divisor;
 endmodule
 
-// Uncached unsigned pipelined divider part with configurable latency.
-module boa_div_part_ucpl#(
+// Unsigned pipelined divider with configurable latency.
+module boa_udiv_pipelined#(
     // Number of pipeline registers, at least 1.
     parameter latency      = 1,
     // Pipeline register distribution, "begin", "end", "center" or "all".
@@ -212,6 +215,56 @@ module boa_div_part_ucpl#(
         end
     endgenerate
 endmodule
+/* verilator lint_on UNOPTFLAT */
+
+// Signed pipelined divider with configurable latency.
+module boa_div_pipelined#(
+    // Number of pipeline registers, at least 1.
+    parameter latency      = 1,
+    // Pipeline register distribution, "begin", "end", "center" or "all".
+    // "begin" and "end" place pipeline registers at their respective locations but not the opposite.
+    // "center" places pipeline register throughout but not at the beginning or end.
+    // "all" places pipeline registers at the beginning and end, and more in the center if latency >= 3.
+    parameter distribution = "center",
+    // Divider bit width.
+    parameter width        = 32
+)(
+    // Pipeline clock.
+    input  logic            clk,
+    // Perform unsigned division.
+    input  logic            u,
+    
+    // Left-hand side.
+    input  logic[width-1:0] lhs,
+    // Right-hand side.
+    input  logic[width-1:0] rhs,
+    
+    // Division result.
+    output logic[width-1:0] div_res,
+    // Modulo result.
+    output logic[width-1:0] mod_res
+);
+    // Correct sign of inputs.
+    wire [width-1:0] neg_lhs  = ~lhs + 1;
+    wire             sign_lhs = !u && lhs[31];
+    wire [width-1:0] tmp_lhs  = sign_lhs ? neg_lhs : lhs;
+    wire [width-1:0] neg_rhs  = ~rhs + 1;
+    wire             sign_rhs = !u && rhs[31];
+    wire [width-1:0] tmp_rhs  = sign_rhs ? neg_rhs : rhs;
+    
+    // Delegate division to the unsigned edition.
+    wire [width-1:0] u_div;
+    wire [width-1:0] u_mod;
+    boa_udiv_pipelined#(latency, distribution, width) udiv(
+        clk, tmp_lhs, tmp_rhs, u_div, u_mod
+    );
+    
+    // Correct sign of outputs.
+    wire [width-1:0] neg_div  = ~u_div + 1;
+    assign           div_res  = sign_lhs ^ sign_rhs ? neg_div : u_div;
+    wire [width-1:0] neg_mod  = ~u_mod + 1;
+    assign           mod_res  = sign_lhs ? neg_mod : u_mod;
+endmodule
 
 
 
@@ -230,4 +283,40 @@ module boa_shift_simple(
     output logic signed[31:0]   res
 );
     assign              res  = shr ? arith ? (lhs >>> rhs[4:0]) : (lhs >> rhs[4:0]) : (lhs << rhs[4:0]);
+endmodule
+
+
+
+// Pipeline delay helper.
+module boa_delay_comp#(
+    // Number of delay cycles.
+    parameter   delay   = 1,
+    // Timer exponent.
+    localparam  exp     = delay > 1 ? $clog2(delay) : 1
+)(
+    // Pipeline clock.
+    input  logic    clk,
+    // Delay trigger.
+    input  logic    trig,
+    // Wait output.
+    output logic    waiting
+);
+    generate
+        if (delay != 0) begin
+            // Timer register.
+            logic[exp-1:0] timer = 0;
+            
+            // Delay logic.
+            always @(posedge clk) begin
+                if (trig && timer == 0) begin
+                    timer <= delay;
+                end else if (timer != 0) begin
+                    timer <= timer - 1;
+                end
+            end
+            assign waiting = timer != 0;
+        end else begin
+            assign waiting = 0;
+        end
+    endgenerate
 endmodule

@@ -7,7 +7,9 @@
 
 module main#(
     // ROM image file.
-    parameter string rom_file = ""
+    parameter string  rom_file = "",
+    // UART buffer size.
+    parameter integer uart_buf = 4
 )(
     // CPU clock.
     input  logic        clk,
@@ -49,7 +51,9 @@ module main#(
     
     // UART.
     logic rx_full, tx_empty;
-    boa_peri_uart#(.addr('h000)) uart(clk, rst, peri_bus[0], uart_clk, txd, rxd, tx_empty, rx_full);
+    boa_peri_uart#(.addr('h000), .tx_depth(uart_buf), .rx_depth(uart_buf)) uart(
+        clk, rst, peri_bus[0], uart_clk, txd, rxd, tx_empty, rx_full
+    );
     // PMU interface.
     boa_peri_pmu #(.addr('h100)) pmu (clk, rst, peri_bus[1], pmb);
     // GPIO.

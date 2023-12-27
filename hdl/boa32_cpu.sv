@@ -267,6 +267,8 @@ module boa32_cpu#(
     logic       fw_stall_ex;
     // Stall MEM stage.
     logic       fw_stall_mem;
+    // Stall request from EX stage.
+    logic       ex_stall_req;
     // Stall request from MEM stage.
     logic       mem_stall_req;
     
@@ -321,7 +323,7 @@ module boa32_cpu#(
     boa_stage_mem_fw st_mem_fw(ex_mem_insn, use_rs1_mem, use_rs2_mem);
     always @(*) begin
         fw_stall_mem = mem_stall_req;
-        fw_stall_ex  = 0;
+        fw_stall_ex  = ex_stall_req;
         fw_stall_id  = 0;
         fw_stall_if  = 0;
         
@@ -478,7 +480,7 @@ module boa32_cpu#(
         // Pipeline output.
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         // Data hazard avoidance.
-        fw_branch_correct, fw_stall_ex, fw_rd_ex
+        fw_branch_correct, fw_stall_ex, fw_rd_ex, ex_stall_req
     );
     boa_stage_mem st_mem(
         clk, rst, clear_mem, dbus_in, csr,

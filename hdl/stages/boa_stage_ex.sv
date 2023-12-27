@@ -7,7 +7,10 @@
 
 
 // Boa³² pipline stage: EX (ALU and address calculation).
-module boa_stage_ex(
+module boa_stage_ex#(
+    // Divider latency, 0 to 33.
+    parameter div_latency = 1
+)(
     // CPU clock.
     input  logic        clk,
     // Synchronous reset.
@@ -63,7 +66,9 @@ module boa_stage_ex(
     // Stall EX stage.
     input  logic        fw_stall_ex,
     // Produces final result.
-    output logic        fw_rd
+    output logic        fw_rd,
+    // Stall request.
+    output logic        stall_req
 );
     // ID/EX: Result valid.
     logic       r_valid;
@@ -154,8 +159,22 @@ module boa_stage_ex(
     logic[31:0] mod_res;
     logic[31:0] shx_res;
     boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_res);
-    boa_div_simple div(div_u, r_rs1_val, r_rs2_val, div_res, mod_res);
+    generate
+        if (div_latency == 0) begin: l0
+            boa_div_simple div(
+                div_u, r_rs1_val, r_rs2_val, div_res, mod_res
+            );
+        end else begin: l1
+            boa_div_pipelined#(.latency(div_latency)) div(
+                clk, div_u, r_rs1_val, r_rs2_val, div_res, mod_res
+            );
+        end
+    endgenerate
     boa_shift_simple shift(shr_arith, shr, r_rs1_val, op_rhs_mux, shx_res);
+    
+    // Computation delay module.
+    wire is_divmod = d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && d_insn[14];
+    boa_delay_comp#(div_latency) div_delay(clk, is_divmod, stall_req);
     
     // Adder mode.
     wire        cmp           = (r_insn[6:2] == `RV_OP_BRANCH) || (is_op && ((r_insn[14:12] == `RV_ALU_SLT) || (r_insn[14:12] == `RV_ALU_SLTU)));
@@ -254,7 +273,7 @@ module boa_stage_ex(
     end
     
     // Pipeline barrier logic.
-    assign q_valid          = r_valid && !clear;
+    assign q_valid          = r_valid && !clear && !stall_req;
     assign q_pc             = r_pc;
     assign q_insn           = r_insn;
     assign q_use_rd         = r_use_rd;

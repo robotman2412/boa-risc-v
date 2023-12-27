@@ -9,7 +9,9 @@
 // Boa³² pipline stage: ID (instruction decode).
 module boa_stage_id#(
     // Print debug messages about CPU state.
-    parameter debug         = 0
+    parameter debug         = 0,
+    // Support RVC instructions.
+    parameter has_c         = 1
 )(
     // CPU clock.
     input  logic        clk,
@@ -36,6 +38,8 @@ module boa_stage_id#(
     output logic[31:1]  q_pc,
     // ID/EX: Current instruction word.
     output logic[31:0]  q_insn,
+    // ID/EX: Is 32-bit instruction.
+    output logic        q_ilen,
     // ID/EX: Stores to register RD.
     output logic        q_use_rd,
     // ID/EX: Value from RS1 register.
@@ -110,16 +114,23 @@ module boa_stage_id#(
         end
     end
     
-    
-    // Register file.
-    logic[31:0] rs1_val;
-    logic[31:0] rs2_val;
-    boa_regfile#(.debug(debug)) regfile(
-        clk, rst,
-        wb_we, wb_rd, wb_wdata,
-        r_insn[19:15], rs1_val,
-        r_insn[24:20], rs2_val
-    );
+    // Instruction decompression logic.
+    logic[31:0] decomp;
+    logic       decomp_valid;
+    wire        is_rvc = has_c && r_insn[1:0] != 2'b11;
+    wire [31:0] insn   = is_rvc ? decomp : r_insn;
+    generate
+        if (has_c) begin: rvc
+            boa_insn_decomp insn_decomp(
+                0, 32'hffff_ffff,
+                r_insn[15:0],
+                decomp, decomp_valid
+            );
+        end else begin: norvc
+            assign decomp_valid = 0;
+            assign decomp       = 0;
+        end
+    endgenerate
     
     // Instruction validator.
     wire insn_valid, insn_legal;
@@ -128,22 +139,33 @@ module boa_stage_id#(
         insn_valid, insn_legal
     );
     
+    // Register file.
+    logic[31:0] rs1_val;
+    logic[31:0] rs2_val;
+    boa_regfile#(.debug(debug)) regfile(
+        clk, rst,
+        wb_we, wb_rd, wb_wdata,
+        insn[19:15], rs1_val,
+        insn[24:20], rs2_val
+    );
+    
     // ECALL / EBREAK logic.
-    wire is_ecall  = r_insn[6:2] == `RV_OP_SYSTEM && r_insn[14:12] == 0 && r_insn[31:20] == 0;
-    wire is_ebreak = r_insn[6:2] == `RV_OP_SYSTEM && r_insn[14:12] == 0 && r_insn[31:20] == 1;
+    wire is_ecall  = insn[6:2] == `RV_OP_SYSTEM && insn[14:12] == 0 && insn[31:20] == 0;
+    wire is_ebreak = insn[6:2] == `RV_OP_SYSTEM && insn[14:12] == 0 && insn[31:20] == 1;
     
     // Register decoder.
     logic use_rs1, use_rs2, use_rs3, use_rd;
-    boa_reg_decoder reg_decd(r_insn, use_rs1, use_rs2, use_rs3, use_rd);
+    boa_reg_decoder reg_decd(insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
-    boa_branch_decoder branch_decd(r_insn, r_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);
-    assign branch_predict = r_insn[31];
-    assign is_sret        = !r_insn[29];
+    boa_branch_decoder branch_decd(insn, r_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);
+    assign branch_predict = insn[31];
+    assign is_sret        = !insn[29];
     
     // Pipeline output logic.
     assign q_pc             = r_pc;
-    assign q_insn           = r_insn;
+    assign q_insn           = insn;
+    assign q_ilen           = !is_rvc;
     assign q_use_rd         = use_rd;
     assign q_rs1_val        = rs1_val;
     assign q_rs2_val        = rs2_val;
@@ -154,7 +176,11 @@ module boa_stage_id#(
             q_valid = 0;
             q_trap  = !clear;
             q_cause = r_cause;
-        end else if (r_valid && !insn_valid) begin
+        end else if (r_valid && is_rvc && !decomp_valid) begin
+            q_valid = 0;
+            q_trap  = !clear;
+            q_cause = `RV_ECAUSE_IILLEGAL;
+        end else if (r_valid && !is_rvc && !insn_valid) begin
             q_valid = 0;
             q_trap  = !clear;
             q_cause = `RV_ECAUSE_IILLEGAL;

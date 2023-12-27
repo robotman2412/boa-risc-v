@@ -19,7 +19,7 @@ module top(
         decomp, valid
     );
     
-    reg[7:0] div = 0;
+    reg[31:0] div = 0;
     assign comp = insn_rvc[div][15:0];
     
     initial begin

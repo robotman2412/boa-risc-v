@@ -251,9 +251,15 @@ void handle_rx(uint8_t rxd) {
 void isr() {
     long mcause;
     asm("csrr %0, mcause" : "=r"(mcause));
-    print("Trap ");
-    putd(mcause, 2);
-    print("\n");
+    if (mcause < 0) {
+        print("Interrupt ");
+        putd(mcause & 31, 2);
+        print("\n");
+    } else {
+        print("Trap ");
+        putd(mcause, 2);
+        print("\n");
+    }
     halt();
 }
 

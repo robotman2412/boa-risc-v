@@ -22,6 +22,8 @@ module boa_stage_ex(
     input  logic[31:1]  d_pc,
     // ID/EX: Current instruction word.
     input  logic[31:0]  d_insn,
+    // ID/EX: Is 32-bit instruction.
+    input  logic        d_ilen,
     // ID/EX: Stores to register RD.
     input  logic        d_use_rd,
     // ID/EX: Value from RS1 register.
@@ -69,6 +71,8 @@ module boa_stage_ex(
     logic[31:1] r_pc;
     // ID/EX: Current instruction word.
     logic[31:0] r_insn;
+    // ID/EX: Is 32-bit instruction.
+    logic       r_ilen;
     // ID/EX: Stores to register RD.
     logic       r_use_rd;
     // ID/EX: Value from RS1 register.
@@ -90,6 +94,7 @@ module boa_stage_ex(
             r_valid             <= 0;
             r_pc                <= 'bx;
             r_insn              <= 'bx;
+            r_ilen              <= 'bx;
             r_use_rd            <= 'bx;
             r_rs1_val           <= 'bx;
             r_rs2_val           <= 'bx;
@@ -101,6 +106,7 @@ module boa_stage_ex(
             r_valid             <= d_valid;
             r_pc                <= d_pc;
             r_insn              <= d_insn;
+            r_ilen              <= d_ilen;
             r_use_rd            <= d_use_rd;
             r_rs1_val           <= d_rs1_val;
             r_rs2_val           <= d_rs2_val;
@@ -172,7 +178,7 @@ module boa_stage_ex(
             // JAL and JALR instructions.
             add_lhs_mux[31:1]   = r_pc[31:1];
             add_lhs_mux[0]      = 0;
-            add_rhs_mux         = 4;
+            add_rhs_mux         = r_ilen ? 4 : 2;
         end else begin
             // OP and OP-IMM.
             add_lhs_mux         = r_rs1_val;

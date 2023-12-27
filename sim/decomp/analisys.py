@@ -46,8 +46,22 @@ if __name__ == "__main__":
     decomp_disas    = readlines("obj_dir/decomp.asm")
     valid           = read     ("obj_dir/valid.txt")
     
+    # Verify that all instructions are RVC.
+    for i in range(len(insn_rvc)):
+        if (insn_rvc[i] & 0x0000ffff) == 0:
+            print("Non-RVC instruction at address 0x{:08x} (line {})".format(i*4, i))
+            exit(1)
+    if len(insn_rvc) != len(insn):
+        print("Table length mismatch")
+        exit(1)
+    if len(insn_rvc_disas) != 2*len(insn_disas):
+        print("Disassembly length mismatch")
+        exit(1)
+    
     # Format into a table.
     lines = [["COMP", "(asm)", "V", "DECOMP", "(asm)", "E", "EXPECTED", "(asm)"]]
+    nv = 0
+    ne = 0
     for i in range(len(insn_rvc)):
         lines += [[
             "{:04x}".format(insn_rvc[i]),
@@ -59,6 +73,21 @@ if __name__ == "__main__":
             "{:08x}".format(insn[i]),
             insn_disas[i]
         ]]
+        nv += valid[i] == '0'
+        ne += decomp[i] != insn[i]
+    
+    # Remove correct entries.
+    if nv or ne:
+        i = 1
+        while i < len(lines):
+            if lines[i][2] == "1" and lines[i][5] == "1":
+                lines.remove(lines[i])
+            else:
+                i += 1
+    else:
+        print("All test cases passed")
+        exit(0)
+    
     width = [0, 0, 0, 0, 0, 0, 0, 0]
     for line in lines:
         for i in range(len(line)):
@@ -70,3 +99,8 @@ if __name__ == "__main__":
         for i in range(len(line)):
             tmp += "  " + line[i] + " " * (width[i] - len(line[i]))
         print(tmp)
+    
+    if nv:
+        print("{} not valid".format(nv))
+    if ne:
+        print("{} not equal".format(ne))

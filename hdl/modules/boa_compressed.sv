@@ -48,7 +48,7 @@ module boa_insn_decomp#(
                 // IMM
                 {2'b00, comp[10:7], comp[12:11], comp[5], comp[6], 2'b00},
                 // RS1
-                r3l,
+                5'd2,
                 // FUNCT3
                 `RV_ALU_ADD,
                 // RD
@@ -132,7 +132,7 @@ module boa_insn_decomp#(
                 valid  = 1;
                 decomp = {
                     // IMM
-                    {comp[8], comp[10:9], comp[6], comp[7], comp[2], comp[11], comp[5:3], comp[12], 8'b0000_0000},
+                    {comp[12], comp[8], comp[10:9], comp[6], comp[7], comp[2], comp[11], comp[5:3], comp[12], 8'b1111_1111 * comp[12]},
                     // RD
                     5'd1,
                     // OP
@@ -144,7 +144,7 @@ module boa_insn_decomp#(
             valid  = 1;
             decomp = {
                 // IMM
-                {4'b0000, comp[12], comp[6:2]},
+                {7'b111_1111 * comp[12], comp[6:2]},
                 // RS1
                 5'd0,
                 // FUNCT3
@@ -175,7 +175,7 @@ module boa_insn_decomp#(
                 valid  = 1;
                 decomp = {
                     // IMM
-                    {14'b00_0000_0000_0000, comp[12], comp[6:2]},
+                    {14'b11_1111_1111_1111 * comp[12], comp[12], comp[6:2]},
                     // RD
                     r5,
                     // OP
@@ -188,7 +188,7 @@ module boa_insn_decomp#(
                 valid  = 1;
                 decomp = {
                     // IMM
-                    {4'b1111 * comp[12], comp[12], comp[6:2]},
+                    {6'b11_1111 * comp[12], comp[12], comp[6:2]},
                     // RS1
                     r3h,
                     // FUNCT3
@@ -260,7 +260,6 @@ module boa_insn_decomp#(
             decomp = {
                 // IMM
                 {comp[12], comp[8], comp[10:9], comp[6], comp[7], comp[2], comp[11], comp[5:3], comp[12], 8'b1111_1111 * comp[12]},
-                // {comp[8], comp[10:9], comp[6], comp[7], comp[2], comp[11], comp[5:3], comp[12], 8'b0000_0000},
                 // RD
                 5'd0,
                 // OP
@@ -417,7 +416,7 @@ module boa_insn_decomp#(
             valid=0;decomp='bx;//TODO.
         end else if (                     op == `RV_OPC_SWSP        ) begin
             // sw rd, imm(sp)
-            valid  = comp[11:7] != 0;
+            valid  = 1;
             decomp = {
                 // IMM
                 {4'b0000, comp[8:7], comp[12]},

@@ -156,8 +156,19 @@ module boa_stage_mem(
     
     
     /* ==== CSR access logic ==== */
-    assign csr.addr     = d_insn[31:20];
-    assign csr.wdata    = d_insn[14] ? d_insn[19:15] : d_rs1_val;
+    assign     csr.addr  = d_insn[31:20];
+    wire[31:0] csr_mask  = d_insn[14] ? d_insn[19:15] : d_rs1_val;
+    always @(*) begin
+        if (d_insn[13:12] == 2'b01) begin
+            csr.wdata = csr_mask;
+        end else if (d_insn[13:12] == 2'b10) begin
+            csr.wdata = csr.rdata | csr_mask;
+        end else if (d_insn[13:12] == 2'b11) begin
+            csr.wdata = csr.rdata & ~csr_mask;
+        end else begin
+            csr.wdata = 'bx;
+        end
+    end
     logic  csr_re;
     always @(*) begin
         if (d_valid && d_insn[6:2] == `RV_OP_SYSTEM && d_insn[14:12] != 2'b00) begin

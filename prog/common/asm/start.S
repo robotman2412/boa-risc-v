@@ -23,9 +23,6 @@ START_NAME:
     la gp, __global_pointer$
     la sp, __stack_top
     .option pop
-    j test0
-    .half 1
-test0:
     
     # Zero BSS.
     la a0, __start_bss

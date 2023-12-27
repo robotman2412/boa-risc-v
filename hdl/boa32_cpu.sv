@@ -47,7 +47,9 @@ module boa32_cpu#(
     // CSR mhartid value.
     parameter hartid        = 32'h0000_0000,
     // Print debug messages about CPU state.
-    parameter debug         = 0
+    parameter debug         = 0,
+    // Support RVC instructions.
+    parameter has_c         = 1
 )(
     // CPU clock.
     input  logic    clk,
@@ -89,6 +91,8 @@ module boa32_cpu#(
     logic[31:1] id_ex_pc;
     // ID/EX: Current instruction word.
     logic[31:0] id_ex_insn;
+    // ID/EX: Is 32-bit instruction.
+    logic       id_ex_ilen;
     // ID/EX: Stores to register RD.
     logic       id_ex_use_rd;
     // ID/EX: Value from RS1 register.
@@ -353,8 +357,7 @@ module boa32_cpu#(
     
     /* ==== Exception logic ==== */
     assign csr_ex.ex_priv       = 1;
-    assign csr_ex.ex_epc[31:2]  = mem_wb_pc[31:2];
-    assign csr_ex.ex_epc[1]     = 0;
+    assign csr_ex.ex_epc[31:1]  = mem_wb_pc[31:1];
     assign csr_ex.ret_priv      = 1;
     logic  mtime_irq;
     
@@ -455,12 +458,12 @@ module boa32_cpu#(
         // Data hazard avoicance.
         fw_stall_if
     );
-    boa_stage_id#(.debug(debug)) st_id(
+    boa_stage_id#(.debug(debug), .has_c(has_c)) st_id(
         clk, rst, clear_id,
         // Pipeline input.
         if_id_valid && !fw_stall_if, if_id_pc, if_id_insn, if_id_trap && !fw_stall_if, if_id_cause,
         // Pipeline output.
-        id_ex_valid, id_ex_pc, id_ex_insn, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
+        id_ex_valid, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         // Control transfer.
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         // Write-back.
@@ -471,7 +474,7 @@ module boa32_cpu#(
     boa_stage_ex st_ex(
         clk, rst, clear_ex,
         // Pipeline input.
-        id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,
+        id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,
         // Pipeline output.
         ex_mem_valid, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, ex_mem_rs1_val, ex_mem_rs2_val, ex_mem_trap, ex_mem_cause,
         // Data hazard avoidance.

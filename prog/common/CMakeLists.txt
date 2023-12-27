@@ -29,7 +29,7 @@ endif()
 
 target_compile_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2
-    -march=rv32im_zicsr -mabi=ilp32
+    -march=rv32imc_zicsr -mabi=ilp32
     -ffunction-sections
 )
 

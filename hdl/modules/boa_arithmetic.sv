@@ -72,32 +72,64 @@ endmodule
 // Generic explicit divider bit.
 module boa_div_part#(
     // Bit shift position of divisor.
-    parameter exponent = 0,
+    parameter exponent  = 0,
     // Divider bit width.
-    parameter width    = 32
+    parameter width     = 32,
+    // Whether this stage has a pipeline register at the input.
+    parameter has_reg   = 0
 )(
+    // Clock (unused if not pipelined).
+    input  logic            clk,
+    
     // Unshifted divisor input.
     input  logic[width-1:0] d_divisor,
     // Remainder input.
     input  logic[width-1:0] d_remainder,
     // Result input.
     input  logic[width-1:0] d_result,
+    
+    // Divisor output.
+    output logic[width-1:0] q_divisor,
     // Remainder output.
     output logic[width-1:0] q_remainder,
     // Result output.
     output logic[width-1:0] q_result
 );
-    wire   divisible   = d_remainder >= (d_divisor << exponent);
-    assign q_remainder = d_remainder - d_divisor * divisible;
+    // Unshifted divisor input.
+    logic[width*2-1:0] r_divisor;
+    // Remainder input.
+    logic[width-1:0] r_remainder;
+    // Result input.
+    logic[width-1:0] r_result;
+    
+    // Pipeline register.
+    generate
+        if (has_reg) begin: pipelined
+            always @(posedge clk) begin
+                r_divisor   <= d_divisor;
+                r_remainder <= d_remainder;
+                r_result    <= d_result;
+            end
+        end else begin: passive
+            assign r_divisor   = d_divisor;
+            assign r_remainder = d_remainder;
+            assign r_result    = d_result;
+        end
+    endgenerate
+    
+    // Subtraction logic.
+    wire   divisible   = r_remainder >= (r_divisor << exponent);
+    assign q_remainder = r_remainder - (r_divisor << exponent) * divisible;
     generate
         if (exponent > 0) begin: a
-            assign q_result[exponent-1:0] = d_result[exponent-1:0];
+            assign q_result[exponent-1:0] = r_result[exponent-1:0];
         end
         if (exponent < width-1) begin: b
-            assign q_result[width-1:exponent+1] = d_result[width-1:exponent+1];
+            assign q_result[width-1:exponent+1] = r_result[width-1:exponent+1];
         end
     endgenerate
     assign q_result[exponent] = divisible;
+    assign q_divisor = r_divisor;
 endmodule
 
 // Uncached unsigned pipelined divider part with configurable latency.
@@ -112,32 +144,73 @@ module boa_div_part_ucpl#(
     // Divider bit width.
     parameter width        = 32
 )(
+    // Pipeline clock.
+    input  logic            clk,
+    
     // Left-hand side.
     input  logic[width-1:0] lhs,
     // Right-hand side.
     input  logic[width-1:0] rhs,
+    
     // Division result.
     output logic[width-1:0] div_res,
     // Modulo result.
     output logic[width-1:0] mod_res
 );
+    genvar x;
+    
     // Determine whether a pipeline register is present at a given bit.
-    function automatic bit has_reg(input stage);
+    function automatic bit has_reg(input integer stage);
+        integer i0, i1, count, spacing;
         if (distribution == "begin") begin
+            i0 = 1; i1 = width;   count = latency-1;
+            if (stage == 0) return 1;
         end else if (distribution == "end") begin
+            i0 = 0; i1 = width-1; count = latency-1;
+            if (stage == width) return 1;
         end else if (distribution == "center") begin
+            i0 = 0; i1 = width;   count = latency;
         end else /* distribution == "all" */ begin
+            i0 = 1; i1 = width-1; count = latency-2;
+            if (stage == 0 || stage == width) return 1;
         end
+        if (count <= 0) return 0;
+        spacing = (i1 - i0 + 1) / count;
+        return (stage-i0+spacing/2) % spacing == 0;
     endfunction
     
-    // Divider part remainder inputs.
-    logic[width-1:0]    d_rem[width];
-    // Divider part result inputs.
-    logic               d_res[width];
-    // Divider part remainder outputs.
-    logic[width-1:0]    q_rem[width];
-    // Divider part result outputs.
-    logic               q_res[width];
+    // Divisors.
+    logic[width-1:0]    div[width+1];
+    // Remainders.
+    logic[width-1:0]    rem[width+1];
+    // Division results.
+    logic[width-1:0]    res[width+1];
+    
+    // Pipelined divider generator.
+    assign div[0] = rhs;
+    assign rem[0] = lhs;
+    generate
+        for (x = 0; x < width; x = x + 1) begin
+            boa_div_part#(width-x-1, width, has_reg(x)) part(
+                clk,
+                div[x],   rem[x],   res[x],
+                div[x+1], rem[x+1], res[x+1]
+            );
+        end
+    endgenerate
+    
+    // Output logic.
+    generate
+        if (has_reg(width)) begin: pipelined
+            always @(posedge clk) begin
+                div_res <= res[width];
+                mod_res <= rem[width];
+            end
+        end else begin: passive
+            assign div_res = res[width];
+            assign mod_res = rem[width];
+        end
+    endgenerate
 endmodule
 
 

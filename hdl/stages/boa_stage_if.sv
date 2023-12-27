@@ -106,7 +106,7 @@ module boa_stage_if#(
     // Entrypoint address.
     parameter entrypoint    = 32'h4000_0000,
     // Depth of the instruction cache, at least 2.
-    parameter cache_depth   = 2
+    parameter cache_depth   = 4
 )(
     // CPU clock.
     input  logic        clk,
@@ -197,7 +197,7 @@ module boa_stage_if#(
     always @(posedge clk) begin
         acache[0] <= pbus.addr;
     end
-    wire cwrite = pbus.ready && (!cvalid[1] || acache[1] != acache[0]);
+    wire cwrite = pbus.ready;
     generate
         for (x = 1; x < cache_depth; x = x + 1) begin
             always @(posedge clk) begin
@@ -216,16 +216,18 @@ module boa_stage_if#(
     
     // Cache reading logic.
     logic       cvalidl;
+    logic       cexpirel;
     logic[31:0] crdatal;
     boa_stage_if_creader#(cache_depth) rl(
         icache, acache, cvalid,
-        addr[31:2], cvalidl, crdatal
+        addr[31:2], cvalidl, cexpirel, crdatal
     );
     logic       cvalidh;
+    logic       cexpireh;
     logic[31:0] crdatah;
     boa_stage_if_creader#(cache_depth) rh(
         icache, acache, cvalid,
-        next_hw[31:2], cvalidh, crdatah
+        next_hw[31:2], cvalidh, cexpireh, crdatah
     );
     assign insn[15:0]  = addr[1]    ? crdatal[31:16] : crdatah[15:0];
     assign insn[31:16] = next_hw[1] ? crdatah[31:16] : crdatah[15:0];
@@ -280,6 +282,8 @@ module boa_stage_if_creader#(
     input  logic[31:2] addr,
     // Cache read valid.
     output logic       valid,
+    // Cache read is about to expire.
+    output logic       expire,
     // Cache read data.
     output logic[31:0] rdata
 );
@@ -312,5 +316,6 @@ module boa_stage_if_creader#(
         end
     end
     
-    assign valid = amatch != 0;
+    assign valid  = amatch != 0;
+    assign expire = amask[depth-1];
 endmodule

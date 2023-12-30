@@ -114,9 +114,9 @@ module boa_peri_uart#(
     // Base address to respond to.
     parameter addr          = 32'h8000_0000,
     // TX buffer depth, must be a power of 2 >= 4.
-    parameter tx_depth      = 4,
+    parameter tx_depth      = 16,
     // RX buffer depth, must be a power of 2 >= 4.
-    parameter rx_depth      = 4,
+    parameter rx_depth      = 16,
     // Stall writes on TX buffer full.
     parameter tx_full_stall = 1
 )(

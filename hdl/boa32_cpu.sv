@@ -291,9 +291,9 @@ module boa32_cpu#(
     // RS2 for MEM matches RD for MEM.
     wire eq_mem_rs2_mem_rd  = use_rs2_mem && ex_mem_valid && mem_wb_valid && mem_wb_use_rd && (ex_mem_insn[24:20] != 0) && (ex_mem_insn[24:20] == mem_wb_insn[11:7]);
     // RS1 for MEM matches RD for WB.
-    wire eq_mem_rs1_wb_rd   = use_rs1_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[19:15] != 0) && (ex_mem_insn[19:15] == wb_insn[11:7]);
+    wire eq_mem_rs1_wb_rd   = use_rs1_mem && ex_mem_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[19:15] != 0) && (ex_mem_insn[19:15] == wb_insn[11:7]);
     // RS2 for MEM matches RD for WB.
-    wire eq_mem_rs2_wb_rd   = use_rs2_mem && mem_wb_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[24:20] != 0) && (ex_mem_insn[24:20] == wb_insn[11:7]);
+    wire eq_mem_rs2_wb_rd   = use_rs2_mem && ex_mem_valid && wb_valid     && wb_use_rd     && (ex_mem_insn[24:20] != 0) && (ex_mem_insn[24:20] == wb_insn[11:7]);
     
     // Forward RD from EX to RS1 from branch target.
     wire fw_bt_rs1_ex_rd    = eq_bt_rs1_ex_rd   && fw_rd_ex;
@@ -340,6 +340,11 @@ module boa32_cpu#(
         fw_in_rs2_mem = fw_mem_rs2_mem_rd ? fw_out_mem : wb_rd_val;
         
         // Stalling logic.
+        if (is_xret && csr.we) begin
+            // ID contains an MRET, which has a data dependency on CSRs.
+            // Stall ID so that the current CSR write takes effect.
+            fw_stall_id = 1;
+        end
         if ((eq_ex_rs1_ex_rd && !fw_rd_ex) || (eq_ex_rs2_ex_rd && !fw_rd_ex)) begin
             // EX will next need something that has to be processed by MEM first.
             // Stall ID so that this instruction doesn't enter EX until a result is available.
@@ -613,10 +618,6 @@ module boa32_csrs#(
             csr_mscratch        <= 0;
             csr_mepc            <= 0;
             
-        end else if (ex.ret) begin
-            // CSR changes of mret instruction.
-            csr_mstatus_mie     <= csr_mstatus_mpie;
-            
         end else if (ex.ex_trap || ex.ex_irq) begin
             // CSR changes on trap or interrupt.
             csr_mstatus_mpie    <= csr_mstatus_mie;
@@ -636,6 +637,10 @@ module boa32_csrs#(
                 `RV_CSR_MEPC:       begin csr_mepc[31:1] <= csr.wdata[31:1]; end
                 `RV_CSR_MCAUSE:     begin csr_mcause_int <= csr.wdata[31]; csr_mcause_no <= csr.wdata[4:0]; end
             endcase
+            
+        end else if (ex.ret) begin
+            // CSR changes of mret instruction.
+            csr_mstatus_mie     <= csr_mstatus_mpie;
         end
     end
 endmodule

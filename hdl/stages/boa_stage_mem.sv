@@ -110,6 +110,8 @@ module boa_stage_mem(
     wire        d_re    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_LOAD;
     // Write enable.
     wire        d_we    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_STORE;
+    // Access is signed.
+    wire        d_sign  = !d_insn[14];
     // Access size.
     wire [1:0]  d_asize = d_insn[13:12];
     // Memory access address.
@@ -121,6 +123,8 @@ module boa_stage_mem(
     logic       r_re;
     // Write enable.
     logic       r_we;
+    // Access is signed.
+    logic       r_sign;
     // Access size.
     logic[1:0]  r_asize;
     // Memory access address.
@@ -135,12 +139,14 @@ module boa_stage_mem(
         if (rst || clear) begin
             r_re    <= 0;
             r_we    <= 0;
+            r_sign  <= 'bx;
             r_asize <= 'bx;
             r_addr  <= 'bx;
             r_wdata <= 'bx;
         end else if (ready || !(r_re || r_we)) begin
             r_re    <= d_re;
             r_we    <= d_we;
+            r_sign  <= d_sign;
             r_asize <= d_asize;
             r_addr  <= d_addr;
             r_wdata <= d_wdata;
@@ -149,7 +155,7 @@ module boa_stage_mem(
     
     boa_mem_helper mem_if(
         clk,
-        rsel ? r_re : d_re, rsel ? r_we : d_we, rsel ? r_asize : d_asize, rsel ? r_addr : d_addr, rsel ? r_wdata : d_wdata,
+        rsel ? r_re : d_re, rsel ? r_we : d_we, rsel ? r_sign : d_sign, rsel ? r_asize : d_asize, rsel ? r_addr : d_addr, rsel ? r_wdata : d_wdata,
         ealign, ready, rdata,
         dbus
     );
@@ -264,11 +270,11 @@ module boa_stage_mem_fw(
                 use_rs1 = 0;
                 use_rs2 = 0;
             end else if (!d_insn[14]) begin
-                // CSR*I instructions.
+                // CSR* instructions.
                 use_rs1 = 1;
                 use_rs2 = 0;
             end else begin
-                // CSR* instructions.
+                // CSR*I instructions.
                 use_rs1 = 0;
                 use_rs2 = 0;
             end
@@ -291,6 +297,8 @@ module boa_mem_helper(
     input  logic        re,
     // Write enable.
     input  logic        we,
+    // Access is signed.
+    input  logic        sign,
     // Access size.
     input  logic[1:0]   asize,
     // Memory access address.
@@ -312,9 +320,11 @@ module boa_mem_helper(
     assign bus.addr[31:2] = addr[31:2];
     
     // Latch the req.
+    logic      sign_reg;
     logic[1:0] asize_reg;
     logic[1:0] addr_reg;
     always @(posedge clk) begin
+        sign_reg    <= sign;
         asize_reg   <= asize;
         addr_reg    <= addr[1:0];
     end
@@ -371,7 +381,7 @@ module boa_mem_helper(
                 2'b10: rdata[7:0] = bus.rdata[23:16];
                 2'b11: rdata[7:0] = bus.rdata[31:24];
             endcase
-            rdata[31:8]     = 'bx;
+            rdata[31:8]     = (sign_reg && rdata[7]) ? 24'hff_ffff : 24'h00_0000;
             
         end else if (asize_reg == 2'b01) begin
             // 16-bit access.
@@ -380,7 +390,7 @@ module boa_mem_helper(
             end else begin
                 rdata[15:0] = bus.rdata[31:16];
             end
-            rdata[31:16]    = 'bx;
+            rdata[31:16]    = (sign_reg && rdata[15]) ? 16'hffff : 16'h0000;
             
         end else if (asize_reg == 2'b10) begin
             // 32-bit access.

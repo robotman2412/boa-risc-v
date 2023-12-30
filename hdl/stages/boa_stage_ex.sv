@@ -9,7 +9,7 @@
 // Boa³² pipline stage: EX (ALU and address calculation).
 module boa_stage_ex#(
     // Divider latency, 0 to 33.
-    parameter div_latency = 1
+    parameter div_latency = 2
 )(
     // CPU clock.
     input  logic        clk,

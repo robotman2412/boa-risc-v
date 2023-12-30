@@ -9,7 +9,7 @@ module main#(
     // ROM image file.
     parameter string  rom_file = "",
     // UART buffer size.
-    parameter integer uart_buf = 4
+    parameter integer uart_buf = 16
 )(
     // CPU clock.
     input  logic        clk,

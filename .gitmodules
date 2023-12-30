@@ -2,5 +2,5 @@
 	path = tools/programmer/kbelf
 	url = https://robotman2412@github.com/robotman2412/KiloElfLoader
 [submodule "riscv-tests"]
-	path = prog/riscv-tests/riscv-tests
+	path = sim/riscv-tests/riscv-tests
 	url = https://github.com/riscv-software-src/riscv-tests

@@ -62,9 +62,9 @@ module boa_div_simple(
     
     // Correct sign of outputs.
     wire [31:0] neg_div  = ~u_div + 1;
-    assign      div_res  = sign_lhs ^ sign_rhs ? neg_div : u_div;
+    assign      div_res  = (rhs == 0) ? -1 : (sign_lhs ^ sign_rhs) ? neg_div : u_div;
     wire [31:0] neg_mod  = ~u_mod + 1;
-    assign      mod_res  = sign_lhs ? neg_mod : u_mod;
+    assign      mod_res  = (rhs == 0) ? lhs : sign_lhs ? neg_mod : u_mod;
 endmodule
 
 
@@ -259,11 +259,31 @@ module boa_div_pipelined#(
         clk, tmp_lhs, tmp_rhs, u_div, u_mod
     );
     
+    // The 0 divisor edge case.
+    logic[latency-1:0] r_0;
+    logic[latency-1:0] r_sign_l;
+    logic[latency-1:0] r_sign_r;
+    generate
+        if (latency == 1) begin
+            always @(posedge clk) begin
+                r_0      <= rhs == 0;
+                r_sign_l <= sign_lhs;
+                r_sign_r <= sign_rhs;
+            end
+        end else begin
+            always @(posedge clk) begin
+                r_0      <= {r_0[latency-2:0],      rhs == 0};
+                r_sign_l <= {r_sign_l[latency-2:0], sign_lhs};
+                r_sign_r <= {r_sign_r[latency-2:0], sign_rhs};
+            end
+        end
+    endgenerate
+    
     // Correct sign of outputs.
     wire [width-1:0] neg_div  = ~u_div + 1;
-    assign           div_res  = sign_lhs ^ sign_rhs ? neg_div : u_div;
+    assign           div_res  = (r_0[latency-1]) ? -1 : (r_sign_l[latency-1] ^ r_sign_r[latency-1]) ? neg_div : u_div;
     wire [width-1:0] neg_mod  = ~u_mod + 1;
-    assign           mod_res  = sign_lhs ? neg_mod : u_mod;
+    assign           mod_res  = r_sign_l[latency-1] ? neg_mod : u_mod;
 endmodule
 
 
@@ -292,7 +312,7 @@ module boa_delay_comp#(
     // Number of delay cycles.
     parameter   delay   = 1,
     // Timer exponent.
-    localparam  exp     = delay > 1 ? $clog2(delay) : 1
+    localparam  exp     = delay > 0 ? $clog2(delay+1) : 1
 )(
     // Pipeline clock.
     input  logic    clk,

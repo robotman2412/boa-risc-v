@@ -12,9 +12,9 @@ create_clock -period 83.330 -name sys_clk_pin -waveform {0.000 41.660} -add [get
 #set_property -dict { PACKAGE_PIN C16   IOSTANDARD LVCMOS33 } [get_ports { led[1] }]; #IO_L13P_T2_MRCC_16 Sch=led[2]
 
 ## RGB LED
-# set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS33} [get_ports led_b]
-# set_property -dict {PACKAGE_PIN B16 IOSTANDARD LVCMOS33} [get_ports led_g]
-# set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports led_r]
+set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS33} [get_ports led_b]
+set_property -dict {PACKAGE_PIN B16 IOSTANDARD LVCMOS33} [get_ports led_g]
+set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports led_r]
 
 ## Buttons
 set_property -dict {PACKAGE_PIN A18 IOSTANDARD LVCMOS33} [get_ports {btn[0]}]

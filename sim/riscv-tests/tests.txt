@@ -1,3 +1,6 @@
+# Basic self-test
+riscv-tests/isa/rv32ui/simple.S
+
 # RV32I
 riscv-tests/isa/rv32ui/lui.S
 riscv-tests/isa/rv32ui/sltu.S
@@ -27,7 +30,6 @@ riscv-tests/isa/rv32ui/slti.S
 riscv-tests/isa/rv32ui/addi.S
 riscv-tests/isa/rv32ui/jalr.S
 riscv-tests/isa/rv32ui/slli.S
-riscv-tests/isa/rv32ui/simple.S
 riscv-tests/isa/rv32ui/and.S
 riscv-tests/isa/rv32ui/sltiu.S
 riscv-tests/isa/rv32ui/or.S
@@ -39,10 +41,10 @@ riscv-tests/isa/rv32ui/xori.S
 riscv-tests/isa/rv32ui/bne.S
 
 # Unaligned access.
-# riscv-tests/isa/rv32ui/ma_data.S
+# riscv-tests/isa/rv32ui/ma_data.S # Unsupported
 
 # Zifencei extension
-# riscv-tests/isa/rv32ui/fence_i.S
+# riscv-tests/isa/rv32ui/fence_i.S # Unsupported
 
 # M extension
 riscv-tests/isa/rv32um/mul.S
@@ -53,3 +55,22 @@ riscv-tests/isa/rv32um/rem.S
 riscv-tests/isa/rv32um/mulhu.S
 riscv-tests/isa/rv32um/remu.S
 riscv-tests/isa/rv32um/divu.S
+
+# C extension
+# riscv-tests/isa/rv32uc/rvc.S # Broken test due to missing data
+
+# M-mode
+# riscv-tests/isa/rv32mi/breakpoint.S # Unsupported
+riscv-tests/isa/rv32mi/csr.S
+riscv-tests/isa/rv32mi/illegal.S
+riscv-tests/isa/rv32mi/lh-misaligned.S
+riscv-tests/isa/rv32mi/lw-misaligned.S
+riscv-tests/isa/rv32mi/ma_addr.S
+riscv-tests/isa/rv32mi/ma_fetch.S
+riscv-tests/isa/rv32mi/mcsr.S
+riscv-tests/isa/rv32mi/sbreak.S
+# riscv-tests/isa/rv32mi/scall.S # Works but requires manual intervention
+riscv-tests/isa/rv32mi/shamt.S
+riscv-tests/isa/rv32mi/sh-misaligned.S
+riscv-tests/isa/rv32mi/sw-misaligned.S
+# riscv-tests/isa/rv32mi/zicntr.S # Unsupported

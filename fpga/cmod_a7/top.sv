@@ -8,8 +8,12 @@ module top(
     output logic      tx,
     input  logic      rx,
     input  logic[1:0] btn,
-    output logic[7:0] pmod
+    output logic      led_r,
+    output logic      led_g,
+    output logic      led_b,
+    inout  logic[7:0] pmod
 );
+    genvar x;
     `include "boa_fileio.svh"
     
     logic[1:0] rst = 3;
@@ -28,8 +32,24 @@ module top(
     logic rtc_clk;
     param_clk_div#(12000000, 1000000) rtc_div(clk || shdn, rtc_clk);
     
+    logic[31:0]  gpio_out;
+    logic[31:0]  gpio_oe;
+    logic[31:0]  gpio_in;
+    
+    // assign gpio_in[31:8] = gpio_out[31:8];
+    assign gpio_in[31:0] = gpio_out[31:0];
+    // generate
+    //     for (x = 0; x < 8; x = x + 1) begin
+    //         assign pmod[x] = gpio_oe[x] ? gpio_out[x] : 'bz;
+    //     end
+    // endgenerate
+    assign led_r = !gpio_out[8];
+    assign led_g = !gpio_out[9];
+    assign led_b = !gpio_out[10];
+    // assign gpio_in[7:0]  = pmod;
+    
     pmu_bus pmb();
-    main#(.rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"})) main(clk || shdn, rtc_clk, rst!=0, uart_clk, txd, rxd, pmb);
+    main#(.rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"})) main(clk || shdn, rtc_clk, rst!=0, uart_clk, txd, rxd, gpio_out, gpio_oe, gpio_in, pmb);
     
     always @(posedge clk) begin
         if (pmb.shdn) begin

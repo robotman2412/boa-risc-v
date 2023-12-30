@@ -176,7 +176,11 @@ bool await_packet(phdr_t const *phdr, void const *pdat) {
         }
         if (await_packet_resp) {
             if (expect_ack(A_XSUM)) {
-                printf("Sent checksum error: %02x vs %02x\n", (data.p_ack.cause >> 8) & 255, data.p_ack.cause & 255);
+                printf(
+                    "Sent checksum error: sent %02x, got %02x\n",
+                    (data.p_ack.cause >> 8) & 255,
+                    data.p_ack.cause & 255
+                );
             } else {
                 return true;
             }
@@ -328,7 +332,7 @@ struct termios orig_term;
 void atexit_func() {
     // Restore UART.
     fcntl(fileno(uart), F_SETFL, orig_flags);
-    tcsetattr(fileno(uart), TCSANOW, &orig_term);
+    // tcsetattr(fileno(uart), TCSANOW, &orig_term);
 }
 
 int main(int argc, char **argv) {
@@ -350,10 +354,12 @@ int main(int argc, char **argv) {
     fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
     // Set TTY to character break.
     tcgetattr(fileno(uart), &orig_term);
-    struct termios new_term  = orig_term;
-    new_term.c_oflag         = 0;
-    new_term.c_iflag         = 0;
-    new_term.c_lflag        &= ~ICANON & ~ECHO & ~ECHOE;
+    struct termios new_term = orig_term;
+    cfmakeraw(&new_term);
+    // new_term.c_oflag        = 0;
+    // new_term.c_iflag        = 0;
+    // new_term.c_lflag        = 0;
+    // new_term.c_cflag        = CLOCAL | CREAD | CS8;
     tcsetattr(fileno(uart), TCSANOW, &new_term);
 
     if (argc == 4 && !strcmp(argv[2], "upload")) {

@@ -340,7 +340,7 @@ module boa32_cpu#(
         fw_in_rs2_mem = fw_mem_rs2_mem_rd ? fw_out_mem : wb_rd_val;
         
         // Stalling logic.
-        if (is_xret && csr.we) begin
+        if (is_xret && st_mem.csr_we) begin
             // ID contains an MRET, which has a data dependency on CSRs.
             // Stall ID so that the current CSR write takes effect.
             fw_stall_id = 1;

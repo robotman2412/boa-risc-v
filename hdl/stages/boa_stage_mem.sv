@@ -175,18 +175,19 @@ module boa_stage_mem(
             csr.wdata = 'bx;
         end
     end
-    logic  csr_re;
+    logic  csr_re, csr_we;
     always @(*) begin
-        if (d_valid && d_insn[6:2] == `RV_OP_SYSTEM && d_insn[14:12] != 2'b00) begin
+        if (d_insn[6:2] == `RV_OP_SYSTEM && d_insn[14:12] != 2'b00) begin
             // CSR instruction.
             csr_re = 1;
-            csr.we = d_insn[14] || (d_insn[19:15] != 0);
+            csr_we = d_insn[14] || (d_insn[19:15] != 0);
         end else begin
             // Not CSR instruction.
             csr_re = 0;
-            csr.we = 0;
+            csr_we = 0;
         end
     end
+    assign csr.we = d_valid && csr_we;
     
     logic       r_csr_re;
     logic[31:0] r_csr_rdata;
@@ -208,9 +209,9 @@ module boa_stage_mem(
             trap    <= mem_if.ealign;
             cause   <= mem_if.we ? `RV_ECAUSE_SALIGN : `RV_ECAUSE_LALIGN;
             
-        end else if ((csr_re && !csr.exists) || (csr.we && csr.rdonly)) begin
+        end else if ((csr_re && !csr.exists) || (csr_we && csr.rdonly)) begin
             // CSR access error.
-            trap    <= 1;
+            trap    <= d_valid;
             cause   <= `RV_ECAUSE_IILLEGAL;
             
         end else begin

@@ -144,7 +144,7 @@ module boa32_cpu#(
     /* ==== CSR logic ==== */
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
-    boa32_csrs#(.hartid(hartid)) csrs(clk, rst, csr, csr_ex);
+    boa32_csrs#(.hartid(hartid), .has_c(has_c)) csrs(clk, rst, csr, csr_ex);
     
     
     /* ==== Control transfer logic ==== */
@@ -515,7 +515,11 @@ endmodule
 // Boa³² CSR register file.
 module boa32_csrs#(
     // CSR mhartid value.
-    parameter hartid        = 32'h0000_0000
+    parameter hartid        = 32'h0000_0000,
+    // Support RVC instructions.
+    parameter has_c         = 1,
+    // Support RVM instructions.
+    parameter has_m         = 1
 )(
     // CPU clock.
     input  logic        clk,
@@ -540,7 +544,16 @@ module boa32_csrs#(
     // CSR mstatus: M-mode status.
     wire [31:0] csr_mstatus     = (csr_mstatus_mie << 3) | (csr_mstatus_mpie << 7);
     // CSR misa: M-mode ISA description.
-    wire [31:0] csr_misa        = 32'h4001_0100;
+    wire [31:0] csr_misa;
+    assign csr_misa[1:0]   = 0;
+    assign csr_misa[2]     = has_c;
+    assign csr_misa[7:3]   = 0;
+    assign csr_misa[8]     = 1;
+    assign csr_misa[11:9]  = 0;
+    assign csr_misa[12]    = has_m;
+    assign csr_misa[25:13] = 0;
+    assign csr_misa[29:26] = 0;
+    assign csr_misa[31:30] = 2'b01;
     // CSR medeleg: M-mode trap delegation.
     wire [31:0] csr_medeleg     = 0;
     // CSR medeleg: M-mode interrupt delegation.
@@ -564,7 +577,7 @@ module boa32_csrs#(
     // CSR mvendorid: M-mode vendor ID.
     wire [31:0] csr_mvendorid   = 0;
     // CSR mvendorid: M-mode architecture ID.
-    wire [31:0] csr_marchid     = 0;
+    wire [31:0] csr_marchid     = 34;
     // CSR mvendorid: M-mode implementation ID.
     wire [31:0] csr_mipid       = 0;
     // CSR mvendorid: M-mode implementation ID.

@@ -24,7 +24,7 @@ With the following CSRs present, all mandatory:
 | CSR address | CSR name     | Default value | Features
 | :---------- | :----------- | :------------ | :-------
 | `0x300`     | `mstatus`    | `0x0000_0000` | MIE and MPIE bits
-| `0x301`     | `misa`       | `0x4001_0100` | Read-only query of ISA
+| `0x301`     | `misa`       | `0x4000_1104` | Read-only query of ISA (RV32IMC)
 | `0x302`     | `medeleg`    | `0x0000_0000` | (unimplemented)
 | `0x303`     | `mideleg`    | `0x0000_0000` | (unimplemented)
 | `0x304`     | `mie`        | `0x0000_0000` | Read/write any interrupt enable
@@ -32,7 +32,7 @@ With the following CSRs present, all mandatory:
 | `0x310`     | `mstatush`   | `0x0000_0000` | (unimplemented)
 | `0x344`     | `mip`        | `0x0000_0000` | Read-only query of pending interrupts
 | `0x340`     | `mscratch`   | `0x0000_0000` | Read/write any value
-| `0x341`     | `mepc`       | `0x0000_0000` | Read/write any legal address
+| `0x341`     | `mepc`       | `0x0000_0000` | Read/write any legal PC
 | `0x342`     | `mcause`     | `0x0000_0000` | WARL trap and exception cause
 | `0x343`     | `mtval`      | `0x0000_0000` | (unimplemented)
 | `0xf11`     | `mvendorid`  | `0x0000_0000` | (unimplemented)

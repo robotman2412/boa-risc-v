@@ -2,6 +2,7 @@
 // Copyright © 2023, Julian Scheffers, see LICENSE for more information
 
 #include "print.h"
+#include "rng.h"
 #include "uart.h"
 
 #include <stdbool.h>
@@ -21,6 +22,8 @@ void isr() {
     UART0.fifo = c;
     if (c == '\n') {
         done = true;
+    } else if (rxlen == sizeof(rxbuf) - 1) {
+        done = true;
     } else {
         rxbuf[rxlen++] = c;
     }
@@ -32,11 +35,26 @@ void main() {
     asm("csrsi mstatus, 8");
     while (!done);
     done = false;
+    print("RNG test:\n");
+    putx(RNG, 8);
+    putc('\n');
+    putx(RNG, 8);
+    putc('\n');
+    putx(RNG, 8);
+    putc('\n');
+    putx(RNG, 8);
+    putc('\n');
+    putx(RNG, 8);
+    putc('\n');
     print("Hello, what's your name?\n> ");
     while (!done);
     print("Hello, ");
     print((char const *)rxbuf);
     print("!\nYour name is ");
-    putd(strlen((char const *)rxbuf), 3);
+    int len = strlen((char const *)rxbuf);
+    putd(len, 3);
     print(" bytes long!\n");
+    if (len > 100) {
+        print("That's a long name!\n");
+    }
 }

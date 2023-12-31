@@ -27,6 +27,9 @@
 // Currently waiting; too much data.
 #define RX_NCAP 5
 
+// Show raw transmissions in hexadecimal.
+bool show_hex;
+
 // Currently receiving.
 int      rx_type;
 // Receive count.
@@ -55,20 +58,28 @@ void handle_packet();
 // Send a packet to a different stream.
 void send_packet1(FILE *fd, phdr_t const *header, void const *data) {
     fputc(2, fd);
+    if (show_hex)
+        printf("> 02");
     uint8_t xsum = 2;
 
     uint8_t const *tx_ptr = (uint8_t const *)header;
     fwrite(tx_ptr, 1, sizeof(phdr_t), fd);
     for (size_t i = 0; i < sizeof(phdr_t); i++) {
+        if (show_hex)
+            printf(" %02x", tx_ptr[i]);
         xsum += tx_ptr[i];
     }
 
     tx_ptr = (uint8_t const *)data;
     fwrite(tx_ptr, 1, header->length, fd);
     for (size_t i = 0; i < header->length; i++) {
+        if (show_hex)
+            printf(" %02x", tx_ptr[i]);
         xsum += tx_ptr[i];
     }
 
+    if (show_hex)
+        printf(" %02x\n", xsum);
     fputc(xsum, fd);
     fflush(fd);
 }
@@ -80,12 +91,21 @@ void send_packet(phdr_t const *header, void const *data) {
 
 // Handle a received byte.
 void handle_rx(uint8_t rxd) {
+    if (rx_type == RX_NONE && show_hex) {
+        printf("<");
+    }
+    if (show_hex) {
+        printf(" %02x", rxd);
+        fflush(stdout);
+    }
     if (rx_type == RX_NONE) {
         xsum = rxd;
         if (rxd == 2) {
             rx_len  = 0;
             rx_type = RX_PHDR;
             rx_ptr  = (uint8_t *)&header;
+        } else if (show_hex) {
+            printf("\n");
         }
     } else if (rx_type == RX_PHDR) {
         rx_ptr[rx_len++] = rxd;
@@ -113,6 +133,8 @@ void handle_rx(uint8_t rxd) {
             rx_type = RX_XSUM;
     } else if (rx_type == RX_XSUM) {
         rx_xsum = rxd;
+        if (show_hex)
+            printf("\n");
         if (xsum != rxd) {
             handle_xsum();
         } else if (header.length > sizeof(data)) {
@@ -182,10 +204,82 @@ bool await_packet(phdr_t const *phdr, void const *pdat) {
                     data.p_ack.cause & 255
                 );
             } else {
-                return true;
+                return phdr->type != P_ACK || ((p_ack_t *)pdat)->ack_type == A_ACK;
             }
         }
         try++;
+    }
+}
+
+
+
+// Try to ping the computer.
+bool ping() {
+    phdr_t phdr = {
+        .type   = P_PING,
+        .length = sizeof(p_ping_t),
+    };
+    p_ping_t pdat;
+
+    // Attempt to put random date in the ping.
+    FILE *fd = fopen("/dev/random", "rb");
+    if (fd)
+        fread(&pdat, 1, sizeof(pdat), fd);
+    else
+        memset(&pdat, 0xcc, sizeof(pdat));
+
+    // Send the ping packet.
+    if (!await_packet(&phdr, &pdat)) {
+        return false;
+    }
+    if (memcmp(&pdat, &data.p_ping, sizeof(pdat))) {
+        printf("Ping payload mismatch.\n");
+        return false;
+    } else {
+        return true;
+    }
+}
+
+// Try to change the UART speed.
+bool change_speed(int new_speed) {
+    // Speed change packet.
+    phdr_t phdr = {
+        .type   = P_SPEED,
+        .length = sizeof(p_speed_t),
+    };
+    p_speed_t pdat = {
+        .speed = new_speed,
+    };
+
+    // Request speed change.
+    if (!await_packet(&phdr, &pdat)) {
+        return false;
+    }
+    if (expect_ack(A_NSPEED)) {
+        printf("Speed %d unsupported\n", new_speed);
+        return false;
+    } else if (!expect_ack(A_ACK)) {
+        printf("Speed change unsupported\n");
+        return false;
+    }
+
+    // Upon ACK, change serial port speed.
+    fflush(uart);
+    struct termios new_term;
+    tcgetattr(fileno(uart), &new_term);
+    cfsetispeed(&new_term, new_speed);
+    cfsetospeed(&new_term, new_speed);
+    tcsetattr(fileno(uart), TCSANOW, &new_term);
+
+    // Wait around for just a moment to let everyone catch up.
+    usleep(10000);
+
+    // If a ping succeeds the baudrate change was successful.
+    if (ping()) {
+        printf("Speed changed to %d\n", new_speed);
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -319,6 +413,7 @@ void get_help(int argc, char **argv) {
     printf("    %s <port> upload <program-file>\n", id);
     printf("    %s <port> run <program-file>\n", id);
     printf("    %s <port> id\n", id);
+    printf("    %s <port> ping\n", id);
     printf("    %s <port> jump <address>\n", id);
     printf("    %s <port> call <address>\n", id);
     exit(1);
@@ -349,23 +444,36 @@ int main(int argc, char **argv) {
         printf("Failed to open %s\n", argv[1]);
     }
 
+    show_hex = getenv("SHOW_HEX");
+
     // Set UART to nonblocking.
     orig_flags = fcntl(0, F_GETFL);
     fcntl(fileno(uart), F_SETFL, orig_flags | O_NONBLOCK);
     // Set TTY to character break.
     tcgetattr(fileno(uart), &orig_term);
     struct termios new_term = orig_term;
+    cfsetispeed(&new_term, 19200);
+    cfsetospeed(&new_term, 19200);
     cfmakeraw(&new_term);
-    // new_term.c_oflag        = 0;
-    // new_term.c_iflag        = 0;
-    // new_term.c_lflag        = 0;
-    // new_term.c_cflag        = CLOCAL | CREAD | CS8;
     tcsetattr(fileno(uart), TCSANOW, &new_term);
+
+    // Configure speed.
+    char *speed_str = getenv("BOAPROG_SPEED");
+    if (speed_str) {
+        int speed = atoi(speed_str);
+        if (speed > 0) {
+            change_speed(speed);
+        } else {
+            printf("Ignoring invalid speed %s\n", speed_str);
+        }
+    }
 
     if (argc == 4 && !strcmp(argv[2], "upload")) {
         return !upload_elf(argv[3], false);
     } else if (argc == 4 && !strcmp(argv[2], "run")) {
         return !upload_elf(argv[3], true);
+    } else if (argc == 3 && !strcmp(argv[2], "ping")) {
+        return !ping();
     } else if (argc == 3 && !strcmp(argv[2], "id")) {
         return !get_id();
     } else if (argc == 4 && !strcmp(argv[2], "jump")) {

@@ -7,9 +7,13 @@
 
 module main#(
     // ROM image file.
-    parameter string  rom_file = "",
+    parameter string  rom_file      = "",
     // UART buffer size.
-    parameter integer uart_buf = 16
+    parameter integer uart_buf      = 16,
+    // Default UART clock divider.
+    parameter integer uart_div      = 1250,
+    // Whether we're running in the simulator.
+    parameter bit     is_simulator  = 0
 )(
     // CPU clock.
     input  logic        clk,
@@ -18,8 +22,6 @@ module main#(
     // Synchronous reset.
     input  logic        rst,
     
-    // UART clock.
-    input  logic        uart_clk,
     // UART send data.
     output logic        txd,
     // UART receive data.
@@ -32,6 +34,9 @@ module main#(
     // GPIO inputs.
     input  logic[31:0]  gpio_in,
     
+    // A 32-bit quantity of randomness.
+    input  logic[31:0]  randomness,
+    
     // Power management unit interface.
     pmu_bus.CPU pmb
 );
@@ -42,7 +47,7 @@ module main#(
     boa_mem_bus dbus();
     boa_mem_bus mux_a_bus[2]();
     boa_mem_bus mux_b_bus[3]();
-    boa_mem_bus#(.alen(12)) peri_bus[3]();
+    boa_mem_bus#(.alen(12)) peri_bus[13]();
     
     // Program ROM.
     dp_block_ram#(10, rom_file, 1) rom(clk, mux_a_bus[0], mux_b_bus[0]);
@@ -51,18 +56,34 @@ module main#(
     
     // UART.
     logic rx_full, tx_empty;
-    boa_peri_uart#(.addr('h000), .tx_depth(uart_buf), .rx_depth(uart_buf)) uart(
-        clk, rst, peri_bus[0], uart_clk, txd, rxd, tx_empty, rx_full
+    boa_peri_uart#(.addr('h000), .tx_depth(uart_buf), .rx_depth(uart_buf), .init_div(uart_div)) uart(
+        clk, rst, peri_bus[0], txd, rxd, tx_empty, rx_full
     );
     // PMU interface.
     boa_peri_pmu #(.addr('h100)) pmu (clk, rst, peri_bus[1], pmb);
     // GPIO.
-    boa_peri_gpio#(.addr('h200)) gpio(clk, rst, peri_bus[2], clk, 1, gpio_out, gpio_oe, gpio_in);
+    logic[7:0] gpio_ext_sig;
+    logic[7:0] gpio_ext_oe;
+    boa_peri_gpio#(.addr('h200), .num_ext(8)) gpio(clk, rst, peri_bus[2], gpio_ext_sig, gpio_ext_oe, gpio_out, gpio_oe, gpio_in);
+    // Hardware RNG.
+    boa_peri_readable#(.addr('h300)) rng(clk, rst, peri_bus[3], randomness);
+    // PWM generators.
+    assign gpio_ext_oe[7:0] = 8'hff;
+    boa_peri_pwm#(.addr('h480)) pwm0gen(clk, clk, rst, peri_bus[4+0], gpio_ext_sig[0]);
+    boa_peri_pwm#(.addr('h490)) pwm1gen(clk, clk, rst, peri_bus[4+1], gpio_ext_sig[1]);
+    boa_peri_pwm#(.addr('h4a0)) pwm2gen(clk, clk, rst, peri_bus[4+2], gpio_ext_sig[2]);
+    boa_peri_pwm#(.addr('h4b0)) pwm3gen(clk, clk, rst, peri_bus[4+3], gpio_ext_sig[3]);
+    boa_peri_pwm#(.addr('h4c0)) pwm4gen(clk, clk, rst, peri_bus[4+4], gpio_ext_sig[4]);
+    boa_peri_pwm#(.addr('h4d0)) pwm5gen(clk, clk, rst, peri_bus[4+5], gpio_ext_sig[5]);
+    boa_peri_pwm#(.addr('h4e0)) pwm6gen(clk, clk, rst, peri_bus[4+6], gpio_ext_sig[6]);
+    boa_peri_pwm#(.addr('h4f0)) pwm7gen(clk, clk, rst, peri_bus[4+7], gpio_ext_sig[7]);
+    // Is simulator?
+    boa_peri_readable#(.addr('hffc)) is_sim(clk, rst, peri_bus[12], is_simulator);
     
     // Memory interconnects.
     boa_mem_mux#(.mems(2)) mux_a(clk, rst, pbus, mux_a_bus, {32'h40001000, 32'h40010000},               {12, 16});
     boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {32'h40001000, 32'h40010000, 32'h80000000}, {12, 16, 12});
-    boa_mem_overlay#(.mems(3)) ovl(mux_b_bus[2], peri_bus);
+    boa_mem_overlay#(.mems(13)) ovl(mux_b_bus[2], peri_bus);
     
     // CPU.
     logic[31:16] irq;

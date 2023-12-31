@@ -2,6 +2,7 @@
 // Copyright © 2023, Julian Scheffers, see LICENSE for more information
 
 #include "gpio.h"
+#include "is_simulator.h"
 #include "mtime.h"
 #include "print.h"
 #include "protocol.h"
@@ -130,6 +131,28 @@ void p_who() {
     send_packet(&header, ident);
 }
 
+// Handle a P_SPEED packet.
+void p_speed() {
+    if (header.length != sizeof(p_speed_t)) {
+        send_ack(A_NCAP);
+        return;
+    }
+
+    // Determine appropriate divider.
+    uint32_t divider = UART_BASE_FREQ / data.p_speed.speed;
+    if (divider < 4 || divider > 65535) {
+        send_ack(A_NSPEED);
+        return;
+    } else {
+        send_ack(A_ACK);
+    }
+
+    // Wait for UART to finish sending.
+    while (UART0.status.tx_busy || UART0.status.rx_hasdat);
+    // Configure new frequency.
+    UART0.clk_div = divider;
+}
+
 // Handle a P_WRITE packet.
 void p_write() {
     if (header.length != sizeof(data.p_write)) {
@@ -233,6 +256,7 @@ void handle_rx(uint8_t rxd) {
             switch (header.type) {
                 case P_PING: p_ping(); break;
                 case P_WHO: p_who(); break;
+                case P_SPEED: p_speed(); break;
                 case P_WRITE: p_write(); break;
                 case P_READ: p_read(); break;
                 case P_WDATA: p_wdata(); break;
@@ -265,6 +289,16 @@ void isr() {
 
 // Does stuff?
 void main() {
+    // Blink the LED red at startup.
+    if (!IS_SIMULATOR) {
+        mtime     = 0;
+        GPIO.oe   = 1 << 8;
+        GPIO.port = 1 << 8;
+        while (mtime < 100000);
+        GPIO.oe   = 0;
+        GPIO.port = 0;
+    }
+
     while (1) {
         if (UART0.status.rx_hasdat) {
             handle_rx(UART0.fifo);

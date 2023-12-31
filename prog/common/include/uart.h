@@ -7,6 +7,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define UART_TX_EMPTY_IRQ 16
+#define UART_RX_FULL_IRQ  17
+
 // UART status register.
 typedef struct {
     // Transmitter is currently sending.
@@ -30,11 +33,13 @@ typedef struct {
 // UART peripheral.
 typedef struct {
     // Write to send data, read to receive.
-    volatile uint8_t       fifo;
+    uint8_t volatile fifo;
     // Padding.
-    volatile uint8_t       _padding0[3];
+    uint8_t volatile _padding0[3];
     // Status register.
-    volatile uart_status_t status;
+    uart_status_t volatile status;
+    // Clock divider setting.
+    uint32_t volatile clk_div;
 } uart_t;
 
 // UART 0 address.

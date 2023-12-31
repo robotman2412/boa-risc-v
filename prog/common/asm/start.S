@@ -37,7 +37,7 @@ _start_bss_loop:
     blt a0, a1, _start_bss_loop
 _stop_bss_loop:
     
-#ifdef ROM_PROGRAM
+#if defined(memory_layout_rom) || defined(memory_layout_bootloader)
     # Initialize DATA.
     la a0, __start_data
     la a1, __start_data_rom
@@ -80,6 +80,22 @@ halt:
     sw a0, __pmu_base, t0
 _halt:
     j _halt
+
+
+
+    .type reset, %function
+    .global reset
+reset:
+    # Wait for UART0 to finish sending.
+    lw a0, __uart0_base+4
+    andi a0, a0, 3
+    bgt a0, x0, reset
+    
+    # Send PMU reset command.
+    li a0, 1
+    sw a0, __pmu_base, t0
+_reset:
+    j _reset
 
 
 

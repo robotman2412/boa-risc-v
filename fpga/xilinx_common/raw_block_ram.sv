@@ -54,6 +54,7 @@ module raw_block_ram#(
         .regcea(1),
         .rsta(0),
         .sbiterra(),
+        .dbiterra(),
         .sleep(0),
         .wea(we)
     );
@@ -136,7 +137,9 @@ module raw_dp_block_ram#(
         .rsta(0),
         .rstb(0),
         .sbiterra(),
+        .dbiterra(),
         .sbiterrb(),
+        .dbiterrb(),
         .sleep(0),
         .wea(a_we),
         .web(b_we)

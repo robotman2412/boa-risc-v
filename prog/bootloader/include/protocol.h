@@ -21,6 +21,8 @@
 #define P_WHO   0x03
 // Identity response.
 #define P_IDENT 0x04
+// UART baudrate setting.
+#define P_SPEED 0x05
 // Prepare for a memory write.
 #define P_WRITE 0x10
 // Request a memory read.
@@ -48,9 +50,13 @@
 #define A_RDONLY 0x05
 // The address range is not executable.
 #define A_NOEXEC 0x06
+// Communication timeout.
+#define A_TIME   0x07
+// Unsupported speed.
+#define A_NSPEED 0x08
 
 // Packet header structure.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Describes the request or data stored in this packet.
     uint32_t type;
     // Length of the remaining data.
@@ -58,21 +64,27 @@ typedef struct {
 } phdr_t;
 
 // P_PING and P_PONG data format.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Arbitrary data.
     uint8_t nonce[16];
 } p_ping_t;
 
 // P_ACK data format.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Acknowledgement type.
-    uint8_t  ack_type;
+    uint32_t ack_type;
     // Cause of potential errors.
     uint32_t cause;
 } p_ack_t;
 
+// P_SPEED data format.
+typedef struct __attribute__((packed)) {
+    // Desired UART baud rate.
+    uint32_t speed;
+} p_speed_t;
+
 // P_WRITE data format.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Base address to write to.
     uint32_t addr;
     // Length to write.
@@ -80,7 +92,7 @@ typedef struct {
 } p_write_t;
 
 // P_READ data format.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Base address to read from.
     uint32_t addr;
     // Length to read.
@@ -88,13 +100,13 @@ typedef struct {
 } p_read_t;
 
 // P_JUMP data format.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Address to jump to.
     uint32_t addr;
 } p_jump_t;
 
 // P_CALL data format.
-typedef struct {
+typedef struct __attribute__((packed)) {
     // Address to call.
     uint32_t addr;
 } p_call_t;
@@ -103,6 +115,7 @@ typedef struct {
 typedef union {
     p_ping_t  p_ping;
     p_ack_t   p_ack;
+    p_speed_t p_speed;
     p_write_t p_write;
     p_read_t  p_read;
     p_jump_t  p_jump;

@@ -15,11 +15,14 @@ if(NOT DEFINED linkerscript)
     set(linkerscript ${CMAKE_CURRENT_LIST_DIR}/ld/linker_${memory_layout}.ld)
 endif()
 
-if(${memory_layout} EQUAL "ram")
-    target_compile_definitions(${target} PUBLIC
-        -DROM_PROGRAM
-    )
-endif()
+target_compile_definitions(${target} PUBLIC
+    -Dmemory_layout_${memory_layout}
+)
+
+target_compile_definitions(${target} PUBLIC
+    -DCPU_FREQ=12000000
+    -DUART_BASE_FREQ=12000000
+)
 
 target_compile_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2

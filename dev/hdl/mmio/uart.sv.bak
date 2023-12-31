@@ -170,7 +170,7 @@ module boa_peri_uart#(
     always @(posedge clk) begin
         if (rst) begin
             // Reset.
-            tx_prod <= 0;
+            tx_prod <= tx_cons;
             
         end else if (tx_prod_next != tx_cons && bus.we[0] && bus.addr<<2 == addr) begin
             // UART write triggered.
@@ -183,7 +183,7 @@ module boa_peri_uart#(
     always @(posedge clk_div[2]) begin
         if (rst) begin
             // Reset.
-            tx_cons <= 0;
+            // tx_cons <= 0;
             
         end else if (tx_trig) begin
             // TX sent a byte.

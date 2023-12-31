@@ -192,6 +192,7 @@ module boa_udiv_pipelined#(
     // Pipelined divider generator.
     assign div[0] = rhs;
     assign rem[0] = lhs;
+    assign res[0] = 0;
     generate
         for (x = 0; x < width; x = x + 1) begin
             boa_div_part#(width-x-1, width, has_reg(x)) part(

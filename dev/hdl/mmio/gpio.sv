@@ -57,7 +57,16 @@ module boa_peri_gpio#(
     logic[pins-1:0] pin_in_reg;
     always @(posedge clk) begin
         pin_in_reg <= pin_in;
-        if (bus.addr<<2 == addr) begin
+        if (rst) begin
+            integer i;
+            out_reg <= 0;
+            oe_reg  <= 0;
+            for (i = 0; i < pins; i = i + 1) begin
+                sel_reg[i] <= 0;
+                ext_reg[i] <= 0;
+            end
+            bus.rdata <= 0;
+        end else if (bus.addr<<2 == addr) begin
             // Parallel output.
             bus.rdata               <= pin_in_reg;
             if (bus.we == 15) begin

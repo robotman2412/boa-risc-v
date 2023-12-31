@@ -237,7 +237,11 @@ module boa_stage_if#(
     assign pbus.we    = 0;
     assign pbus.wdata = 'bx;
     always @(*) begin
-        if (!cvalidl) begin
+        if (rst) begin
+            // Reset; don't do anything.
+            pbus.re         = 0;
+            pbus.addr       = 'bx;
+        end else if (!cvalidl) begin
             // Fetch lower half of instruction.
             pbus.re         = 1;
             pbus.addr[31:2] = addr[31:2];
@@ -260,7 +264,9 @@ module boa_stage_if#(
     assign q_pc     = addr;
     assign q_insn   = insn;
     always @(posedge clk) begin
-        if (!fw_stall_if || rst) begin
+        if (rst) begin
+            pc <= entrypoint[31:1];
+        end else if (!fw_stall_if) begin
             pc <= insn_valid ? next_addr : addr;
         end
     end

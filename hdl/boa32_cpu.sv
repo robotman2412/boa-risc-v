@@ -140,6 +140,15 @@ module boa32_cpu#(
     // MEM/WB: Trap cause.
     logic[3:0]  mem_wb_cause;
     
+    // WB: Result valid.
+    logic       wb_valid;
+    // WB: Stores to register RD.
+    logic       wb_use_rd;
+    // WB: Value to store to register RD.
+    logic[31:0] wb_rd_val;
+    // WB: Current instruction word.
+    logic[31:0] wb_insn;
+    
     
     /* ==== CSR logic ==== */
     boa_csr_bus csr();
@@ -359,6 +368,11 @@ module boa32_cpu#(
         fw_stall_ex |= fw_stall_mem;
         fw_stall_id |= fw_stall_ex;
         fw_stall_if |= fw_stall_id;
+        
+        fw_stall_mem &= !fw_exception;
+        fw_stall_ex  &= !fw_exception;
+        fw_stall_id  &= !fw_exception;
+        fw_stall_if  &= !fw_exception;
     end
     
     
@@ -371,9 +385,9 @@ module boa32_cpu#(
     // Interrupt latching logic.
     always @(posedge clk) begin
         csr_ex.irq_ip[31:16] <= irq[31:16];
-        csr_ex.irq_ip[15:4]  <= 0;
-        csr_ex.irq_ip[3]     <= mtime_irq;
-        csr_ex.irq_ip[2:0]   <= 0;
+        csr_ex.irq_ip[15:8]  <= 0;
+        csr_ex.irq_ip[7]     <= mtime_irq;
+        csr_ex.irq_ip[6:0]   <= 0;
     end
     
     // Interrupt prioritization logic.
@@ -496,10 +510,6 @@ module boa32_cpu#(
         // Data hazard avoidance.
         fw_stall_mem, mem_stall_req
     );
-    logic       wb_valid;
-    logic       wb_use_rd;
-    logic[31:0] wb_rd_val;
-    logic[31:0] wb_insn;
     always @(posedge clk) begin
         if (!fw_stall_mem) begin
             wb_valid  <= mem_wb_valid;

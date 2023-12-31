@@ -20,14 +20,26 @@ typedef struct {
 // GPIO peripheral.
 typedef struct {
     // Pin I/O.
-    volatile uint32_t   port;
+    uint32_t volatile port;
     // Pin output enable.
-    volatile uint32_t   oe;
+    uint32_t volatile oe;
     // Padding.
-    volatile uint32_t   _padding[30];
+    uint32_t volatile _padding[30];
     // Pin configuration.
-    volatile gpio_pin_t cfg[32];
+    gpio_pin_t volatile cfg[32];
 } gpio_t;
+
+// PWM peripheral.
+typedef struct {
+    // PWM value.
+    uint8_t volatile val;
+    // PWM clock divider.
+    uint8_t volatile div;
+    // Padding.
+    uint32_t volatile _padding[3];
+} pwm_t;
 
 // GPIO address.
 extern gpio_t GPIO asm("__gpio_base");
+// PWM address.
+extern pwm_t  PWM[8] asm("__pwm_base");

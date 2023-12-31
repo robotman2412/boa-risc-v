@@ -32,6 +32,7 @@ The following is the basic layout of a packet:
 | P_ACK     | 0x02  | Request acknowledgement
 | P_WHO     | 0x03  | Identity request
 | P_IDENT   | 0x04  | Identity response
+| P_SPEED   | 0x05  | UART baudrate setting
 | P_WRITE   | 0x10  | Prepare for a memory write
 | P_READ    | 0x11  | Request a memory read
 | P_WDATA   | 0x12  | Data associated with P_WRITE
@@ -64,7 +65,8 @@ Acknowledgement of a previous packet, positive or negative, from either side of 
 ### Data field format
 | length | value    | description
 | :----- | :------- | :----------
-| 1      | status   | Acknowledgement status
+| 4      | status   | Acknowledgement status
+| 4      | cause    | Error cause
 
 ### Acknowledgement status values
 | name      | value | description
@@ -76,6 +78,8 @@ Acknowledgement of a previous packet, positive or negative, from either side of 
 | A_ADDR    | 0x04  | The address range is not supported
 | A_RDONLY  | 0x05  | The address range is read-only
 | A_NOEXEC  | 0x06  | The address range is not executable
+| A_TIME    | 0x07  | Communication timeout
+| A_NSPEED  | 0x08  | Unsupported speed
 
 
 ## Packet: P_WHO
@@ -85,6 +89,15 @@ Identity request.
 ## Packet: P_IDENT
 ASCII string representing the computer.
 Format TBD.
+
+
+## Packet: P_SPEED
+Set the UART baud rate to a new value.
+
+### Data field format
+| length | value    | description
+| :----- | :------- | :----------
+| 4      | speed    | Desired baud rate
 
 
 ## Packet: P_WRITE

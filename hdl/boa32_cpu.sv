@@ -587,7 +587,9 @@ module boa32_csrs#(
     // CSR mvendorid: M-mode vendor ID.
     wire [31:0] csr_mvendorid   = 0;
     // CSR mvendorid: M-mode architecture ID.
-    wire [31:0] csr_marchid     = 34;
+    // This CSR serves as attribution for tapeouts and FPGAs.
+    // It must not be modified and must be readable to any M-mode software.
+    wire [31:0] csr_marchid     = 37;
     // CSR mvendorid: M-mode implementation ID.
     wire [31:0] csr_mipid       = 0;
     // CSR mvendorid: M-mode implementation ID.

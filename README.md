@@ -36,7 +36,7 @@ With the following CSRs present, all mandatory:
 | `0x342`     | `mcause`     | `0x0000_0000` | WARL trap and exception cause
 | `0x343`     | `mtval`      | `0x0000_0000` | (unimplemented)
 | `0xf11`     | `mvendorid`  | `0x0000_0000` | (unimplemented)
-| `0xf12`     | `marchid`    | `0x0000_0022` | Serves as attribution for tapeouts and FPGA bitstreams (currently [applying for this value](https://github.com/riscv/riscv-isa-manual/pull/1181))
+| `0xf12`     | `marchid`    | `37`          | Serves as attribution for tapeouts and FPGA bitstreams
 | `0xf13`     | `mipid`      | `0x0000_0000` | (unimplemented)
 | `0xf14`     | `mhartid`    | parameter     | Read-only query of CPU/HART ID
 | `0xf15`     | `mconfigptr` | `0x0000_0000` | (unimplemented)

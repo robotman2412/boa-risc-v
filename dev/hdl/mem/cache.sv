@@ -6,6 +6,7 @@
 
 
 // Configurable cache intended for larger memories with longer access times.
+// Does not support coherency; it should not be used redundantly with other caches.
 module boa_cache#(
     // Number of address bits.
     parameter alen          = 24,
@@ -18,8 +19,6 @@ module boa_cache#(
     
     // Whether this cache supports write access.
     parameter writeable     = 1,
-    // Use snooping instead of invalidation for incoming coherency.
-    parameter snooping      = 1,
     
     // Granularity of addresses.
     localparam agrain       = $clog2(line_size)+2,
@@ -54,12 +53,7 @@ module boa_cache#(
     // Cache interface.
     boa_mem_bus.MEM         bus,
     // External memory interface.
-    boa_mem_bus.CPU         xm_bus,
-    
-    // Cache coherency out.
-    boa_mem_bus.CPU         dcc_out,
-    // Cache coherency in.
-    boa_mem_bus.MEM         dcc_in
+    boa_mem_bus.CPU         xm_bus
 );
     genvar x;
     
@@ -98,13 +92,13 @@ module boa_cache#(
     logic                   wtag_dirty[ways];
     logic[alen-tgrain-1:0]  wtag_addr [ways];
     logic[wwidth-1:0]       wtag_wnext;
+    assign tag_wdata[twidth*ways+wwidth-1:twidth*ways] = wtag_wnext;
     generate
         for (x = 0; x < ways; x = x + 1) begin
             assign tag_wdata[twidth*x+alen-tgrain+wwidth+1]     = wtag_valid[x];
             assign tag_wdata[twidth*x+alen-tgrain+wwidth]       = wtag_dirty[x];
             assign tag_wdata[twidth*x+alen-tgrain-1:twidth*x]   = wtag_addr[x] ;
         end
-        assign tag_wdata[twidth*ways+wwidth-1:twidth*ways] = wtag_wnext;
     endgenerate
     
     
@@ -124,6 +118,13 @@ module boa_cache#(
     logic               ce_wdirty;
     // New address.
     logic               ce_waddr;
+    // Cache write data logic.
+    assign wtag_wnext = rtag_wnext+1;
+    generate
+        for (x = 0; x < ways; x = x + 1) begin
+            assign wtag_valid[x] = (rtag_wnext == x) ?  : rtag_valid[x];
+        end
+    endgenerate
     
     
     // Currently reading from extmem.
@@ -134,4 +135,21 @@ module boa_cache#(
     logic[alen-1:2]     xm_addr;
     // Cache way associated.
     logic[wwidth-1:0]   xm_way;
+    
+    
+    // Access buffer.
+    logic               ab_re;
+    logic[3:0]          ab_we;
+    logic[alen-1:2]     ab_addr;
+    logic[31:0]         ab_wdata;
+    always @(posedge clk) begin
+        ab_re       <= !rst && bus.re;
+        ab_we       <= !rst ? bus.we : 0;
+        ab_addr     <= bus.addr;
+        ab_wdata    <= bus.wdata;
+    end
+    
+    
+    // Control logic.
+    
 endmodule

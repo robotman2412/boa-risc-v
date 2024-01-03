@@ -16,6 +16,8 @@ module raw_block_ram#(
     // Initialization file, or "none" if not used.
     // The file must contain hexadecimal values seperated by commas.
     parameter string init_file   = "",
+    // Operate in write-first mode.
+    parameter bit    write_first = 0,
     
     // Number of data bits.
     localparam       dbits       = dbytes * blen
@@ -42,7 +44,7 @@ module raw_block_ram#(
         .READ_DATA_WIDTH_A(dbits),
         .READ_LATENCY_A(1),
         .WRITE_DATA_WIDTH_A(dbits),
-        .WRITE_MODE_A("read_first")
+        .WRITE_MODE_A(write_first ? "write_first" : "read_first")
     ) bram_inst (
         .addra(addr),
         .clka(clk),
@@ -63,6 +65,76 @@ endmodule
 
 
 // Dual-port block memory.
+module raw_sdp_block_ram#(
+    // Number of address bits.
+    parameter int    abits       = 8,
+    // Number of data bytes.
+    parameter int    dbytes      = 4,
+    // Byte size.
+    parameter int    blen        = 8,
+    // Initialization file, if any.
+    // The file must contain hexadecimal values seperated by commas.
+    parameter string init_file   = "",
+    // Operate in write-first mode.
+    parameter bit    write_first = 0,
+    
+    // Number of data bits.
+    localparam       dbits       = dbytes * blen
+)(
+    // RAM clock.
+    input  logic                clk,
+    
+    // Per-byte write enable.
+    input  logic[dbytes-1:0]    a_we,
+    // Address.
+    input  logic[abits-1:0]     a_addr,
+    // Write data.
+    input  logic[dbits-1:0]     a_wdata,
+    
+    // Address.
+    input  logic[abits-1:0]     b_addr,
+    // Read data.
+    output logic[dbits-1:0]     b_rdata
+);
+    xpm_memory_sdpram#(
+        .ADDR_WIDTH_A(abits),
+        .ADDR_WIDTH_B(abits),
+        .AUTO_SLEEP_TIME(0),
+        .BYTE_WRITE_WIDTH_A(blen),
+        .CLOCKING_MODE("common_clock"),
+        .CASCADE_HEIGHT(0),
+        .MEMORY_INIT_FILE(init_file == "" ? "none" : init_file),
+        .MEMORY_SIZE(dbits << abits),
+        .RAM_DECOMP("power"),
+        .READ_DATA_WIDTH_B(dbits),
+        .READ_LATENCY_B(1),
+        .WRITE_DATA_WIDTH_A(dbits),
+        .WRITE_MODE_A(write_first ? "write_first" : "read_first"),
+    )(
+        .addra(a_addr),
+        .addrb(b_addr),
+        .clka(clk),
+        .clkb(clk),
+        .dina(a_wdata),
+        .dinb(b_wdata),
+        .doutb(b_rdata),
+        .ena(1),
+        .enb(1),
+        .injectdbiterra(0),
+        .injectsbiterra(0),
+        .regceb(1),
+        .rsta(0),
+        .rstb(0),
+        .sbiterrb(),
+        .dbiterrb(),
+        .sleep(0),
+        .wea(a_we)
+    );
+endmodule
+
+
+
+// Dual-port block memory.
 module raw_dp_block_ram#(
     // Number of address bits.
     parameter int    abits       = 8,
@@ -73,6 +145,8 @@ module raw_dp_block_ram#(
     // Initialization file, if any.
     // The file must contain hexadecimal values seperated by commas.
     parameter string init_file   = "",
+    // Operate in write-first mode.
+    parameter bit    write_first = 0,
     
     // Number of data bits.
     localparam       dbits       = dbytes * blen
@@ -115,8 +189,8 @@ module raw_dp_block_ram#(
         .READ_LATENCY_B(1),
         .WRITE_DATA_WIDTH_A(dbits),
         .WRITE_DATA_WIDTH_B(dbits),
-        .WRITE_MODE_A("read_first"),
-        .WRITE_MODE_B("read_first")
+        .WRITE_MODE_A(write_first ? "write_first" : "read_first"),
+        .WRITE_MODE_B(write_first ? "write_first" : "read_first")
     )(
         .addra(a_addr),
         .addrb(b_addr),

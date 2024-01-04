@@ -35,6 +35,19 @@ interface boa_mem_bus#(
     modport MEM (output ready, rdata, input re, we, addr, wdata);
 endinterface
 
+// Boa memory bus connector.
+module boa_mem_connector(
+    boa_mem_bus.CPU cpu,
+    boa_mem_bus.MEM mem
+);
+    assign cpu.re       = mem.re;
+    assign cpu.we       = mem.we;
+    assign cpu.addr     = mem.addr;
+    assign cpu.wdata    = mem.wdata;
+    assign mem.ready    = cpu.ready;
+    assign mem.rdata    = cpu.rdata;
+endmodule
+
 
 
 // Boa memory overlay.

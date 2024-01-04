@@ -37,22 +37,32 @@ module main#(
     // A 32-bit quantity of randomness.
     input  logic[31:0]  randomness,
     
+    // Additional MMIO bus.
+    boa_mem_bus.CPU     xmp_bus,
+    // External program bus.
+    boa_mem_bus.CPU     xmi_bus,
+    // External data bus.
+    boa_mem_bus.CPU     xmd_bus,
+    
     // Power management unit interface.
-    pmu_bus.CPU pmb
+    pmu_bus.CPU         pmb
 );
     `include "boa_fileio.svh"
     
     // Memory buses.
     boa_mem_bus pbus();
     boa_mem_bus dbus();
-    boa_mem_bus mux_a_bus[2]();
-    boa_mem_bus mux_b_bus[3]();
-    boa_mem_bus#(.alen(12)) peri_bus[13]();
+    boa_mem_bus mux_a_bus[3]();
+    boa_mem_bus mux_b_bus[4]();
+    boa_mem_bus#(.alen(12)) peri_bus[14]();
     
     // Program ROM.
     dp_block_ram#(10, rom_file, 1) rom(clk, mux_a_bus[0], mux_b_bus[0]);
     // RAM.
     dp_block_ram#(14, "", 0) ram(clk, mux_a_bus[1], mux_b_bus[1]);
+    // External memory.
+    boa_mem_connector xmi_conn(xmi_bus, mux_a_bus[2]);
+    boa_mem_connector xmd_conn(xmd_bus, mux_b_bus[2]);
     
     // UART.
     logic rx_full, tx_empty;
@@ -78,12 +88,14 @@ module main#(
     boa_peri_pwm#(.addr('h4e0)) pwm6gen(clk, clk, rst, peri_bus[4+6], gpio_ext_sig[6]);
     boa_peri_pwm#(.addr('h4f0)) pwm7gen(clk, clk, rst, peri_bus[4+7], gpio_ext_sig[7]);
     // Is simulator?
-    boa_peri_readable#(.addr('hffc)) is_sim(clk, rst, peri_bus[12], is_simulator);
+    boa_peri_readable#(.addr('h310)) is_sim(clk, rst, peri_bus[12], is_simulator);
+    // External MMIO bus.
+    boa_mem_connector xmp_conn(xmp_bus, peri_bus[13]);
     
     // Memory interconnects.
-    boa_mem_mux#(.mems(2)) mux_a(clk, rst, pbus, mux_a_bus, {32'h40001000, 32'h40010000},               {12, 16});
-    boa_mem_mux#(.mems(3)) mux_b(clk, rst, dbus, mux_b_bus, {32'h40001000, 32'h40010000, 32'h80000000}, {12, 16, 12});
-    boa_mem_overlay#(.mems(13)) ovl(mux_b_bus[2], peri_bus);
+    boa_mem_mux#(.mems(3)) mux_a(clk, rst, pbus, mux_a_bus, {32'h4000_1000, 32'h4001_0000, 32'h8000_0000},                {12, 16, 24});
+    boa_mem_mux#(.mems(4)) mux_b(clk, rst, dbus, mux_b_bus, {32'h4000_1000, 32'h4001_0000, 32'h8000_0000, 32'h2000_0000}, {12, 16, 24, 12});
+    boa_mem_overlay#(.mems(14)) ovl(mux_b_bus[3], peri_bus);
     
     // CPU.
     logic[31:16] irq;

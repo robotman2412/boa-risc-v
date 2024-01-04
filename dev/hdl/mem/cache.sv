@@ -204,11 +204,11 @@ module boa_cache#(
     
     // Next address in sequential extmem access.
     logic[alen-1:2]             xm_next_addr;
-    assign xm_next_addr[alen-1:agrain]              = xm_addr[alen-1:agrain];
+    assign xm_next_addr[alen-1:agrain]              = xm_bus.addr[alen-1:agrain];
     assign xm_next_addr[agrain-1:2]                 = xm_addr[agrain-1:2] + 1;
     // Next address in sequential cachemem access.
     logic[lwidth+lswidth-1:0]   cm_next_addr;
-    assign cm_next_addr[lwidth+lswidth-1:lswidth]   = cm_addr[lwidth+lswidth-1:lswidth];
+    assign cm_next_addr[lwidth+lswidth-1:lswidth]   = cache_raddr[lwidth+lswidth-1:lswidth];
     assign cm_next_addr[lswidth-1:0]                = cm_addr[lswidth-1:0] + 1;
     // Initial extmem address for extmem to cache copy.
     logic[alen-1:2]             xm_init_raddr;
@@ -216,8 +216,9 @@ module boa_cache#(
     assign xm_init_raddr[agrain-1:2]                = 0;
     // Initial extmem address for cache to extmem copy.
     logic[alen-1:2]             xm_init_waddr;
-    assign xm_init_waddr[alen-1:agrain]             = ab_addr[alen-1:agrain];
-    assign xm_init_waddr[agrain-1:2]                = 0;
+    assign xm_init_waddr[alen-1:tgrain]             = rtag_addr[rtag_wnext][alen-1:tgrain];
+    assign xm_init_waddr[tgrain-1:lswidth]          = ab_addr[tgrain-1:lswidth];
+    assign xm_init_waddr[lswidth-1:2]               = 0;
     // Initial cache address for cache to extmem copy.
     logic[lwidth+lswidth-1:0]   cm_init_raddr;
     assign cm_init_raddr[lwidth+lswidth-1:lswidth]  = bus.addr[alen-1:agrain];
@@ -240,16 +241,16 @@ module boa_cache#(
             cache_to_xm <= 0;
             xm_addr     <= (xm_addr[agrain-1:2] != 0) ? xm_next_addr : xm_init_raddr;
             cm_addr     <= cm_next_addr;
-            xm_paddr    <= xm_addr;
-            cm_paddr    <= cm_addr;
+            xm_paddr    <= xm_bus.addr;
+            cm_paddr    <= cache_raddr;
         end else if (cache_to_xm) begin
             // Flushing a dirty cache line.
             xm_to_cache <= 0;
             cache_to_xm <= cm_addr[lswidth-1:0] != 0;
             xm_addr     <= xm_next_addr;
             cm_addr     <= (cm_addr[lswidth-1:0] != 0) ? cm_next_addr : cm_init_raddr;
-            xm_paddr    <= xm_addr;
-            cm_paddr    <= cm_addr;
+            xm_paddr    <= xm_bus.addr;
+            cm_paddr    <= cache_raddr;
             xm_pwdata   <= xm_bus.wdata;
         end else if ((ab_re || ab_we) && !tag_valid) begin
             // Non-resident access.
@@ -258,8 +259,8 @@ module boa_cache#(
             xm_way      <= rtag_wnext;
             xm_addr     <= rtag_dirty[rtag_wnext] ? xm_init_waddr : xm_next_addr;
             cm_addr     <= rtag_dirty[rtag_wnext] ? cm_next_addr  : cm_init_waddr;
-            xm_paddr    <= xm_addr;
-            cm_paddr    <= cm_addr;
+            xm_paddr    <= xm_bus.addr;
+            cm_paddr    <= cache_raddr;
         end else begin
             // Cache is idle.
             xm_to_cache <= 0;
@@ -267,8 +268,8 @@ module boa_cache#(
             xm_way      <= 'bx;
             xm_addr     <= xm_init_raddr;
             cm_addr     <= cm_init_raddr;
-            xm_paddr    <= xm_addr;
-            cm_paddr    <= cm_addr;
+            xm_paddr    <= xm_bus.addr;
+            cm_paddr    <= cache_raddr;
         end
     end
     

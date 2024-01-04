@@ -33,21 +33,19 @@ void main() {
     // Set up interrupts.
     asm("csrs mie, %0" ::"r"(0x00020000));
     asm("csrsi mstatus, 8");
-    while (!done);
-    done = false;
-    print("RNG test:\n");
-    putx(RNG, 8);
-    putc('\n');
-    putx(RNG, 8);
-    putc('\n');
-    putx(RNG, 8);
-    putc('\n');
-    putx(RNG, 8);
-    putc('\n');
-    putx(RNG, 8);
-    putc('\n');
+    while (!done)
+        ;
+    done                             = false;
+    *(uint32_t volatile *)0x80800000 = 0xdeadbeef;
+    *(uint32_t volatile *)0x80800010 = 0xf00dbabe;
+    *(uint32_t volatile *)0x80801000 = 0xbaadf00d;
+    *(uint32_t volatile *)0x80802000 = 0xcafebabe;
+    uint32_t x                       = *(uint32_t volatile *)0x80800000;
+    putx(x, 8);
+    print("\n");
     print("Hello, what's your name?\n> ");
-    while (!done);
+    while (!done)
+        ;
     print("Hello, ");
     print((char const *)rxbuf);
     print("!\nYour name is ");

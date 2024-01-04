@@ -15,7 +15,6 @@ module top(
     end
     
     boa_mem_bus#(16) xm_bus();
-    assign xm_bus.ready = 1;
     always @(posedge clk) begin
         xm_bus.rdata[31]    <= xm_bus.re;
         xm_bus.rdata[30:16] <= 0;
@@ -32,21 +31,25 @@ module top(
     );
     
     always @(*) begin
-        if (cycle <= 5) begin
+        xm_bus.ready = 1;
+        if (cycle <= 9) begin
             bus.re    = 1;
             bus.we    = 1;
             bus.addr  = 2;
             bus.wdata = 32'hdead_beef;
-        end else if (cycle <= 11) begin
+            xm_bus.ready = cycle[0];
+        end else if (cycle <= 19) begin
             bus.re    = 1;
             bus.we    = 0;
             bus.addr  = 18;
             bus.wdata = 0;
-        end else if (cycle <= 22) begin
+            xm_bus.ready = !(cycle >= 11 && cycle <= 15);
+        end else if (cycle <= 38) begin
             bus.re    = 1;
             bus.we    = 0;
             bus.addr  = 34;
             bus.wdata = 0;
+            xm_bus.ready = !cycle[0] || (cycle >= 31);
         end else begin
             bus.re    = 0;
             bus.we    = 0;

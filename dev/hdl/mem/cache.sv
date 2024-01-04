@@ -186,13 +186,21 @@ module boa_cache#(
     logic xm_to_cache;
     // Copying from cache to extmem.
     logic cache_to_xm;
+    // Was copying from cache to extmem.
+    logic pcache_to_xm;
     
     // Address being synced with extmem.
     logic[alen-1:2]             xm_addr;
     // Address being synced with cache.
     logic[lwidth+lswidth-1:0]   cm_addr;
+    // Previous extmem address.
+    logic[alen-1:2]             xm_paddr;
+    // Previous cache address.
+    logic[lwidth+lswidth-1:0]   cm_paddr;
     // Cache way being synced with extmem.
     logic[wwidth-1:0]           xm_way;
+    // Previous extmem write data.
+    logic[31:0]                 xm_pwdata;
     
     // Next address in sequential extmem access.
     logic[alen-1:2]             xm_next_addr;
@@ -221,18 +229,28 @@ module boa_cache#(
     
     // Cache state machine.
     always @(posedge clk) begin
-        if (xm_to_cache) begin
+        pcache_to_xm <= cache_to_xm || (pcache_to_xm && !xm_bus.ready);
+        if (!xm_bus.ready && xm_to_cache) begin
+            // Waiting on extmem read.
+        end else if (!xm_bus.ready && (cache_to_xm || (pcache_to_xm && !xm_bus.ready))) begin
+            // Waiting on extmem write.
+        end else if (xm_to_cache) begin
             // Reading a cache line.
             xm_to_cache <= xm_addr[agrain-1:2] != 0;
             cache_to_xm <= 0;
             xm_addr     <= (xm_addr[agrain-1:2] != 0) ? xm_next_addr : xm_init_raddr;
             cm_addr     <= cm_next_addr;
+            xm_paddr    <= xm_addr;
+            cm_paddr    <= cm_addr;
         end else if (cache_to_xm) begin
             // Flushing a dirty cache line.
             xm_to_cache <= 0;
             cache_to_xm <= cm_addr[lswidth-1:0] != 0;
             xm_addr     <= xm_next_addr;
             cm_addr     <= (cm_addr[lswidth-1:0] != 0) ? cm_next_addr : cm_init_raddr;
+            xm_paddr    <= xm_addr;
+            cm_paddr    <= cm_addr;
+            xm_pwdata   <= xm_bus.wdata;
         end else if ((ab_re || ab_we) && !tag_valid) begin
             // Non-resident access.
             xm_to_cache <= !rtag_dirty[rtag_wnext];
@@ -240,6 +258,8 @@ module boa_cache#(
             xm_way      <= rtag_wnext;
             xm_addr     <= rtag_dirty[rtag_wnext] ? xm_init_waddr : xm_next_addr;
             cm_addr     <= rtag_dirty[rtag_wnext] ? cm_next_addr  : cm_init_waddr;
+            xm_paddr    <= xm_addr;
+            cm_paddr    <= cm_addr;
         end else begin
             // Cache is idle.
             xm_to_cache <= 0;
@@ -247,6 +267,8 @@ module boa_cache#(
             xm_way      <= 'bx;
             xm_addr     <= xm_init_raddr;
             cm_addr     <= cm_init_raddr;
+            xm_paddr    <= xm_addr;
+            cm_paddr    <= cm_addr;
         end
     end
     
@@ -254,12 +276,12 @@ module boa_cache#(
     always @(*) begin
         if (xm_to_cache) begin
             // Reading a cache line.
-            xm_bus.re                   = xm_addr[agrain-1:2] != 0;
+            xm_bus.re                   = !xm_bus.ready || (xm_addr[agrain-1:2] != 0);
             xm_bus.we                   = 0;
-            xm_bus.addr                 = xm_addr;
+            xm_bus.addr                 = xm_bus.ready ? xm_addr : xm_paddr;
             xm_bus.wdata                = 'bx;
             // Writing to cache memory.
-            wcache_we                   = 4'b1111;
+            wcache_we                   = xm_bus.ready ? 4'b1111 : 4'b0000;
             wcache_way                  = xm_way;
             wcache_wdata                = xm_bus.rdata;
             cache_waddr                 = cm_addr;
@@ -271,12 +293,12 @@ module boa_cache#(
             etag_valid                  = 'bx;
             etag_dirty                  = 'bx;
             etag_addr                   = 'bx;
-        end else if (cache_to_xm) begin
+        end else if (cache_to_xm || (!xm_bus.ready && pcache_to_xm)) begin
             // Flushing a dirty cache line.
             xm_bus.re                   = 0;
             xm_bus.we                   = 4'b1111;
-            xm_bus.addr                 = xm_addr;
-            xm_bus.wdata                = rcache_rdata[xm_way];
+            xm_bus.addr                 = xm_bus.ready ? xm_addr : xm_paddr;
+            xm_bus.wdata                = xm_bus.ready ? rcache_rdata[xm_way] : xm_pwdata;
             // Cache write is idle.
             wcache_we                   = 0;
             wcache_way                  = 'bx;
@@ -400,9 +422,12 @@ module boa_cache#(
             // Tag read prepared an access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end
-        if (cache_to_xm && cm_addr[lswidth-1:0] != 0) begin
+        if (pcache_to_xm && !xm_bus.ready) begin
+            // Waiting for extmem.
+            cache_raddr = cm_paddr;
+        end else if (cache_to_xm && cm_addr[lswidth-1:0] != 0) begin
             // Copying from cache to extmem.
-            cache_raddr = cm_addr;
+            cache_raddr = xm_bus.ready ? cm_addr : cm_paddr;
         end else if ((ab_re || ab_we) && !tag_valid && rtag_dirty[rtag_wnext]) begin
             // Non-resident access; dirty tag needs flushing.
             cache_raddr = cm_addr;

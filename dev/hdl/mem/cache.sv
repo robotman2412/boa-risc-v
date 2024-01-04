@@ -3,8 +3,6 @@
 
 `timescale 1ns/1ps
 
-// TODO: change the write logic to be combinatorial and create a new state machine for extmem accesses.
-
 
 
 // Configurable cache intended for larger memories with longer access times.

@@ -265,13 +265,13 @@ module boa_div_pipelined#(
     logic[latency-1:0] r_sign_l;
     logic[latency-1:0] r_sign_r;
     generate
-        if (latency == 1) begin
+        if (latency == 1) begin: l1
             always @(posedge clk) begin
                 r_0      <= rhs == 0;
                 r_sign_l <= sign_lhs;
                 r_sign_r <= sign_rhs;
             end
-        end else begin
+        end else begin: l2
             always @(posedge clk) begin
                 r_0      <= {r_0[latency-2:0],      rhs == 0};
                 r_sign_l <= {r_sign_l[latency-2:0], sign_lhs};
@@ -323,7 +323,7 @@ module boa_delay_comp#(
     output logic    waiting
 );
     generate
-        if (delay != 0) begin
+        if (delay != 0) begin: l1
             // Timer register.
             logic[exp-1:0] timer = 0;
             
@@ -336,7 +336,7 @@ module boa_delay_comp#(
                 end
             end
             assign waiting = timer != 0;
-        end else begin
+        end else begin: l0
             assign waiting = 0;
         end
     endgenerate

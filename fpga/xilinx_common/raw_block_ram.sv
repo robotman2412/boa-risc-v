@@ -64,7 +64,7 @@ endmodule
 
 
 
-// Dual-port block memory.
+// Simple dual-port block memory with a write and a read port.
 module raw_sdp_block_ram#(
     // Number of address bits.
     parameter int    abits       = 8,

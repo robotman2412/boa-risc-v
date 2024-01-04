@@ -1,5 +1,5 @@
 
-// Copyright © 2023, Julian Scheffers, see LICENSE for more information
+// Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
 `include "boa_defines.svh"

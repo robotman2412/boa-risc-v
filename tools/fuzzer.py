@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright © 2023, Julian Scheffers, see LICENSE for more information
+# Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 import os, argparse, re, subprocess, tempfile, random
 
@@ -11,7 +11,7 @@ objdump = os.getenv("FUZ_OBJDUMP") or "riscv32-unknown-elf-objdump"
 
 linkerfile = tempfile.NamedTemporaryFile(mode="w", suffix=".ld")
 linkerfile.write("""
-/* Copyright © 2023, Julian Scheffers, see LICENSE for more information */
+/* Copyright © 2024, Julian Scheffers, see LICENSE for more information */
 
 PHDRS {
     codeseg   PT_LOAD;

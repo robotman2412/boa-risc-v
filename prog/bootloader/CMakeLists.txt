@@ -1,5 +1,5 @@
 
-# Copyright © 2023, Julian Scheffers, see LICENSE for more information
+# Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 
 cmake_minimum_required(VERSION 3.10.0)

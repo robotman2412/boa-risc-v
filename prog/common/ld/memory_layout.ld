@@ -1,5 +1,5 @@
 
-/* Copyright © 2023, Julian Scheffers, see LICENSE for more information */
+/* Copyright © 2024, Julian Scheffers, see LICENSE for more information */
 
 __start_rom     = 0x40001000;
 __stop_rom      = 0x40002000;

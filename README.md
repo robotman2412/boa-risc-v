@@ -52,7 +52,7 @@ Unsupported features on the TODO list:
 
 
 # License
-Copyright © 2023, Julian Scheffers
+Copyright © 2024, Julian Scheffers
 
 <p xmlns:cc="http://creativecommons.org/ns#" xmlns:dct="http://purl.org/dc/terms/">This work ("Boa³²") is licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="license noopener noreferrer" style="display:inline-block;">Creative Commons Attribution 4.0 International
 

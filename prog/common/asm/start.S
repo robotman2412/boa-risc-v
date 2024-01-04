@@ -1,5 +1,5 @@
 
-// Copyright © 2023, Julian Scheffers, see LICENSE for more information
+// Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 #ifndef START_NAME
 #define START_NAME _start

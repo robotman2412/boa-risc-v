@@ -1,5 +1,5 @@
 
-/* Copyright © 2023, Julian Scheffers, see LICENSE for more information */
+/* Copyright © 2024, Julian Scheffers, see LICENSE for more information */
 
 __start_data = .;
 __start_data_rom = __stop_rodata;

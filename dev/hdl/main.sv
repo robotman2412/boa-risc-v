@@ -106,7 +106,17 @@ module main#(
     
     // CPU.
     logic[31:16] irq;
-    boa32_cpu#(32'h40001000, 32'hff000000, 0, 0) cpu(clk, rtc_clk, rst, pbus, dbus, fence_rl, fence_aq, fence_i, irq);
+    boa32_cpu#(
+        .entrypoint(32'h40001000),
+        .cpummio(32'hff000000),
+        .hartid(0),
+        .debug(0)
+    ) cpu (
+        clk, rtc_clk, rst,
+        pbus, dbus,
+        fence_rl, fence_aq, fence_i,
+        irq
+    );
     
     // Interrupts.
     assign irq[16] = tx_empty;

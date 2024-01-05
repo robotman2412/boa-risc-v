@@ -12,6 +12,8 @@ module boa_stage_id#(
     parameter debug         = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
+    // Support A (atomic memory operation) instructions.
+    parameter has_a         = 1,
     // Support C (compressed) instructions.
     parameter has_c         = 1
 )(
@@ -60,6 +62,8 @@ module boa_stage_id#(
     
     // FENCE.I instructions.
     output logic        is_fencei,
+    // Current MISA value.
+    input  logic[31:0]  cur_misa,
     
     // MRET or SRET instruction.
     output logic        is_xret,
@@ -122,7 +126,7 @@ module boa_stage_id#(
     // Instruction decompression logic.
     logic[31:0] decomp;
     logic       decomp_valid;
-    wire        is_rvc = has_c && r_insn[1:0] != 2'b11;
+    wire        is_rvc = has_c && cur_misa[2] && r_insn[1:0] != 2'b11;
     wire [31:0] insn   = is_rvc ? decomp : r_insn;
     generate
         if (has_c) begin: rvc
@@ -139,8 +143,10 @@ module boa_stage_id#(
     
     // Instruction validator.
     wire insn_valid, insn_legal;
-    boa_insn_validator#(.has_m(1), .has_zicsr(1)) validator(
-        r_insn, 2'b11, 0, 32'hffff_ffff,
+    boa_insn_validator#(
+        .has_m(has_m), .has_a(has_a)
+    ) validator(
+        r_insn, 2'b11, 0, cur_misa,
         insn_valid, insn_legal
     );
     
@@ -412,10 +418,6 @@ module boa_insn_validator#(
     parameter has_d = 0,
     // Allow long double instructions.
     parameter has_q = 0,
-    // Allow CSR instructions.
-    parameter has_zicsr = 0,
-    // Allow fence.i instructions.
-    parameter has_zifencei = 0,
     // Allow S-mode instructions.
     parameter has_s_mode = 0
 )(
@@ -440,8 +442,6 @@ module boa_insn_validator#(
     wire allow_f        = (misa & `RV_MISA_F) && has_f;
     wire allow_d        = (misa & `RV_MISA_D) && has_d;
     wire allow_q        = (misa & `RV_MISA_Q) && has_q;
-    wire allow_zicsr    = has_zicsr;
-    wire allow_zifencei = has_zifencei;
     wire allow_s_mode   = (misa & `RV_MISA_S) && has_s_mode;
     
     
@@ -466,7 +466,9 @@ module boa_insn_validator#(
     always @(*) begin
         if (insn[25]) begin
             // Multiply / divide.
-            if (rv64 && insn[3]) begin
+            if (!allow_m) begin
+                valid_op = 0;
+            end else if (rv64 && insn[3]) begin
                 valid_op = (insn[31:26] == 0) && (insn[14] || (insn[13:12] != 0));
             end else begin
                 valid_op = insn[31:26] == 0;
@@ -512,6 +514,25 @@ module boa_insn_validator#(
     end
     
     
+    // AMO opcode verifier.
+    logic valid_amo;
+    always @(*) begin
+        if (insn[14:12] != 3'b010 && (!rv64 || insn[14:12] != 3'b011)) begin
+            // Invalid access size.
+            valid_amo = 0;
+        end else if (insn[28]) begin
+            // LR/SC instructions.
+            valid_amo = insn[31:29] == 0;
+        end else if (insn[27]) begin
+            // AMOSWAP instructions.
+            valid_amo = insn[31:29] == 0;
+        end else begin
+            // AMO computation instructions.
+            valid_amo = 1;
+        end
+    end
+    
+    
     // Output multiplexer.
     always @(*) begin
         legal = 1;
@@ -527,7 +548,7 @@ module boa_insn_validator#(
             `RV_OP_OP_IMM_32:   begin valid = rv64 && valid_op_imm; end
             `RV_OP_STORE:       begin valid = (insn[14] == 0) && (insn[13:12] <= 2) + rv64; end
             `RV_OP_STORE_FP:    begin valid = 0; $strobe("TODO: validity for STORE_FP"); end
-            `RV_OP_AMO:         begin valid = allow_a; end
+            `RV_OP_AMO:         begin valid = allow_a && valid_amo; end
             `RV_OP_OP:          begin valid = valid_op; end
             `RV_OP_LUI:         begin valid = 1; end
             `RV_OP_OP_32:       begin valid = rv64 && valid_op; end

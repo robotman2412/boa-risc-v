@@ -16,7 +16,7 @@
     
     Implemented CSRs:
         0x300   mstatus
-        0x301   misa        (RV32IM)
+        0x301   misa        (read or read/write)
         0x302   medeleg     (0)
         0x303   mideleg     (0)
         0x304   mie
@@ -31,7 +31,7 @@
         
         0xf11   mvendorid   (0)
         0xf12   marchid     (0)
-        0xf13   mipid       (0)
+        0xf13   mipid       (derived from parameters)
         0xf14   mhartid     (parameter)
         0xf15   mconfigptr  (0)
     
@@ -48,8 +48,15 @@ module boa32_cpu#(
     parameter hartid        = 32'h0000_0000,
     // Print debug messages about CPU state.
     parameter debug         = 0,
+    // Divider latency, 0 to 33.
+    // Only applicable if has_m is 1.
+    parameter div_latency   = 2,
+    // Support configurability through misa.
+    parameter misa_we       = 1,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
+    // Support A (atomic memory operation) instructions.
+    localparam has_a         = 0,
     // Support C (compressed) instructions.
     parameter has_c         = 1
 )(
@@ -162,7 +169,16 @@ module boa32_cpu#(
     /* ==== CSR logic ==== */
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
-    boa32_csrs#(.hartid(hartid), .has_c(has_c)) csrs(clk, rst, csr, csr_ex);
+    boa32_csrs#(
+        .hartid(hartid),
+        .misa_we(misa_we),
+        .has_m(has_m),
+        .has_a(has_a),
+        .has_c(has_c)
+    ) csrs (
+        clk, rst,
+        csr, csr_ex
+    );
     
     
     /* ==== Control transfer logic ==== */
@@ -339,7 +355,7 @@ module boa32_cpu#(
     // Forward RD from WB to RS2 from MEM.
     wire fw_mem_rs2_wb_rd   = eq_mem_rs2_wb_rd;
     
-    // Data dependency resolution.
+    // Hazard avoidance logic.
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);
     boa_stage_mem_fw st_mem_fw(ex_mem_insn, use_rs1_mem, use_rs2_mem);
     assign fence_i = is_fencei && !fw_stall_id;
@@ -380,6 +396,11 @@ module boa32_cpu#(
         if (is_fencei && (ex_mem_valid || mem_wb_valid)) begin
             // A fence.i instruction requires the rest of the pipeline to be emptied.
             // Wait for the instructions in EX and MEM to either trap or finish.
+            fw_stall_id = 1;
+        end
+        if (misa_we && st_mem.csr_we && csr.addr == `RV_CSR_MISA) begin
+            // A write to misa is in progress and misa is writeable, so ID cannot validate instructions.
+            // Wait for the CSR write to complete so the next instruction is validated correctly.
             fw_stall_id = 1;
         end
         
@@ -505,8 +526,8 @@ module boa32_cpu#(
         if_id_valid && !fw_stall_if, if_id_pc, if_id_insn, if_id_trap && !fw_stall_if, if_id_cause,
         // Pipeline output.
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
-        // Instruction fetch fence.
-        is_fencei,
+        // Miscellaneous.
+        is_fencei, csrs.csr_misa,
         // Control transfer.
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         // Write-back.
@@ -514,7 +535,7 @@ module boa32_cpu#(
         // Data hazard avoidance.
         fw_stall_id, use_rs1_bt, fw_rs1_bt, fw_in_bt
     );
-    boa_stage_ex#(.has_m(has_m)) st_ex (
+    boa_stage_ex#(.div_latency(div_latency), .has_m(has_m)) st_ex (
         clk, rst, clear_ex,
         // Pipeline input.
         id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,
@@ -550,10 +571,17 @@ endmodule
 module boa32_csrs#(
     // CSR mhartid value.
     parameter hartid        = 32'h0000_0000,
-    // Support RVC instructions.
-    parameter has_c         = 1,
-    // Support RVM instructions.
-    parameter has_m         = 1
+    // Divider latency, 0 to 33.
+    // Only applicable if has_m is 1.
+    parameter div_latency   = 2,
+    // Support configurability through misa.
+    parameter misa_we       = 1,
+    // Support M (multiply/divide) instructions.
+    parameter has_m         = 1,
+    // Support A (atomic memory operation) instructions.
+    parameter has_a         = 1,
+    // Support C (compressed) instructions.
+    parameter has_c         = 1
 )(
     // CPU clock.
     input  logic        clk,
@@ -566,28 +594,25 @@ module boa32_csrs#(
     boa_csr_ex_bus.CSR  ex
 );
     /* ==== CSR STORAGE ==== */
+    // CSR misa: Enable A instructions.
+    logic       csr_misa_a;
+    // CSR misa: Enable C instructions.
+    logic       csr_misa_c;
+    // CSR misa: Enable M instructions.
+    logic       csr_misa_m;
     // CSR mstatus: M-mode previous interrupt enable.
-    logic        csr_mstatus_mpie;
+    logic       csr_mstatus_mpie;
     // CSR mstatus: M-mode interrupt enable.
-    logic        csr_mstatus_mie;
+    logic       csr_mstatus_mie;
     // CSR mcause: Interrupt number / trap number.
-    logic[4:0]   csr_mcause_no;
+    logic[4:0]  csr_mcause_no;
     // CSR mcause: Is an interrupt.
-    logic        csr_mcause_int;
+    logic       csr_mcause_int;
     
     // CSR mstatus: M-mode status.
     wire [31:0] csr_mstatus     = (csr_mstatus_mie << 3) | (csr_mstatus_mpie << 7);
     // CSR misa: M-mode ISA description.
     wire [31:0] csr_misa;
-    assign csr_misa[1:0]   = 0;
-    assign csr_misa[2]     = has_c;
-    assign csr_misa[7:3]   = 0;
-    assign csr_misa[8]     = 1;
-    assign csr_misa[11:9]  = 0;
-    assign csr_misa[12]    = has_m;
-    assign csr_misa[25:13] = 0;
-    assign csr_misa[29:26] = 0;
-    assign csr_misa[31:30] = 2'b01;
     // CSR medeleg: M-mode trap delegation.
     wire [31:0] csr_medeleg     = 0;
     // CSR medeleg: M-mode interrupt delegation.
@@ -615,12 +640,70 @@ module boa32_csrs#(
     // It must not be modified and must be readable to any M-mode software.
     wire [31:0] csr_marchid     = 37;
     // CSR mvendorid: M-mode implementation ID.
-    wire [31:0] csr_mipid       = 0;
+    wire [31:0] csr_mipid;
     // CSR mvendorid: M-mode implementation ID.
     wire [31:0] csr_mhartid     = hartid;
     // CSR mvendorid: M-mode configuration pointer.
     wire [31:0] csr_mconfigptr  = 0;
     
+    /* ==== CSR misa value ==== */
+    // Instruction set extensions.
+    assign csr_misa[0]     = csr_misa_a;
+    assign csr_misa[1]     = 0;
+    assign csr_misa[2]     = csr_misa_c;
+    assign csr_misa[7:3]   = 0;
+    assign csr_misa[8]     = 1; // I
+    assign csr_misa[11:9]  = 0;
+    assign csr_misa[12]    = csr_misa_m;
+    assign csr_misa[25:13] = 0;
+    // Reserved.
+    assign csr_misa[29:26] = 0;
+    // MXLEN (32).
+    assign csr_misa[31:30] = 2'b01;
+    
+    // CSR misa storage.
+    generate
+        if (misa_we) begin: misa_rw
+            // Configurable MISA.
+            initial begin
+                // Start with all supported extensions enabled.
+                csr_misa_a = has_a;
+                csr_misa_c = has_c;
+                csr_misa_m = has_m;
+            end
+            always @(posedge clk) begin
+                if (csr.we && csr.addr == `RV_CSR_MISA) begin
+                    // Update enabled extensions.
+                    csr_misa_a <= has_a && csr.wdata[0];
+                    csr_misa_c <= has_c && csr.wdata[2];
+                    csr_misa_m <= has_m && csr.wdata[12];
+                end
+            end
+        end else begin: misa_ro
+            // Static MISA: present supported extensions.
+            assign csr_misa_a = has_a;
+            assign csr_misa_c = has_c;
+            assign csr_misa_m = has_m;
+        end
+    endgenerate
+    
+    /* ==== CSR mipid value ==== */
+    // Semantic versioning PATCH.
+    assign csr_mipid[3:0]   = 0;
+    // Semantic versioning MINOR.
+    assign csr_mipid[7:4]   = 4;
+    // Semantic versioning MAJOR.
+    assign csr_mipid[15:8]  = 1;
+    // Divider latency.
+    assign csr_mipid[21:16] = div_latency;
+    // DIV/MOD fusion support.
+    assign csr_mipid[22]    = 0;
+    // MUL/MULH[S][U] fusion support.
+    assign csr_mipid[23]    = 0;
+    // Reserved.
+    assign csr_mipid[30:24] = 0;
+    // Is a fork of Boa-RISC-V.
+    assign csr_mipid[31]    = 0;
     
     
     /* ==== CSR ACCESS LOGIC ==== */

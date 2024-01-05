@@ -148,8 +148,7 @@ void p_speed() {
     }
 
     // Wait for UART to finish sending.
-    while (UART0.status.tx_busy || UART0.status.rx_hasdat)
-        ;
+    while (UART0.status.tx_busy || UART0.status.rx_hasdat);
     // Configure new frequency.
     UART0.clk_div = divider;
 }
@@ -299,8 +298,7 @@ void main() {
         mtime     = 0;
         GPIO.oe   = 1 << 8;
         GPIO.port = 1 << 8;
-        while (mtime < 100000)
-            ;
+        while (mtime < 100000);
         GPIO.oe   = 0;
         GPIO.port = 0;
     }

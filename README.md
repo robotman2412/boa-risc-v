@@ -43,7 +43,6 @@ With the following CSRs present, all mandatory:
 | `0xf15`     | `mconfigptr` | `0x0000_0000` | (unimplemented)
 
 Unsupported features on the TODO list:
-- `Zifencei` extension
 - Fusion of division and modulo by means of a cache
 - More configurability
 - Dynamic branch prediction

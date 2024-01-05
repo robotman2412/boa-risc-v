@@ -1,5 +1,5 @@
 # Boa³², my second attempt at RISC-V
-Boa32 is a microcontroller-sized pipelined RISC-V CPU currently supporting up to `RV32IMC_Zicsr`. It is a personal learning project in my aspirations to become a CPU designer/engineer.
+Boa32 is a microcontroller-sized pipelined RISC-V CPU currently supporting up to `RV32IMC_Zicsr_Zifencei`. It is a personal learning project in my aspirations to become a CPU designer/engineer.
 
 This core is decently compact for its features:
 when implemented on an Artix-7 15T (with some MMIO peripherals), it consumes merely 4900 LUTs and 2600 FFs.
@@ -7,7 +7,7 @@ when implemented on an Artix-7 15T (with some MMIO peripherals), it consumes mer
 ## History
 Because my previous RISC-V CPU, [Axo32](https://github.com/robotman2412/Axolotl-Risc-V), successfully ran code but had crippling issues with the memory architecture, I decided to start my second generation early.
 
-Boa32 is my second attempt at RISC-V, with a longer pipeline and simpler memory bus than Axo32 has. It will initially have the same features (RV32IM_Zicsr) but I plan to expand the scope later on (to RV32IMAC_Zicsr_Zifencei) to implement more RISC-V features.
+Boa32 is my second attempt at RISC-V, with a longer pipeline and simpler memory bus than Axo32 has. It initially had the same features (`RV32IM_Zicsr`) but I'm expanding the scope (to `RV32IMAC_Zicsr_Zifencei`) to implement more RISC-V features.
 
 
 
@@ -19,6 +19,7 @@ The current version of Boa32 implements up to RV32IMC_Zicsr:
 | M               | Multiply and division instructions
 | C               | Compressed instruction set
 | Zicsr           | Control and status register instructions
+| Zifencei        | Instruction-fetch fence
 
 With the following CSRs present, all mandatory:
 | CSR address | CSR name     | Default value | Features

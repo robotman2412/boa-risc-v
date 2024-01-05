@@ -6,13 +6,17 @@
 module top(
     input  logic        clk,
     output logic        is_ecall,
-    output logic[31:0]  regs[31:0]
+    output logic        is_ebreak,
+    output logic[31:0]  regs[31:0],
+    output logic[31:1]  epc
 );
     `include "boa_fileio.svh"
     `include "boa_defines.svh"
     
     // To host time.
     assign is_ecall   = cpu.csr_ex.ex_trap && cpu.csr_ex.ex_cause == `RV_ECAUSE_M_ECALL;
+    assign is_ebreak  = cpu.csr_ex.ex_trap && cpu.csr_ex.ex_cause == `RV_ECAUSE_EBREAK;
+    assign epc        = cpu.csr_ex.ex_epc;
     assign regs[0]    = 0;
     assign regs[31:1] = cpu.st_id.regfile.storage;
     
@@ -46,7 +50,11 @@ module top(
     end
     
     // The boa CPU core.
-    boa32_cpu#(32'h8000_0000) cpu(
+    boa32_cpu#(
+        .entrypoint(32'h8000_0000),
+        .has_c(1),
+        .has_m(1)
+    ) cpu (
         clk, clk, rst, pbus, dbus, 0
     );
 endmodule

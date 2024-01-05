@@ -9,7 +9,10 @@
 // Boa³² pipline stage: EX (ALU and address calculation).
 module boa_stage_ex#(
     // Divider latency, 0 to 33.
-    parameter div_latency = 2
+    // Only applicable if has_m is 1.
+    parameter div_latency   = 2,
+    // Support M (multiply/divide) instructions.
+    parameter has_m         = 1
 )(
     // CPU clock.
     input  logic        clk,
@@ -158,22 +161,29 @@ module boa_stage_ex#(
     logic[31:0] div_res;
     logic[31:0] mod_res;
     logic[31:0] shx_res;
-    boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_res);
     generate
-        if (div_latency == 0) begin: l0
+        if (has_m) begin: mul
+            boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_res);
+        end else begin: nomul
+            assign mul_res = 'bx;
+        end
+        if (has_m && div_latency == 0) begin: l0div
             boa_div_simple div(
                 div_u, r_rs1_val, r_rs2_val, div_res, mod_res
             );
-        end else begin: l1
+        end else if (has_m) begin: l1div
             boa_div_pipelined#(.latency(div_latency)) div(
                 clk, div_u, r_rs1_val, r_rs2_val, div_res, mod_res
             );
+        end else begin: nodiv
+            assign div_res = 'bx;
+            assign mod_res = 'bx;
         end
     endgenerate
     boa_shift_simple shift(shr_arith, shr, r_rs1_val, op_rhs_mux, shx_res);
     
     // Computation delay module.
-    wire is_divmod = d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && d_insn[14];
+    wire is_divmod = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && d_insn[14];
     boa_delay_comp#(div_latency) div_delay(clk, is_divmod, stall_req);
     
     // Adder mode.
@@ -226,7 +236,7 @@ module boa_stage_ex#(
     logic[31:0] out_mux;
     always @(*) begin
         if (is_op) begin
-            if (muldiv_en) begin
+            if (has_m && muldiv_en) begin
                 // MULDIV instructions.
                 casez (r_insn[14:12])
                     3'b000:  out_mux = mul_res[31:0];

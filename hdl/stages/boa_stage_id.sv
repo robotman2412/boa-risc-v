@@ -10,7 +10,9 @@
 module boa_stage_id#(
     // Print debug messages about CPU state.
     parameter debug         = 0,
-    // Support RVC instructions.
+    // Support M (multiply/divide) instructions.
+    parameter has_m         = 1,
+    // Support C (compressed) instructions.
     parameter has_c         = 1
 )(
     // CPU clock.

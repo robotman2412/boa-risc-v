@@ -28,6 +28,8 @@ int main(int argc, char **argv) {
     // Add exit handlers.
     atexit(atexit_func);
 
+    bool catch_ebreak = getenv("CATCH_EBREAK");
+
     // Set UART to nonblocking.
     stdin_orig_flags = fcntl(0, F_GETFL);
     fcntl(fileno(stdin), F_SETFL, stdin_orig_flags | O_NONBLOCK);
@@ -55,6 +57,12 @@ int main(int argc, char **argv) {
         trace->dump(i * 10);
         top->clk ^= 1;
 
+        if (top->is_ebreak && top->clk && catch_ebreak) {
+            printf("Trace / breakpoint trap\n");
+            printf("PC = 0x%08x\n", top->epc << 1);
+            ec = -3;
+            break;
+        }
         if (top->is_ecall && top->clk) {
             int a0 = top->regs[10];
             int a7 = top->regs[17];

@@ -44,11 +44,13 @@ module boa32_cpu#(
     parameter entrypoint    = 32'h4000_0000,
     // CPU-local memory-mapped I/O address.
     parameter cpummio       = 32'hff00_0000,
-    // CSR mhartid value.
+    // CSR mhartid value (CPU number).
     parameter hartid        = 32'h0000_0000,
     // Print debug messages about CPU state.
     parameter debug         = 0,
-    // Support RVC instructions.
+    // Support M (multiply/divide) instructions.
+    parameter has_m         = 1,
+    // Support C (compressed) instructions.
     parameter has_c         = 1
 )(
     // CPU clock.
@@ -479,7 +481,7 @@ module boa32_cpu#(
         // Data hazard avoicance.
         fw_stall_if
     );
-    boa_stage_id#(.debug(debug), .has_c(has_c)) st_id(
+    boa_stage_id#(.debug(debug), .has_m(has_m), .has_c(has_c)) st_id(
         clk, rst, clear_id,
         // Pipeline input.
         if_id_valid && !fw_stall_if, if_id_pc, if_id_insn, if_id_trap && !fw_stall_if, if_id_cause,
@@ -492,7 +494,7 @@ module boa32_cpu#(
         // Data hazard avoidance.
         fw_stall_id, use_rs1_bt, fw_rs1_bt, fw_in_bt
     );
-    boa_stage_ex st_ex(
+    boa_stage_ex#(.has_m(has_m)) st_ex (
         clk, rst, clear_ex,
         // Pipeline input.
         id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,

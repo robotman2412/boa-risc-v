@@ -192,6 +192,8 @@ void p_jump() {
     send_ack(A_ACK);
     asm("csrci mstatus, 8");
     asm("csrc mie, %0" ::"r"(0xffffffff));
+    asm("fence");
+    asm("fence.i");
     ((void (*)())data.p_jump.addr)();
     asm("csrci mstatus, 8");
     asm("csrc mie, %0" ::"r"(0xffffffff));
@@ -205,6 +207,8 @@ void p_call() {
         return;
     }
     send_ack(A_ACK);
+    asm("fence");
+    asm("fence.i");
     ((void (*)())data.p_call.addr)();
 }
 
@@ -290,9 +294,6 @@ void isr() {
 
 // Does stuff?
 void main() {
-    asm("fence");
-    asm("fence.i");
-
     // Blink the LED red at startup.
     if (!IS_SIMULATOR) {
         mtime     = 0;

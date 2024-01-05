@@ -32,6 +32,7 @@ module top(
     logic rtc_clk;
     param_clk_div#(12000000, 1000000) rtc_div(clk || shdn, rtc_clk);
     
+    // GPIO.
     logic[31:0]  gpio_out;
     logic[31:0]  gpio_oe;
     logic[31:0]  gpio_in;
@@ -43,11 +44,22 @@ module top(
     assign led_g = !gpio_out[9];
     assign led_b = !gpio_out[10];
     
+    // Hardware random number generation.
     logic[127:0] randomness;
     logic hyperspeed_clk;
     lfsr128 lfsr(hyperspeed_clk, randomness);
-    // assign hyperspeed_clk = clk;
     param_pll#(12000000, 48, 4) rng_pll(clk, hyperspeed_clk);
+    
+    // External memory interface stubs.
+    boa_mem_bus#(12) xmp_bus();
+    boa_mem_bus#(24) xmi_bus();
+    boa_mem_bus#(24) xmd_bus();
+    assign xmp_bus.ready = 1;
+    assign xmp_bus.rdata = 0;
+    assign xmi_bus.ready = 1;
+    assign xmi_bus.rdata = 0;
+    assign xmd_bus.ready = 1;
+    assign xmd_bus.rdata = 0;
     
     pmu_bus pmb();
     main#(
@@ -59,9 +71,11 @@ module top(
         txd, rxd,
         gpio_out, gpio_oe, gpio_in,
         randomness,
+        xmp_bus, xmi_bus, xmd_bus,
         pmb
     );
     
+    // Power management.
     always @(posedge clk) begin
         if (pmb.shdn) begin
             shdn <= 1;

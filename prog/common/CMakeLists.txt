@@ -26,7 +26,7 @@ target_compile_definitions(${target} PUBLIC
 
 target_compile_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs -nostdinc -O2
-    -march=rv32imc_zicsr -mabi=ilp32
+    -march=rv32imc_zicsr_zifencei -mabi=ilp32
     -ffunction-sections
 )
 

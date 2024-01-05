@@ -34,6 +34,9 @@ module boa_stage_aligned_if#(
     output logic[3:0]   q_cause,
     
     
+    // Instruction fetch fence.
+    input  logic        fence_i,
+    
     // Unconditional control transfer or branch predicted as taken.
     input  logic        fw_branch_predict,
     // Branch target address.
@@ -88,7 +91,7 @@ module boa_stage_aligned_if#(
     assign q_trap   = valid && q_pc[1];
     assign q_cause  = `RV_ECAUSE_IALIGN;
     
-    assign valid    = pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear;
+    assign valid    = pbus.ready && !fw_branch_predict && !fw_branch_correct && !clear && !fence_i;
     assign q_pc     = pc;
     assign q_insn   = pbus.rdata;
     always @(posedge clk) begin
@@ -130,6 +133,9 @@ module boa_stage_if#(
     // IF/ID: Trap cause.
     output logic[3:0]   q_cause,
     
+    
+    // Instruction fetch fence.
+    input  logic        fence_i,
     
     // Unconditional control transfer or branch predicted as taken.
     input  logic        fw_branch_predict,
@@ -201,7 +207,7 @@ module boa_stage_if#(
     generate
         for (x = 1; x < cache_depth; x = x + 1) begin
             always @(posedge clk) begin
-                if (rst) begin
+                if (rst || fence_i) begin
                     icache[x] <= 'bx;
                     acache[x] <= 'bx;
                     cvalid[x] <= 0;
@@ -237,7 +243,7 @@ module boa_stage_if#(
     assign pbus.we    = 0;
     assign pbus.wdata = 'bx;
     always @(*) begin
-        if (rst) begin
+        if (rst || fence_i) begin
             // Reset; don't do anything.
             pbus.re         = 0;
             pbus.addr       = 'bx;
@@ -257,7 +263,7 @@ module boa_stage_if#(
     end
     
     // Pipeline output logic.
-    assign q_valid  = insn_valid && !clear;
+    assign q_valid  = insn_valid && !clear && !fence_i;
     assign q_trap   = 0;
     assign q_cause  = 'bx;
     

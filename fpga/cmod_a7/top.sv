@@ -61,6 +61,9 @@ module top(
     assign xmd_bus.ready = 1;
     assign xmd_bus.rdata = 0;
     
+    // Fence signals.
+    logic fence_rl, fence_aq, fence_i;
+    
     pmu_bus pmb();
     main#(
         .rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"}),
@@ -72,6 +75,7 @@ module top(
         gpio_out, gpio_oe, gpio_in,
         randomness,
         xmp_bus, xmi_bus, xmd_bus,
+        fence_rl, fence_aq, fence_i,
         pmb
     );
     

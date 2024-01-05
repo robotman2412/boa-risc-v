@@ -44,6 +44,13 @@ module main#(
     // External data bus.
     boa_mem_bus.CPU     xmd_bus,
     
+    // Perform a release data fence.
+    output logic    fence_rl,
+    // Perform an acquire data fence.
+    output logic    fence_aq,
+    // Perform an acquire instruction fence.
+    output logic    fence_i,
+    
     // Power management unit interface.
     pmu_bus.CPU         pmb
 );
@@ -99,7 +106,7 @@ module main#(
     
     // CPU.
     logic[31:16] irq;
-    boa32_cpu#(32'h40001000, 32'hff000000, 0, 0) cpu(clk, rtc_clk, rst, pbus, dbus, irq);
+    boa32_cpu#(32'h40001000, 32'hff000000, 0, 0) cpu(clk, rtc_clk, rst, pbus, dbus, fence_rl, fence_aq, fence_i, irq);
     
     // Interrupts.
     assign irq[16] = tx_empty;

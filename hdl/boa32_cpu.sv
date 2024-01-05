@@ -65,6 +65,13 @@ module boa32_cpu#(
     // Data memory bus.
     boa_mem_bus.CPU dbus,
     
+    // Perform a release data fence.
+    output logic    fence_rl,
+    // Perform an acquire data fence.
+    output logic    fence_aq,
+    // Perform an acquire instruction fence.
+    output logic    fence_i,
+    
     // External interrupts 16 to 31.
     input  logic[31:16] irq
 );
@@ -230,6 +237,9 @@ module boa32_cpu#(
     
     
     /* ==== Data hazard avoidance ==== */
+    // Is an instruction fetch fence instruction.
+    logic       is_fencei;
+    
     // EX uses RS1 value.
     logic       use_rs1_ex;
     // EX uses RS2 value.
@@ -332,6 +342,7 @@ module boa32_cpu#(
     // Data dependency resolution.
     boa_stage_ex_fw  st_ex_fw (id_ex_insn,  use_rs1_ex,  use_rs2_ex);
     boa_stage_mem_fw st_mem_fw(ex_mem_insn, use_rs1_mem, use_rs2_mem);
+    assign fence_i = is_fencei && !fw_stall_id;
     always @(*) begin
         fw_stall_mem = mem_stall_req;
         fw_stall_ex  = ex_stall_req;
@@ -364,6 +375,11 @@ module boa32_cpu#(
         if (eq_bt_rs1_ex_rd && !fw_rd_ex) begin
             // Branch target address needs something that has to be processed by EX or MEM first.
             // Stall ID so that MEM will produce a result that may then be used by the branch target address.
+            fw_stall_id = 1;
+        end
+        if (is_fencei && (ex_mem_valid || mem_wb_valid)) begin
+            // A fence.i instruction requires the rest of the pipeline to be emptied.
+            // Wait for the instructions in EX and MEM to either trap or finish.
             fw_stall_id = 1;
         end
         
@@ -476,6 +492,8 @@ module boa32_cpu#(
         clk, rst, clear_if, pbus,
         // Pipeline output.
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
+        // Instruction fetch fence.
+        is_fencei,
         // Control transfer.
         fw_branch_predict, fw_branch_target, if_next_pc, fw_branch_correct, fw_branch_alt, fw_exception, fw_tvec,
         // Data hazard avoicance.
@@ -487,6 +505,8 @@ module boa32_cpu#(
         if_id_valid && !fw_stall_if, if_id_pc, if_id_insn, if_id_trap && !fw_stall_if, if_id_cause,
         // Pipeline output.
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
+        // Instruction fetch fence.
+        is_fencei,
         // Control transfer.
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         // Write-back.
@@ -505,6 +525,8 @@ module boa32_cpu#(
     );
     boa_stage_mem st_mem(
         clk, rst, clear_mem, dbus_in, csr,
+        // Data fence.
+        fence_rl, fence_aq,
         // Pipeline input.
         ex_mem_valid && !fw_stall_ex, ex_mem_pc, ex_mem_insn, ex_mem_use_rd, fw_rs1_mem ? fw_in_rs1_mem : ex_mem_rs1_val, fw_rs2_mem ? fw_in_rs2_mem : ex_mem_rs2_val, ex_mem_trap && !fw_stall_ex, ex_mem_cause,
         // Pipeline output.

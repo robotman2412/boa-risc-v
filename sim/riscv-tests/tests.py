@@ -24,7 +24,7 @@ def list_tests(file):
 def compile_test(test):
     cc  = os.environ.get("CC",      "riscv32-unknown-elf-gcc")
     cp  = os.environ.get("OBJCOPY", "riscv32-unknown-elf-objcopy")
-    isa = os.environ.get("ISA",     "rv32imc_zicsr")
+    isa = os.environ.get("ISA",     "rv32imc_zicsr_zifencei")
     abi = os.environ.get("ABI",     "ilp32")
     
     Path("build/"+test).parent.mkdir(parents=True, exist_ok=True)

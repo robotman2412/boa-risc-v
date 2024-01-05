@@ -20,6 +20,11 @@ module boa_stage_mem(
     // CSR access bus.
     boa_csr_bus.CPU     csr,
     
+    // Perform a release data fence.
+    output logic    fence_rl,
+    // Perform an acquire data fence.
+    output logic    fence_aq,
+    
     
     // EX/MEM: Result valid.
     input  logic        d_valid,
@@ -97,6 +102,12 @@ module boa_stage_mem(
     // Trap cause.
     logic[3:0] cause;
     
+    
+    /* ==== Fence logic ==== */
+    // Is this a FENCE instruction?
+    logic  is_fence = r_valid  && !clear && !fw_stall_mem && r_insn[6:2] == `RV_OP_MISC_MEM && r_insn[14:12] == 0;
+    assign fence_aq = is_fence && r_insn[27:24] != 0;
+    assign fence_rl = is_fence && r_insn[23:20] != 0;
     
     /* ==== Memory access logic ==== */
     // Alignment error.

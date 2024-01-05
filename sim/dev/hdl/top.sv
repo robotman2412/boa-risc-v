@@ -28,6 +28,9 @@ module top(
     boa_mem_bus#(24) xmd_bus();
     pmu_bus pmb();
     
+    // Fence signals.
+    logic fence_rl, fence_aq, fence_i;
+    
     // Main microcontroller device.
     main#(
         .rom_file({boa_parentdir(`__FILE__), "/../obj_dir/rom.mem"}),
@@ -40,6 +43,7 @@ module top(
         gpio_out, gpio_oe, gpio_in,
         randomness,
         xmp_bus, xmi_bus, xmd_bus,
+        fence_rl, fence_aq, fence_i,
         pmb
     );
     

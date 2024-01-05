@@ -58,6 +58,9 @@ module boa_stage_id#(
     output logic[3:0]   q_cause,
     
     
+    // FENCE.I instructions.
+    output logic        is_fencei,
+    
     // MRET or SRET instruction.
     output logic        is_xret,
     // Is SRET instead of MRET.
@@ -154,6 +157,9 @@ module boa_stage_id#(
     // ECALL / EBREAK logic.
     wire is_ecall  = insn[6:2] == `RV_OP_SYSTEM && insn[14:12] == 0 && insn[31:20] == 0;
     wire is_ebreak = insn[6:2] == `RV_OP_SYSTEM && insn[14:12] == 0 && insn[31:20] == 1;
+    
+    // FENCE.I logic.
+    assign is_fencei = r_valid && r_insn[6:2] == `RV_OP_MISC_MEM && r_insn[1:0] == 3 && r_insn[14:12] == 1;
     
     // Register decoder.
     logic use_rs1, use_rs2, use_rs3, use_rd;
@@ -515,7 +521,7 @@ module boa_insn_validator#(
             default:            begin valid = 0; end
             `RV_OP_LOAD:        begin valid = insn[14] ? (insn[13:12] < 2) + rv64 : (insn[13:12] < 3) + rv64; end
             `RV_OP_LOAD_FP:     begin valid = 0; $strobe("TODO: validity for LOAD_FP"); end
-            `RV_OP_MISC_MEM:    begin valid = insn[14:12] == 0; end
+            `RV_OP_MISC_MEM:    begin valid = insn[14:12] == 0 || insn[14:12] == 1; end
             `RV_OP_OP_IMM:      begin valid = valid_op_imm; end
             `RV_OP_AUIPC:       begin valid = 1; end
             `RV_OP_OP_IMM_32:   begin valid = rv64 && valid_op_imm; end

@@ -47,10 +47,10 @@ module boa_cache#(
     // Perform a release fence.
     input  logic            fence_rl,
     
-    // Prefetch hint enable.
-    input  logic            pf_en,
-    // Prefetch hint address.
-    input  logic[alen-1:2]  pf_addr,
+    // Precise invalidation enable.
+    input  logic            pi_en,
+    // Precise invalidation address.
+    input  logic[alen-1:2]  pi_addr,
     
     // Cache interface.
     boa_mem_bus.MEM         bus,

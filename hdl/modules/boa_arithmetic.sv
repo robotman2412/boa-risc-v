@@ -382,13 +382,17 @@ module boa_sel_enc#(
     output logic[width-1:0] q
 );
     genvar x;
-    logic[width-1:0] masked_d[depth];
+    logic[width-1:0] masked_q[depth];
     generate
         for (x = 0; x < depth; x = x + 1) begin
             assign masked_q = sel[x] ? d[x] : 0;
         end
     endgenerate
     always @(*) begin
-        
+        integer i;
+        q = 0;
+        for (i = 0; i < depth; i = i + 1) begin
+            q |= masked_q[i];
+        end
     end
 endmodule

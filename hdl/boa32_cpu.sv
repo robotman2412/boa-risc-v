@@ -79,6 +79,9 @@ module boa32_cpu#(
     // Perform an acquire instruction fence.
     output logic    fence_i,
     
+    // Atomic memory operations bus.
+    boa_amo_bus.CPU amo,
+    
     // External interrupts 16 to 31.
     input  logic[31:16] irq
 );

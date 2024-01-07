@@ -25,6 +25,13 @@ interface boa_amo_bus#(
     modport MEM (output valid, input req, addr);
 endinterface
 
+// Boa atomic memory operation terminator.
+module boa_amo_term(
+    boa_amo_bus.MEM mem,
+);
+    assign mem.valid = 1;
+endmodule
+
 
 // Single reservation boa atomic memory operation controller.
 module boa_amo_ctl_1#(
@@ -46,11 +53,15 @@ module boa_amo_ctl_1#(
     
     // Reservation address.
     logic[alen-1:2] addr;
+    // Next reservation address.
+    logic[alen-1:2] next_addr;
     // Reservation valid.
-    logic[alen-1:2] valid;
+    logic           valid;
     
     // Reservation requests.
     logic[cpus-1:0] req;
+    // Reservation request addresses.
+    logic[alen-1:0] req_addr[cpus];
     // Current reservation.
     logic[cpus-1:0] cur;
     // Next reservation.
@@ -59,7 +70,8 @@ module boa_amo_ctl_1#(
     // Arbitration.
     generate
         for (x = 0; x < cpus; x = x + 1) begin
-            assign req[x] = cpu[x].req;
+            assign req[x]      = cpu[x].req;
+            assign req_addr[x] = cpu[x].addr;
         end
         if (arbiter == `BOA_ARBITER_RR) begin: arbiter_rr
             boa_arbiter_rr#(cpus) arbiter(clk, rst, req, cur, next);
@@ -67,16 +79,20 @@ module boa_amo_ctl_1#(
             boa_arbiter_static#(cpus) arbiter(clk, rst, req, cur, next);
         end
     endgenerate
+    boa_sel_enc#(cpus, alen) enc(next, req_addr, next_addr);
     
     // Latch arbitration result.
     always @(posedge clk) begin
         if (rst) begin
             cur <= 1;
         end else if (next != 0) begin
-            cur <= next;
+            cur   <= next;
+            valid <= 1;
+            addr  <= next_addr;
+        end else begin
+            valid <= 0;
         end
     end
-    
 endmodule
 
 
@@ -121,6 +137,14 @@ module boa_mem_connector(
     assign cpu.wdata    = mem.wdata;
     assign mem.ready    = cpu.ready;
     assign mem.rdata    = cpu.rdata;
+endmodule
+
+// Boa memory bus terminator.
+module boa_mem_term(
+    boa_mem_bus.MEM mem
+);
+    assign mem.ready    = 1;
+    assign mem.rdata    = 'bx;
 endmodule
 
 

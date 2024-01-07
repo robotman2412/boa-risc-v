@@ -341,3 +341,54 @@ module boa_delay_comp#(
         end
     endgenerate
 endmodule
+
+
+
+// Unary to binary encoder.
+module boa_unary_enc#(
+    // Number of input bits.
+    parameter  width = 2,
+    // Number of output bits.
+    localparam exp   = $clog2(width)
+)(
+    // Unary input.
+    input  logic[width-1:0] unary,
+    // Binary output.
+    output logic[exp-1:0]   binary
+);
+    always @(*) begin
+        integer i;
+        binary = 0;
+        for (i = 0; i < width; i = i + 1) begin
+            binary |= unary[i] * i;
+        end
+    end
+endmodule
+
+
+
+// Selection encoder.
+module boa_sel_enc#(
+    // Number of inputs.
+    parameter depth = 2,
+    // Number of bits per input.
+    parameter width = 1
+)(
+    // Select inputs.
+    input  logic[depth-1:0] sel,
+    // Value inputs.
+    input  logic[width-1:0] d[depth],
+    // Value output.
+    output logic[width-1:0] q
+);
+    genvar x;
+    logic[width-1:0] masked_d[depth];
+    generate
+        for (x = 0; x < depth; x = x + 1) begin
+            assign masked_q = sel[x] ? d[x] : 0;
+        end
+    endgenerate
+    always @(*) begin
+        
+    end
+endmodule

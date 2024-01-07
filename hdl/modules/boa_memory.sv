@@ -6,6 +6,81 @@
 
 
 
+// Boa atomic memory operation interface.
+// Latency: 1 clock cycle.
+interface boa_amo_bus#(
+    // Address bus size, at least 8.
+    parameter alen = 32
+);
+    // CPU -> MEM: Request reservation for atomic memory operation.
+    logic           req;
+    // CPU -> MEM: Reservation address.
+    logic[alen-1:2] addr;
+    // MEM -> CPU: Reservation valid.
+    logic           valid;
+    
+    // Directions from CPU perspective.
+    modport CPU (output req, addr, input valid);
+    // Directions from MEM perspective.
+    modport MEM (output valid, input req, addr);
+endinterface
+
+
+// Single reservation boa atomic memory operation controller.
+module boa_amo_ctl_1#(
+    // Number of CPUs, 2+.
+    parameter cpus      = 2,
+    // Arbitration strategy.
+    parameter arbiter   = `BOA_ARBITER_RR
+)(
+    // CPU clock.
+    input  logic    clk,
+    // Synchronous reset.
+    input  logic    rst,
+    
+    // CPU AMO ports.
+    boa_amo_bus.MEM amo[cpus]
+);
+    // Address bus size, at least 8.
+    localparam alen = amo[0].alen;
+    
+    // Reservation address.
+    logic[alen-1:2] addr;
+    // Reservation valid.
+    logic[alen-1:2] valid;
+    
+    // Reservation requests.
+    logic[cpus-1:0] req;
+    // Current reservation.
+    logic[cpus-1:0] cur;
+    // Next reservation.
+    logic[cpus-1:0] next;
+    
+    // Arbitration.
+    generate
+        for (x = 0; x < cpus; x = x + 1) begin
+            assign req[x] = cpu[x].req;
+        end
+        if (arbiter == `BOA_ARBITER_RR) begin: arbiter_rr
+            boa_arbiter_rr#(cpus) arbiter(clk, rst, req, cur, next);
+        end else if (arbiter == `BOA_ARBITER_STATIC) begin: arbiter_static
+            boa_arbiter_static#(cpus) arbiter(clk, rst, req, cur, next);
+        end
+    endgenerate
+    
+    // Latch arbitration result.
+    always @(posedge clk) begin
+        if (rst) begin
+            cur <= 1;
+        end else if (next != 0) begin
+            cur <= next;
+        end
+    end
+    
+endmodule
+
+
+
 // Standard Boa memory interface.
 // Latency: 1 clock cycle.
 interface boa_mem_bus#(
@@ -49,7 +124,6 @@ module boa_mem_connector(
 endmodule
 
 
-
 // Boa memory overlay.
 // Used for memories that detect their own addresses.
 module boa_mem_overlay#(
@@ -88,7 +162,6 @@ module boa_mem_overlay#(
         end
     end
 endmodule
-
 
 
 // Standard Boa memory multiplexer.
@@ -168,7 +241,6 @@ module boa_mem_mux#(
 endmodule
 
 
-
 // Round-robin arbiter.
 module boa_arbiter_rr#(
     // Number of ports, at least 2.
@@ -231,7 +303,7 @@ module boa_arbiter_static#(
     generate
         assign next[0] = req[0];
         for (x = 1; x < ports; x = x + 1) begin
-            assign next[x] = req[x] && req[x-1:0] == 0;
+            assign next[x] = req == cur ? cur[x] : req[x] && req[x-1:0] == 0;
         end
     endgenerate
 endmodule

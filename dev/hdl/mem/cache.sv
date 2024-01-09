@@ -275,51 +275,41 @@ module boa_cache#(
     
     // Cache RAM write access logic.
     always @(*) begin
+        // Default state:
+        // Extmem is idle.
+        xm_bus.re                   = 0;
+        xm_bus.we                   = 0;
+        xm_bus.addr                 = 'bx;
+        xm_bus.wdata                = 'bx;
+        // Cache memory is idle.
+        wcache_we                   = 0;
+        wcache_way                  = 'bx;
+        wcache_wdata                = 'bx;
+        cache_waddr                 = 'bx;
+        // Tag memory is idle.
+        tag_we                      = 0;
+        tag_waddr                   = 'bx;
+        etag_way                    = 'bx;
+        wtag_wnext                  = 'bx;
+        etag_valid                  = 'bx;
+        etag_dirty                  = 'bx;
+        etag_addr                   = 'bx;
         if (xm_to_cache) begin
             // Reading a cache line.
             xm_bus.re                   = !xm_bus.ready || (xm_addr[agrain-1:2] != 0);
-            xm_bus.we                   = 0;
             xm_bus.addr                 = xm_bus.ready ? xm_addr : xm_paddr;
-            xm_bus.wdata                = 'bx;
             // Writing to cache memory.
             wcache_we                   = xm_bus.ready ? 4'b1111 : 4'b0000;
             wcache_way                  = xm_way;
             wcache_wdata                = xm_bus.rdata;
             cache_waddr                 = cm_addr;
-            // Tag was already written.
-            tag_we                      = 0;
-            tag_waddr                   = 'bx;
-            etag_way                    = 'bx;
-            wtag_wnext                  = 'bx;
-            etag_valid                  = 'bx;
-            etag_dirty                  = 'bx;
-            etag_addr                   = 'bx;
         end else if (cache_to_xm || (!xm_bus.ready && pcache_to_xm)) begin
             // Flushing a dirty cache line.
-            xm_bus.re                   = 0;
             xm_bus.we                   = 4'b1111;
             xm_bus.addr                 = xm_bus.ready ? xm_addr : xm_paddr;
             xm_bus.wdata                = xm_bus.ready ? rcache_rdata[xm_way] : xm_pwdata;
-            // Cache write is idle.
-            wcache_we                   = 0;
-            wcache_way                  = 'bx;
-            wcache_wdata                = 'bx;
-            cache_waddr                 = 'bx;
-            // Tag was already written.
-            tag_we                      = 0;
-            tag_waddr                   = 'bx;
-            etag_way                    = 'bx;
-            wtag_wnext                  = 'bx;
-            etag_valid                  = 'bx;
-            etag_dirty                  = 'bx;
-            etag_addr                   = 'bx;
         end else if (ab_we && tag_valid) begin
             // Resident write access.
-            // Extmem is idle.
-            xm_bus.re                   = 0;
-            xm_bus.we                   = 0;
-            xm_bus.addr                 = 'bx;
-            xm_bus.wdata                = 'bx;
             // Writing to cache memory.
             wcache_we                   = 4'b1111;
             wcache_way                  = tag_way;
@@ -335,16 +325,6 @@ module boa_cache#(
             etag_addr                   = ab_addr[alen-1:tgrain];
         end else if ((ab_re || ab_we) && !tag_valid && rtag_dirty[rtag_wnext]) begin
             // Non-resident access; dirty tag needs flushing.
-            // Extmem is idle.
-            xm_bus.re                   = 0;
-            xm_bus.we                   = 0;
-            xm_bus.addr                 = 'bx;
-            xm_bus.wdata                = 'bx;
-            // Cache memory is idle.
-            wcache_we                   = 0;
-            wcache_way                  = 'bx;
-            wcache_wdata                = 'bx;
-            cache_waddr                 = 'bx;
             // Marking tag as clean.
             tag_we                      = 1;
             tag_waddr                   = ab_addr[agrain+lwidth-1:agrain];
@@ -357,14 +337,7 @@ module boa_cache#(
             // Non-resident access; clean tag evicted.
             // Initiate extmem read.
             xm_bus.re                   = 1;
-            xm_bus.we                   = 0;
             xm_bus.addr                 = xm_init_raddr;
-            xm_bus.wdata                = 'bx;
-            // Cache memory is idle.
-            wcache_we                   = 0;
-            wcache_way                  = 'bx;
-            wcache_wdata                = 'bx;
-            cache_waddr                 = 'bx;
             // Create new cache tag.
             tag_we                      = 1;
             tag_waddr                   = ab_addr[agrain+lwidth-1:agrain];
@@ -373,26 +346,6 @@ module boa_cache#(
             etag_valid                  = 1;
             etag_dirty                  = 0;
             etag_addr                   = ab_addr[alen-1:tgrain];
-        end else begin
-            // Cache is idle.
-            // Extmem is idle.
-            xm_bus.re                   = 0;
-            xm_bus.we                   = 0;
-            xm_bus.addr                 = 'bx;
-            xm_bus.wdata                = 'bx;
-            // Cache memory is idle.
-            wcache_we                   = 0;
-            wcache_way                  = 'bx;
-            wcache_wdata                = 'bx;
-            cache_waddr                 = 'bx;
-            // Tag memory is idle.
-            tag_we                      = 0;
-            tag_waddr                   = 'bx;
-            etag_way                    = 'bx;
-            wtag_wnext                  = 'bx;
-            etag_valid                  = 'bx;
-            etag_dirty                  = 'bx;
-            etag_addr                   = 'bx;
         end
     end
     

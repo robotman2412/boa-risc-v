@@ -58,22 +58,48 @@ module top(
     logic[7:0]          sram_wdata;
     logic[7:0]          sram_rdata;
     raw_sram#(xm_alen) sram(clk, sram_re, sram_we, sram_addr, sram_wdata, sram_rdata);
-    boa_mem_bus sram_bus();
+    boa_mem_bus#(xm_alen) sram_bus();
+    boa_mem_bus#(xm_alen) sram_bus_out[2]();
     boa_extmem_sram#(xm_alen) sram_ctl(clk, rst, sram_bus, sram_re, sram_we, sram_addr, sram_wdata, sram_rdata);
     
+    // External SRAM arbiter.
+    boa_mem_demux#(xm_alen) sram_dmx(clk, rst, sram_bus_out, sram_bus);
+    
     // Extmem dcache.
+    logic dflush_r, dflush_w, dpi_en;
+    logic[xm_alen-1:2] dpi_addr;
     boa_cache#(
-        xm_alen
+        .alen(xm_alen)
     ) dcache (
         clk, rst,
-        0, 0, 0, 0,
+        dflush_r, dflush_w, dpi_en, dpi_addr,
         xmd_bus,
-        sram_bus
+        sram_bus_out[0]
     );
     
-    // Not any extmem prog for now.
-    assign xmi_bus.ready = 1;
-    assign xmi_bus.rdata = 32'hffff_ffff;
+    // Extmem icache.
+    logic iflush_r, iflush_w, ipi_en;
+    logic[xm_alen-1:2] ipi_addr;
+    boa_cache#(
+        .alen(xm_alen),
+        .writeable(0)
+    ) icache (
+        clk, rst,
+        iflush_r, iflush_w, ipi_en, ipi_addr,
+        xmi_bus,
+        sram_bus_out[1]
+    );
+    
+    // Cache flushing logic.
+    assign dflush_r = fence_aq;
+    assign dflush_w = fence_aq || fence_rl;
+    assign dpi_en   = 0;
+    assign dpi_addr = 'bx;
+    
+    assign iflush_r = fence_i;
+    assign iflush_w = 0;
+    assign ipi_en   = 0;
+    assign ipi_addr = 'bx;
     
     always @(posedge clk) begin
         // Create new randomness.

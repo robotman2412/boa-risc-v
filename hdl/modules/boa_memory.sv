@@ -390,7 +390,7 @@ module boa_mem_demux#(
     
     // Memory connection logic.
     logic           masked_re[cpus];
-    logic           masked_we[cpus];
+    logic[3:0]      masked_we[cpus];
     logic[alen-1:0] masked_addr[cpus];
     logic[dlen-1:0] masked_wdata[cpus];
     generate

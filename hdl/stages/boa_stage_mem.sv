@@ -105,7 +105,7 @@ module boa_stage_mem(
     
     /* ==== Fence logic ==== */
     // Is this a FENCE instruction?
-    logic  is_fence = r_valid  && !clear && !fw_stall_mem && r_insn[6:2] == `RV_OP_MISC_MEM && r_insn[14:12] == 0;
+    wire   is_fence = r_valid  && !clear && !fw_stall_mem && r_insn[6:2] == `RV_OP_MISC_MEM && r_insn[14:12] == 0;
     assign fence_aq = is_fence && r_insn[27:24] != 0;
     assign fence_rl = is_fence && r_insn[23:20] != 0;
     

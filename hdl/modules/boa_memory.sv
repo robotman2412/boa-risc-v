@@ -150,6 +150,65 @@ module boa_mem_term(
 endmodule
 
 
+// Boa center remapper.
+// Used to remap address spaces that have unused center bits.
+module boa_mem_cmap#(
+    // Bit position of high-order address bits.
+    parameter integer bpos_hi = 31,
+    // Number of high-order address bits.
+    parameter integer alen_hi = 1,
+    // Number of low-order address bits.
+    parameter integer alen_lo = 7
+)(
+    // Address space to remap.
+    boa_mem_bus.MEM mem,
+    // Remapped address space.
+    boa_mem_bus.CPU cpu
+);
+    assign cpu.re       = mem.re;
+    assign cpu.we       = mem.we;
+    assign cpu.addr[alen_lo-1:2]                = mem.addr[alen_lo-1:2];
+    assign cpu.addr[alen_lo+alen_hi-1:alen_lo]  = mem.addr[bpos_hi+alen_hi-1:bpos_hi];
+    assign cpu.wdata    = mem.wdata;
+    assign mem.ready    = cpu.ready;
+    assign mem.rdata    = cpu.rdata;
+endmodule
+
+
+// Boa address selector.
+// Used to map memories into a larger address space without mirorring.
+module mem_mem_amap(
+    // CPU clock.
+    input  logic                clk,
+    // Synchrounous reset.
+    input  logic                rst,
+    
+    // Address space to remap.
+    boa_mem_bus.MEM             mem,
+    // Remapped address space.
+    boa_mem_bus.CPU             cpu,
+    
+    // Base address.
+    logic[cpu.alen-1:0]         addr,
+    // Number of address bits to ignore.
+    logic[$clog2(cpu.alen)-1:0] pos
+);
+    wire [cpu.alen-1:0] mask        = 64'b1 << pos;
+    wire                sel         = (mem.addr & ~mask) == (addr & ~mask);
+    logic               psel;
+    assign              cpu.re      = sel ? mem.re : 0;
+    assign              cpu.we      = sel ? mem.we : 0;
+    assign              cpu.addr    = mem.addr;
+    assign              cpu.wdata   = mem.wdata;
+    assign              mem.ready   = psel && cpu.ready;
+    assign              mem.rdata   = cpu.rdata;
+    
+    always @(posedge clk) begin
+        psel <= !rst && sel;
+    end
+endmodule
+
+
 // Boa memory overlay.
 // Used for memories that detect their own addresses.
 module boa_mem_overlay#(
@@ -212,6 +271,7 @@ module boa_mem_mux#(
     boa_mem_bus.MEM         cpu,
     // MEM ports.
     boa_mem_bus.CPU         mem[mems],
+    
     // MEM port addresses, naturally aligned.
     input  logic[alen-1:0]  addr[mems],
     // MEM port size in log2(size_bytes).
@@ -327,7 +387,7 @@ module boa_arbiter_static#(
 );
     genvar x;
     generate
-        assign next[0] = req[0];
+        assign next[0] = req == cur ? cur[0] : req[0];
         for (x = 1; x < ports; x = x + 1) begin
             assign next[x] = req == cur ? cur[x] : req[x] && req[x-1:0] == 0;
         end
@@ -420,6 +480,61 @@ module boa_mem_demux#(
         for (x = 0; x < cpus; x = x + 1) begin
             assign cpu[x].ready = cur[x] && mem.ready;
             assign cpu[x].rdata = mem.rdata;
+        end
+    endgenerate
+endmodule
+
+
+// Standard Boa memory crossbar.
+module boa_mem_xbar#(
+    // Address bus size, at least 8.
+    parameter  alen     = 32,
+    // Data bus size, 32 or 64.
+    parameter  dlen     = 32,
+    // Number of CPU ports, at least 2.
+    parameter  cpus     = 2,
+    // Number of MEM ports, at least 2.
+    parameter  mems     = 2,
+    // Arbitration method.
+    parameter  arbiter  = `BOA_ARBITER_RR,
+    // Number of write enables.
+    localparam wes      = dlen/8
+)(
+    // CPU clock.
+    input  logic    clk,
+    // Synchronous reset.
+    input  logic    rst,
+    
+    // CPU ports.
+    boa_mem_bus.MEM cpu[cpus],
+    // MEM port.
+    boa_mem_bus.CPU mem[mems],
+    
+    // MEM port addresses, naturally aligned.
+    input  logic[alen-1:0]  addr[mems],
+    // MEM port size in log2(size_bytes).
+    input  logic[elen-1:0]  size[mems]
+);
+    genvar x, y;
+    
+    boa_mem_bus#(alen) grid[cpus*mems]();
+    
+    generate
+        // CPU to grid connection.
+        for (y = 0; y < cpus; y = y + 1) begin
+            boa_mem_bus#(alen, dlen) col[mems]();
+            boa_mem_mux#(alen, dlen, mems) mux(clk, rst, cpu[y], col, addr, size);
+            for (x = 0; x < mems; x = x + 1) begin
+                boa_mem_connector conn(col[x], grid[x*cpus+y]);
+            end
+        end
+        // Grid to memory connection.
+        for (x = 0; x < mems; x = x + 1) begin
+            boa_mem_bus#(alen, dlen) row[cpus]();
+            boa_mem_demux#(alen, dlen, cpus, arbiter) demux(clk, rst, row, mem[x]);
+            for (y = 0; y < cpus; y = y + 1) begin
+                boa_mem_connector conn(grid[x*cpus+y], row[y]);
+            end
         end
     endgenerate
 endmodule

@@ -7,13 +7,36 @@
 
 module main#(
     // ROM image file.
-    parameter string  rom_file      = "",
+    parameter string  rom_file          = "",
     // UART buffer size.
-    parameter integer uart_buf      = 16,
+    parameter integer uart_buf          = 16,
     // Default UART clock divider.
-    parameter integer uart_div      = 1250,
+    parameter integer uart_div          = 1250,
     // Whether we're running in the simulator.
-    parameter bit     is_simulator  = 0
+    parameter bit     is_simulator      = 0,
+    
+    // Number of address bits for the internal memory, at least 16.
+    parameter integer bram_alen         = 16,
+    // Maximum number of address bits for the external ROM.
+    parameter integer extrom_alen       = 16,
+    // Maximum number of address bits for the external RAM.
+    parameter integer extram_alen       = 16,
+    // Number of address bits used in the instruction and data caches.
+    localparam        cache_alen        = (extrom_alen > extram_alen ? extrom_alen : extram_alen) + 1,
+    
+    // Number of ways for the instruction cache.
+    parameter integer icache_ways       = 2,
+    // Number of lines for the instruction cache.
+    parameter integer icache_lines      = 32,
+    // Number of 4-byte words per instruction cache line.
+    parameter integer icache_line_size  = 16,
+    
+    // Number of ways for the data cache.
+    parameter integer dcache_ways       = 2,
+    // Number of lines for the data cache.
+    parameter integer dcache_lines      = 32,
+    // Number of 4-byte words per data cache line.
+    parameter integer dcache_line_size  = 16
 )(
     // CPU clock.
     input  logic        clk,
@@ -39,10 +62,10 @@ module main#(
     
     // Additional MMIO bus.
     boa_mem_bus.CPU     xmp_bus,
-    // External program bus.
-    boa_mem_bus.CPU     xmi_bus,
-    // External data bus.
-    boa_mem_bus.CPU     xmd_bus,
+    // External ROM bus.
+    boa_mem_bus.CPU     extrom_bus,
+    // External RAM bus.
+    boa_mem_bus.CPU     extram_bus,
     
     // Perform a release data fence.
     output logic    fence_rl,
@@ -57,19 +80,52 @@ module main#(
     `include "boa_fileio.svh"
     
     // Memory buses.
-    boa_mem_bus pbus();
-    boa_mem_bus dbus();
-    boa_mem_bus mux_a_bus[3]();
-    boa_mem_bus mux_b_bus[4]();
-    boa_mem_bus#(.alen(12)) peri_bus[14]();
+    boa_mem_bus cpu_ibus();
+    boa_mem_bus cpu_dbus();
+    boa_mem_bus cache_ibus();
+    boa_mem_bus cache_dbus();
+    boa_mem_bus xm_ibus();
+    boa_mem_bus xm_dbus();
+    boa_mem_bus ibus[3]();
+    boa_mem_bus dbus[4]();
+    boa_mem_bus#(12) peri_bus[14]();
     
     // Program ROM.
-    dp_block_ram#(10, rom_file, 1) rom(clk, mux_a_bus[0], mux_b_bus[0]);
+    dp_block_ram#(10, rom_file, 1) rom(clk, ibus[0], dbus[0]);
     // RAM.
-    dp_block_ram#(14, "", 0) ram(clk, mux_a_bus[1], mux_b_bus[1]);
-    // External memory.
-    boa_mem_connector xmi_conn(xmi_bus, mux_a_bus[2]);
-    boa_mem_connector xmd_conn(xmd_bus, mux_b_bus[2]);
+    dp_block_ram#(bram_alen-2, "", 0) ram(clk, ibus[1], dbus[1]);
+    // Instruction cache.
+    boa_cache#(cache_alen, icache_line_size, icache_lines, icache_ways, 0) icache (
+        clk, rst,
+        icache_flush_r, 0, 0, 0,
+        icache_flushing_r, icache_flushing_w, icache_stall,
+        cache_ibus, xm_ibus
+    );
+    // Data cache.
+    boa_cache#(cache_alen, dcache_line_size, dcache_lines, dcache_ways, 0) dcache (
+        clk, rst,
+        dcache_flush_r, dcache_flush_w, 0, 0,
+        dcache_flushing_r, dcache_flushing_w, 0,
+        cache_dbus, xm_dbus
+    );
+    
+    // External memory connections.
+    boa_mem_cmap#(31, 1, cache_alen-1) icmap(ibus[2], cache_ibus);
+    boa_mem_cmap#(31, 1, cache_alen-1) dcmap(dbus[2], cache_dbus);
+    boa_mem_bus#(cache_alen) cache_buses[2]();
+    boa_mem_bus#(cache_alen) xm_buses[2]();
+    boa_mem_connector cxconn0(xm_ibus, cache_buses[0]);
+    boa_mem_connector cxconn1(xm_dbus, cache_buses[1]);
+    boa_mem_connector cxconn2(xm_buses[0], extrom_bus);
+    boa_mem_connector cxconn3(xm_buses[1], extram_bus);
+    boa_mem_xbar#(
+        cache_alen, 32, 2, 2, `BOA_ARBITER_STATIC
+    ) xbar (
+        clk, rst,
+        cache_buses, xm_buses,
+        {32'h8000_0000, 32'hc000_0000},
+        {extrom_alen,   extram_alen}
+    );
     
     // UART.
     logic rx_full, tx_empty;
@@ -77,7 +133,7 @@ module main#(
         clk, rst, peri_bus[0], txd, rxd, tx_empty, rx_full
     );
     // PMU interface.
-    boa_peri_pmu #(.addr('h100)) pmu (clk, rst, peri_bus[1], pmb);
+    boa_peri_pmu #(.addr('h100)) pmu(clk, rst, peri_bus[1], pmb);
     // GPIO.
     logic[7:0] gpio_ext_sig;
     logic[7:0] gpio_ext_oe;
@@ -100,15 +156,15 @@ module main#(
     boa_mem_connector xmp_conn(xmp_bus, peri_bus[13]);
     
     // Memory interconnects.
-    boa_mem_mux#(.mems(3)) mux_a(clk, rst, pbus, mux_a_bus, {32'h4000_1000, 32'h4001_0000, 32'h8000_0000},                {12, 16, 24});
-    boa_mem_mux#(.mems(4)) mux_b(clk, rst, dbus, mux_b_bus, {32'h4000_1000, 32'h4001_0000, 32'h8000_0000, 32'h2000_0000}, {12, 16, 24, 12});
-    boa_mem_overlay#(.mems(14)) ovl(mux_b_bus[3], peri_bus);
+    boa_mem_mux#(.mems(3)) imux(clk, rst, cpu_ibus, ibus, {32'h4000_0000, 32'h5000_0000, 32'h8000_0000},                {12, bram_alen, 31});
+    boa_mem_mux#(.mems(4)) dmux(clk, rst, cpu_dbus, dbus, {32'h4000_0000, 32'h5000_0000, 32'h8000_0000, 32'h2000_0000}, {12, bram_alen, 31, 12});
+    boa_mem_overlay#(.mems(14)) ovl(dbus[3], peri_bus);
     
     // CPU.
     logic[31:16] irq;
     boa32_cpu#(
-        .entrypoint(32'h40001000),
-        .cpummio(32'hff000000),
+        .entrypoint(32'h4000_0000),
+        .cpummio(32'h3000_0000),
         .hartid(0),
         .debug(0)
     ) cpu (

@@ -49,6 +49,13 @@ module boa_cache#(
     // Precise invalidation address.
     input  logic[alen-1:2]  pi_addr,
     
+    // Currently flushing the cache.
+    output logic            flushing_r,
+    // Currently flushing writes.
+    output logic            flushing_w,
+    // Stall any access requests.
+    input  logic            stall,
+    
     // Cache interface.
     boa_mem_bus.MEM         bus,
     // External memory interface.
@@ -68,11 +75,13 @@ module boa_cache#(
     logic[3:0]      ab_we;
     logic[alen-1:2] ab_addr;
     logic[31:0]     ab_wdata;
+    logic           ab_stall;
     always @(posedge clk) begin
         ab_re       <= rst               ? 0 : bus.re;
         ab_we       <= rst || !writeable ? 0 : bus.we;
         ab_addr     <= bus.addr;
         ab_wdata    <= bus.wdata;
+        ab_stall    <= stall;
     end
     
     // Tag storage.
@@ -263,7 +272,7 @@ module boa_cache#(
             fl_line <= 'bx;
             fl_way  <= 'bx;
             fl_addr <= pi_addr;
-        end else if (flush_r || flush_w) begin
+        end else if (flush_r || flush_w && writeable) begin
             // Start an imprecise invalidation.
             fl_r    <= flush_r;
             fl_w    <= flush_w;
@@ -284,7 +293,7 @@ module boa_cache#(
             cm_addr     <= cm_next_addr;
             xm_paddr    <= xm_bus.addr;
             cm_paddr    <= cache_raddr;
-        end else if (cache_to_xm) begin
+        end else if (writeable && cache_to_xm) begin
             // Flushing a dirty cache line.
             xm_to_cache <= 0;
             cache_to_xm <= cm_addr[lswidth-1:0] != 0;
@@ -312,7 +321,7 @@ module boa_cache#(
             end
             xm_paddr    <= xm_bus.addr;
             cm_paddr    <= cache_raddr;
-        end else if ((ab_re || ab_we != 0) && !tag_valid) begin
+        end else if ((ab_re || ab_we != 0) && !tag_valid && !ab_stall) begin
             // Non-resident access.
             xm_to_cache <= !rtag_dirty[rtag_wnext];
             cache_to_xm <= rtag_dirty[rtag_wnext];
@@ -420,9 +429,12 @@ module boa_cache#(
     end
     
     // Cache RAM read access logic.
+    assign flushing_r = fl_r;
+    assign flushing_w = fl_w;
     always @(*) begin
         if (fl_r || fl_w) begin
             // Cache invalidation.
+            busy      = 1;
             bus.ready = !ab_re && ab_we == 0;
             bus.rdata = 'bx;
             if (fl_end) begin
@@ -434,24 +446,28 @@ module boa_cache#(
             end
         end else if (xm_to_cache || cache_to_xm) begin
             // Accessing extmem, cache is busy.
+            busy      = 1;
             bus.ready = !ab_re && ab_we == 0;
             bus.rdata = 'bx;
             // Tag read prepared an access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else if ((ab_re || ab_we != 0) && tag_valid) begin
             // Resident access.
-            bus.ready = 1;
+            busy      = 0;
+            bus.ready = !ab_stall;
             bus.rdata = rcache_rdata[tag_way];
             // Tag read prepared for next access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else if ((ab_re || ab_we != 0) && !tag_valid) begin
             // Non-resident access.
+            busy      = 1;
             bus.ready = 0;
             bus.rdata = 'bx;
             // Tag read prepared for next access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else begin
             // Not accessing.
+            busy      = 0;
             bus.ready = 1;
             bus.rdata = 'bx;
             // Tag read prepared for an access.

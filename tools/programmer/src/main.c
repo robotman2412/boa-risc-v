@@ -27,6 +27,11 @@
 // Currently waiting; too much data.
 #define RX_NCAP 5
 
+// Number of columns in a hexdump.
+#define HEXDUMP_COLS  16
+// Number of bytes in a group.
+#define HEXDUMP_GROUP 4
+
 // Show raw transmissions in hexadecimal.
 bool show_hex;
 
@@ -213,6 +218,50 @@ bool await_packet(phdr_t const *phdr, void const *pdat) {
 
 
 
+// Try to decode a HEX string.
+bool decode_hex(char const *raw, uint64_t *out) {
+    if (raw[0] == '0' && (raw[1] | 0x20) == 'x') {
+        raw += 2;
+    }
+    if (!*raw) {
+        printf("Invalid hexadecimal: %s\n", raw);
+        return false;
+    }
+    char const        *end     = raw;
+    unsigned long long address = strtoull(raw, (char **)&end, 16);
+    if (end < raw + strlen(raw)) {
+        printf("Invalid hexadecimal: %s\n", raw);
+        return false;
+    }
+    *out = address;
+    return true;
+}
+
+// Try to decode a number.
+bool decode_num(char const *raw, uint64_t *out) {
+    if (raw[0] == '0' && (raw[1] | 0x20) == 'x') {
+        return decode_hex(raw + 2, out);
+    }
+    char const        *end     = raw;
+    unsigned long long address = strtoull(raw, (char **)&end, 10);
+    if (end < raw + strlen(raw)) {
+        printf("Invalid decimal: %s\n", raw);
+        return false;
+    }
+    *out = address;
+    return true;
+}
+
+// Ceil logarithm 2 of number.
+unsigned int clog2(uintmax_t x) __attribute_const__;
+unsigned int clog2(uintmax_t x) {
+    unsigned int q = 0;
+    while (((uintmax_t)1 << q) < x) q++;
+    return q;
+}
+
+
+
 // Try to ping the computer.
 bool ping() {
     phdr_t phdr = {
@@ -241,7 +290,7 @@ bool ping() {
 }
 
 // Try to change the UART speed.
-bool change_speed(int new_speed) {
+bool f_change_speed(int new_speed) {
     // Speed change packet.
     phdr_t phdr = {
         .type   = P_SPEED,
@@ -286,7 +335,7 @@ bool change_speed(int new_speed) {
 
 
 // Upload an ELF file to the thing.
-bool upload_elf(char const *filename, bool run) {
+bool f_upload_elf(char const *filename, bool run) {
     // Open ELF file.
     kbelf_file file = kbelf_file_open(filename, NULL);
     if (!file) {
@@ -360,7 +409,7 @@ bool upload_elf(char const *filename, bool run) {
 }
 
 // Get and print an ID.
-bool get_id() {
+bool f_get_id() {
     phdr_t phdr = {
         .type   = P_WHO,
         .length = 0,
@@ -374,23 +423,14 @@ bool get_id() {
 }
 
 // Give a jump or call command.
-bool jump(char const *raw, bool is_call) {
+bool f_jump(char const *raw, bool is_call) {
     // Decode hexadecimal address.
-    if (raw[0] == '0' && (raw[1] | 0x20) == 'x') {
-        raw += 2;
-    }
-    if (!*raw) {
-        printf("Invalid hexadecimal: %s\n", raw);
+    uint64_t address;
+    if (!decode_hex(raw, &address))
         return false;
-    }
-    char const        *end     = raw;
-    unsigned long long address = strtoull(raw, (char **)&end, 16);
-    if (end < raw + strlen(raw)) {
-        printf("Invalid hexadecimal: %s\n", raw);
-        return false;
-    }
     if (address > UINT32_MAX) {
-        printf("Hexadecimal out of range: %s\n", raw);
+        printf("Address out of range: %s\n", raw);
+        return false;
     }
 
     // Send jump or call request.
@@ -405,6 +445,159 @@ bool jump(char const *raw, bool is_call) {
     return await_packet(&phdr, &p_jump) && expect_ack(A_ACK);
 }
 
+// Read a range of memory.
+bool f_read(char const *raw_addr, char const *raw_len, char const *raw_file) {
+    // Decode hexadecimal address.
+    uint64_t address, length;
+    if (!decode_hex(raw_addr, &address))
+        return false;
+    if (address > UINT32_MAX) {
+        printf("Address out of range: %s\n", raw_addr);
+        return false;
+    }
+    if (!decode_num(raw_len, &length))
+        return false;
+    if (length > UINT32_MAX) {
+        printf("Address out of range: %s\n", raw_len);
+        return false;
+    }
+
+    // Set up a read command.
+    phdr_t phdr = {
+        .type   = P_READ,
+        .length = sizeof(p_read_t),
+    };
+    p_read_t pdat = {
+        .addr   = address,
+        .length = length,
+    };
+    if (!await_packet(&phdr, &pdat) || header.type != P_RDATA) {
+        return false;
+    }
+
+    if (raw_file) {
+        // Dump data to file.
+        FILE *fd = fopen(raw_file, "wb");
+        if (!fd)
+            return false;
+        fwrite(&data.raw, 1, header.length, fd);
+        fclose(fd);
+
+    } else {
+        // Dump data to STDOUT.
+        for (size_t row = 0; row < (header.length - 1) / HEXDUMP_COLS + 1; row++) {
+            printf("%0*zx:", (clog2(header.length) - 1) / 4 + 1, row * HEXDUMP_COLS);
+            for (size_t col = 0; col < HEXDUMP_COLS; col++) {
+                if (col % HEXDUMP_GROUP == 0) {
+                    putchar(' ');
+                }
+                if (row * HEXDUMP_COLS + col < header.length) {
+                    printf(" %02x", data.raw[row * HEXDUMP_COLS + col]);
+                } else {
+                    printf("   ");
+                }
+            }
+            printf("  ");
+            for (size_t col = 0; col < HEXDUMP_COLS; col++) {
+                if (col % HEXDUMP_GROUP == 0) {
+                    putchar(' ');
+                }
+                if (row * HEXDUMP_COLS + col < header.length) {
+                    char c = (char)data.raw[row * HEXDUMP_COLS + col];
+                    if (c < 0x20 || c >= 0x7f) {
+                        putchar('.');
+                    } else {
+                        putchar(c);
+                    }
+                } else {
+                    break;
+                }
+            }
+            putchar('\n');
+        }
+    }
+    return true;
+}
+
+// Write a range of memory.
+bool f_write(char const *raw_addr, char const *raw_len, char const *raw_file) {
+    // Decode hexadecimal address.
+    uint64_t address, length;
+    if (!decode_hex(raw_addr, &address))
+        return false;
+    if (address > UINT32_MAX) {
+        printf("Address out of range: %s\n", raw_addr);
+        return false;
+    }
+    if (!decode_num(raw_len, &length))
+        return false;
+    if (length > UINT32_MAX) {
+        printf("Address out of range: %s\n", raw_len);
+        return false;
+    }
+
+    // Prepare write data.
+    void *wdata = malloc(length);
+    if (!wdata) {
+        printf("Out of memory (allocating %zu byte%c)\n", length, length ? 's' : 0);
+        return false;
+    }
+    memset(wdata, 0, length);
+    if (raw_file[0] >= '0' && raw_file[0] <= '9') {
+        // Unsigned number.
+        uint64_t tmp;
+        if (!decode_num(raw_file, &tmp)) {
+            return false;
+        }
+        memcpy(wdata, &tmp, sizeof(tmp));
+    } else if (raw_file[0] == '-') {
+        // Signed number.
+        int64_t tmp;
+        if (!decode_num(raw_file + 1, (uint64_t *)&tmp)) {
+            return false;
+        }
+        tmp = -tmp;
+        memcpy(wdata, &tmp, sizeof(tmp));
+    } else {
+        // Binary data.
+        FILE *fd = fopen(raw_file, "rb");
+        if (!fd) {
+            printf("File not found.\n");
+            return false;
+        }
+        fread(wdata, 1, length, fd);
+        fclose(fd);
+    }
+
+    // Set up a write command.
+    phdr_t phdr = {
+        .type   = P_WRITE,
+        .length = sizeof(p_read_t),
+    };
+    p_read_t pdat = {
+        .addr   = address,
+        .length = length,
+    };
+    if (!await_packet(&phdr, &pdat) || !expect_ack(A_ACK)) {
+        printf("P_WRITE failed.\n");
+        free(wdata);
+        return false;
+    }
+
+    phdr = (phdr_t){
+        .type   = P_WDATA,
+        .length = length,
+    };
+    if (!await_packet(&phdr, wdata) || !expect_ack(A_ACK)) {
+        printf("P_WDATA failed.\n");
+        free(wdata);
+        return false;
+    }
+
+    free(wdata);
+    return true;
+}
+
 
 
 void get_help(int argc, char **argv) {
@@ -416,6 +609,8 @@ void get_help(int argc, char **argv) {
     printf("    %s <port> ping\n", id);
     printf("    %s <port> jump <address>\n", id);
     printf("    %s <port> call <address>\n", id);
+    printf("    %s <port> read <address> <length> [outfile]\n", id);
+    printf("    %s <port> write <address> <length> <infile|value>\n", id);
     exit(1);
 }
 
@@ -462,24 +657,28 @@ int main(int argc, char **argv) {
     if (speed_str) {
         int speed = atoi(speed_str);
         if (speed > 0) {
-            change_speed(speed);
+            f_change_speed(speed);
         } else {
             printf("Ignoring invalid speed %s\n", speed_str);
         }
     }
 
     if (argc == 4 && !strcmp(argv[2], "upload")) {
-        return !upload_elf(argv[3], false);
+        return !f_upload_elf(argv[3], false);
     } else if (argc == 4 && !strcmp(argv[2], "run")) {
-        return !upload_elf(argv[3], true);
+        return !f_upload_elf(argv[3], true);
     } else if (argc == 3 && !strcmp(argv[2], "ping")) {
         return !ping();
     } else if (argc == 3 && !strcmp(argv[2], "id")) {
-        return !get_id();
+        return !f_get_id();
     } else if (argc == 4 && !strcmp(argv[2], "jump")) {
-        return !jump(argv[3], false);
+        return !f_jump(argv[3], false);
     } else if (argc == 4 && !strcmp(argv[2], "call")) {
-        return !jump(argv[3], true);
+        return !f_jump(argv[3], true);
+    } else if (argc | 1 == 6 && !strcmp(argv[2], "read")) {
+        return !f_read(argv[3], argv[4], argc == 6 ? argv[5] : NULL);
+    } else if (argc == 6 && !strcmp(argv[2], "write")) {
+        return !f_write(argv[3], argv[4], argv[5]);
     } else {
         get_help(argc, argv);
     }

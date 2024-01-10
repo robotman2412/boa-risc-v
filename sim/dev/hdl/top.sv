@@ -67,7 +67,6 @@ module top(
     ) dcache (
         clk, rst,
         0, 0, 0, 0,
-        0, 0,
         xmd_bus,
         sram_bus
     );

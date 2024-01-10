@@ -27,7 +27,7 @@ endinterface
 
 // Boa atomic memory operation terminator.
 module boa_amo_term(
-    boa_amo_bus.MEM mem,
+    boa_amo_bus.MEM mem
 );
     assign mem.valid = 1;
 endmodule

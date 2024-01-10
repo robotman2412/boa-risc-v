@@ -25,7 +25,7 @@ module top(
     boa_mem_bus#(16) bus();
     boa_cache#(16, 4, 4, 2) cache(
         clk, rst,
-        0, 0, 0, 0,
+        0, 0,
         0, 0,
         bus, xm_bus
     );

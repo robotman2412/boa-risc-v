@@ -114,14 +114,15 @@ module boa_cache#(
     endgenerate
     
     // Tag decoder.
-    logic[ways-1:0]     masked_tag_valid;
-    logic[ways-1:0]     masked_tag_dirty;
-    logic               tag_valid;
-    logic               tag_dirty;
-    logic[wwidth-1:0]   tag_way;
+    logic[alen-1:tgrain]    dtag_addr;
+    logic[ways-1:0]         masked_tag_valid;
+    logic[ways-1:0]         masked_tag_dirty;
+    logic                   tag_valid;
+    logic                   tag_dirty;
+    logic[wwidth-1:0]       tag_way;
     generate
         for (x = 0; x < ways; x = x + 1) begin
-            assign masked_tag_valid[x] = rtag_valid[x] && (rtag_addr[x][alen-1:tgrain] == ab_addr[alen-1:tgrain]);
+            assign masked_tag_valid[x] = rtag_valid[x] && (rtag_addr[x][alen-1:tgrain] == dtag_addr[alen-1:tgrain]);
             assign masked_tag_dirty[x] = masked_tag_valid[x] && rtag_dirty[x];
         end
     endgenerate
@@ -132,6 +133,7 @@ module boa_cache#(
             tag_way |= masked_tag_valid[i] ? i : 0;
         end
     end
+    assign dtag_addr = (fl_r || fl_w) && fl_pi ? fl_addr[alen-1:tgrain] : ab_addr[alen-1:tgrain];
     assign tag_valid = masked_tag_valid != 0;
     assign tag_dirty = masked_tag_dirty != 0;
     
@@ -229,8 +231,8 @@ module boa_cache#(
     // Initial extmem address for cache to extmem copy.
     logic[alen-1:2]             xm_init_waddr;
     assign xm_init_waddr[alen-1:tgrain]             = rtag_addr[rtag_wnext][alen-1:tgrain];
-    assign xm_init_waddr[tgrain-1:lswidth]          = ab_addr[tgrain-1:lswidth];
-    assign xm_init_waddr[lswidth-1:2]               = 0;
+    assign xm_init_waddr[tgrain-1:lswidth+2]        = ab_addr[tgrain-1:lswidth+2];
+    assign xm_init_waddr[lswidth+1:2]               = 0;
     // Initial cache address for cache to extmem copy.
     logic[lwidth+lswidth-1:0]   cm_init_raddr;
     assign cm_init_raddr[lwidth+lswidth-1:lswidth]  = bus.addr[alen-1:agrain];
@@ -243,10 +245,8 @@ module boa_cache#(
     // Cache state machine.
     always @(posedge clk) begin
         pcache_to_xm <= cache_to_xm || (pcache_to_xm && !xm_bus.ready);
-        if (fl_pi) begin
-            // Performing a precise invalidation.
-        end else if (fl_r || fl_w) begin
-            // Performing an imprecise invalidation.
+        if (fl_r || fl_w) begin
+            // Performing an invalidation.
         end else if (pi_en && (flush_r || flush_w)) begin
             // Start a precise invalidation.
             fl_r    <= flush_r;
@@ -291,7 +291,7 @@ module boa_cache#(
                 fl_r    <= 0;
                 fl_w    <= 0;
             end
-            if (fl_way == 3) begin
+            if (fl_way == ways-1) begin
                 fl_line <= fl_line + 1;
             end
             fl_way <= fl_way + 1;
@@ -363,9 +363,9 @@ module boa_cache#(
         end else if (fl_r || fl_w) begin
             // Cache invalidation.
             // Change tag flags.
-            tag_we                      = 1;
-            tag_waddr                   = ab_addr[agrain+lwidth-1:agrain];
-            etag_way                    = fl_pi ? rtag_wnext : fl_way;
+            tag_we                      = fl_pi ? tag_valid : 1;
+            tag_waddr                   = fl_pi ? fl_addr[agrain+lwidth-1:agrain] : fl_line;
+            etag_way                    = fl_pi ? tag_way : fl_way;
             wtag_wnext                  = rtag_wnext;
             etag_valid                  = !fl_r;
             etag_dirty                  = 0;
@@ -413,13 +413,7 @@ module boa_cache#(
     
     // Cache RAM read access logic.
     always @(*) begin
-        if (xm_to_cache || cache_to_xm) begin
-            // Accessing extmem, cache is busy.
-            bus.ready = !ab_re && ab_we == 0;
-            bus.rdata = 'bx;
-            // Tag read prepared an access.
-            tag_raddr = bus.addr[agrain+lwidth-1:agrain];
-        end else if (fl_r || fl_w) begin
+        if (fl_r || fl_w) begin
             // Cache invalidation.
             bus.ready = !ab_re && ab_we == 0;
             bus.rdata = 'bx;
@@ -428,8 +422,14 @@ module boa_cache#(
                 tag_raddr = bus.addr[agrain+lwidth-1:agrain];
             end else begin
                 // Tag read prepared for another invalidation.
-                tag_raddr = fl_line;
+                tag_raddr = (fl_way == ways-1) + fl_line;
             end
+        end else if (xm_to_cache || cache_to_xm) begin
+            // Accessing extmem, cache is busy.
+            bus.ready = !ab_re && ab_we == 0;
+            bus.rdata = 'bx;
+            // Tag read prepared an access.
+            tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else if ((ab_re || ab_we != 0) && tag_valid) begin
             // Resident access.
             bus.ready = 1;

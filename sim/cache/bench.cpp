@@ -1,30 +1,30 @@
 
-#include "Vtop.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
+#include "Vtop.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     // Create contexts.
-    VerilatedContext* contextp = new VerilatedContext;
+    VerilatedContext *contextp = new VerilatedContext;
     contextp->commandArgs(argc, argv);
-    Vtop* top = new Vtop{contextp};
+    Vtop          *top   = new Vtop{contextp};
     VerilatedFstC *trace = new VerilatedFstC();
-    
+
     // Set up the trace.
     contextp->traceEverOn(true);
     top->trace(trace, 5);
     trace->open("obj_dir/sim.fst");
-    
+
     // Run a number of clock cycles.
-    for (int i = 0; i <= 100 && !contextp->gotFinish(); i++) {
+    for (int i = 0; i <= 1000 && !contextp->gotFinish(); i++) {
         top->clk ^= 1;
         top->eval();
-        trace->dump(i*10);
+        trace->dump(i * 10);
     }
     // while (!contextp->gotFinish()) { top->eval(); }
-    
+
     // Clean up.
     trace->close();
-    
+
     return 0;
 }

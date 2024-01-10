@@ -8,7 +8,7 @@
 module top(
     input logic clk
 );
-    wire rst = 0;
+    logic rst;
     reg[31:0] cycle;
     always @(posedge clk) begin
         cycle <= cycle + 1;
@@ -33,6 +33,7 @@ module top(
     
     always @(*) begin
         xm_bus.ready = 1;
+        rst       = 0;
         bus.re    = 0;
         bus.we    = 0;
         bus.addr  = 0;
@@ -68,6 +69,14 @@ module top(
         end else if (cycle == 42) begin
             flush_r   = 1;
             flush_w   = 1;
+        end else if (cycle <= 57) begin
+        end else if (cycle <= 58) begin
+            bus.re    = 1;
+            bus.we    = 4'b1111;
+            bus.addr  = 34;
+            bus.wdata = 32'hcafe_babe;
+        end else if (cycle == 59) begin
+            rst = 1;
         end
     end
 endmodule

@@ -245,7 +245,15 @@ module boa_cache#(
     // Cache state machine.
     always @(posedge clk) begin
         pcache_to_xm <= cache_to_xm || (pcache_to_xm && !xm_bus.ready);
-        if (fl_r || fl_w) begin
+        if (rst && (!fl_r || fl_w || fl_pi)) begin
+            // Invalidate the entire cache after a reset.
+            fl_r    <= 1;
+            fl_w    <= 0;
+            fl_pi   <= 0;
+            fl_line <= 'bx;
+            fl_way  <= 'bx;
+            fl_addr <= 'bx;
+        end else if (fl_r || fl_w) begin
             // Performing an invalidation.
         end else if (pi_en && (flush_r || flush_w)) begin
             // Start a precise invalidation.

@@ -498,7 +498,9 @@ module boa_mem_xbar#(
     // Arbitration method.
     parameter  arbiter  = `BOA_ARBITER_RR,
     // Number of write enables.
-    localparam wes      = dlen/8
+    localparam wes      = dlen/8,
+    // Number of bits in the exponent.
+    localparam elen     = $clog2(alen)
 )(
     // CPU clock.
     input  logic    clk,

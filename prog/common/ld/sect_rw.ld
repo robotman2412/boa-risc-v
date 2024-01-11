@@ -3,7 +3,7 @@
 
 __start_data = .;
 __start_data_rom = __stop_rodata;
-.data : AT(__stop_rodata - __start_rom) { *(.data) *(.data.*) *(.sdata) *(.sdata.*) } :dataseg
+.data : AT(__stop_rodata - __start_text) { *(.data) *(.data.*) *(.sdata) *(.sdata.*) } :dataseg
 . = ALIGN(16);
 __stop_data = .;
 __global_pointer$ = .;

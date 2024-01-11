@@ -434,7 +434,6 @@ module boa_cache#(
     always @(*) begin
         if (fl_r || fl_w) begin
             // Cache invalidation.
-            busy      = 1;
             bus.ready = !ab_re && ab_we == 0;
             bus.rdata = 'bx;
             if (fl_end) begin
@@ -446,28 +445,24 @@ module boa_cache#(
             end
         end else if (xm_to_cache || cache_to_xm) begin
             // Accessing extmem, cache is busy.
-            busy      = 1;
             bus.ready = !ab_re && ab_we == 0;
             bus.rdata = 'bx;
             // Tag read prepared an access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else if ((ab_re || ab_we != 0) && tag_valid) begin
             // Resident access.
-            busy      = 0;
             bus.ready = !ab_stall;
             bus.rdata = rcache_rdata[tag_way];
             // Tag read prepared for next access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else if ((ab_re || ab_we != 0) && !tag_valid) begin
             // Non-resident access.
-            busy      = 1;
             bus.ready = 0;
             bus.rdata = 'bx;
             // Tag read prepared for next access.
             tag_raddr = bus.addr[agrain+lwidth-1:agrain];
         end else begin
             // Not accessing.
-            busy      = 0;
             bus.ready = 1;
             bus.rdata = 'bx;
             // Tag read prepared for an access.

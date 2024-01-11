@@ -164,7 +164,7 @@ void handle_xsum() {
 
 // Handle an unsupported packet type.
 void handle_ncap() {
-    printf("Unsupported packet length");
+    printf("Unsupported packet length\n");
     awaiting_packet   = 0;
     await_packet_resp = false;
 }

@@ -3,6 +3,8 @@
 
 `timescale 1ns/1ps
 
+`include "boa_defines.svh"
+
 
 
 module main#(
@@ -95,14 +97,16 @@ module main#(
     // RAM.
     dp_block_ram#(bram_alen-2, "", 0) ram(clk, ibus[1], dbus[1]);
     // Instruction cache.
+    logic icache_flush_r, icache_flushing_r, icache_flushing_w, icache_stall;
     boa_cache#(cache_alen, icache_line_size, icache_lines, icache_ways, 0) icache (
         clk, rst,
-        icache_flush_r, 0, 0, 0,
+        icache_flush_r || fence_i, 0, 0, 0,
         icache_flushing_r, icache_flushing_w, icache_stall,
         cache_ibus, xm_ibus
     );
     // Data cache.
-    boa_cache#(cache_alen, dcache_line_size, dcache_lines, dcache_ways, 0) dcache (
+    logic dcache_flush_r, dcache_flush_w, dcache_flushing_r, dcache_flushing_w;
+    boa_cache#(cache_alen, dcache_line_size, dcache_lines, dcache_ways, 1) dcache (
         clk, rst,
         dcache_flush_r, dcache_flush_w, 0, 0,
         dcache_flushing_r, dcache_flushing_w, 0,
@@ -114,10 +118,10 @@ module main#(
     boa_mem_cmap#(31, 1, cache_alen-1) dcmap(dbus[2], cache_dbus);
     boa_mem_bus#(cache_alen) cache_buses[2]();
     boa_mem_bus#(cache_alen) xm_buses[2]();
-    boa_mem_connector cxconn0(xm_ibus, cache_buses[0]);
-    boa_mem_connector cxconn1(xm_dbus, cache_buses[1]);
-    boa_mem_connector cxconn2(xm_buses[0], extrom_bus);
-    boa_mem_connector cxconn3(xm_buses[1], extram_bus);
+    boa_mem_connector cxconn0(cache_buses[0], xm_ibus);
+    boa_mem_connector cxconn1(cache_buses[1], xm_dbus);
+    boa_mem_connector cxconn2(extrom_bus, xm_buses[0]);
+    boa_mem_connector cxconn3(extram_bus, xm_buses[1]);
     boa_mem_xbar#(
         cache_alen, 32, 2, 2, `BOA_ARBITER_STATIC
     ) xbar (
@@ -126,6 +130,12 @@ module main#(
         {32'h8000_0000, 32'hc000_0000},
         {extrom_alen,   extram_alen}
     );
+    
+    // Cache flushing logic.
+    assign dcache_flush_r = fence_aq;
+    assign dcache_flush_w = fence_aq || fence_rl;
+    assign icache_flush_r = fence_i;
+    assign icache_stall   = dcache_flushing_w;
     
     // UART.
     logic rx_full, tx_empty;
@@ -169,7 +179,7 @@ module main#(
         .debug(0)
     ) cpu (
         clk, rtc_clk, rst,
-        pbus, dbus,
+        cpu_ibus, cpu_dbus,
         fence_rl, fence_aq, fence_i,
         irq
     );

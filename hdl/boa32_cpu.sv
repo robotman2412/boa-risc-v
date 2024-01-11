@@ -170,6 +170,11 @@ module boa32_cpu#(
     
     
     /* ==== CSR logic ==== */
+    // CSR misa: M-mode ISA description.
+    logic[31:0] csr_misa;
+    // CSR mstatus.MIE: M-mode interrupt enable.
+    logic       csr_mstatus_mie;
+    
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
     boa32_csrs#(
@@ -180,7 +185,9 @@ module boa32_cpu#(
         .has_c(has_c)
     ) csrs (
         clk, rst,
-        csr, csr_ex
+        csr, csr_ex,
+        csr_misa,
+        csr_mstatus_mie
     );
     
     
@@ -453,9 +460,9 @@ module boa32_cpu#(
     // Interrupt enable logic.
     localparam p_mie_depth = 2;
     logic[p_mie_depth-1:0] p_mie;
-    wire fw_irq_en = (p_mie == (1 << p_mie_depth) - 1) && csrs.csr_mstatus_mie;
+    wire fw_irq_en = (p_mie == (1 << p_mie_depth) - 1) && csr_mstatus_mie;
     always @(posedge clk) begin
-        p_mie <= (p_mie << 1) | csrs.csr_mstatus_mie;
+        p_mie <= (p_mie << 1) | csr_mstatus_mie;
     end
     
     // Exception dispatch logic.
@@ -530,7 +537,7 @@ module boa32_cpu#(
         // Pipeline output.
         id_ex_valid, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, id_ex_rs1_val, id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap, id_ex_cause,
         // Miscellaneous.
-        is_fencei, csrs.csr_misa,
+        is_fencei, csr_misa,
         // Control transfer.
         is_xret, is_sret, is_jump, is_branch, branch_predict, branch_target,
         // Write-back.
@@ -594,7 +601,12 @@ module boa32_csrs#(
     // CSR bus.
     boa_csr_bus.CSR     csr,
     // CSR exception bus.
-    boa_csr_ex_bus.CSR  ex
+    boa_csr_ex_bus.CSR  ex,
+    
+    // CSR misa: M-mode ISA description.
+    output logic[31:0]  csr_misa,
+    // CSR mstatus.MIE: M-mode interrupt enable.
+    output logic        csr_mstatus_mie
 );
     /* ==== CSR STORAGE ==== */
     // CSR misa: Enable A instructions.
@@ -614,8 +626,6 @@ module boa32_csrs#(
     
     // CSR mstatus: M-mode status.
     wire [31:0] csr_mstatus     = (csr_mstatus_mie << 3) | (csr_mstatus_mpie << 7);
-    // CSR misa: M-mode ISA description.
-    wire [31:0] csr_misa;
     // CSR medeleg: M-mode trap delegation.
     wire [31:0] csr_medeleg     = 0;
     // CSR medeleg: M-mode interrupt delegation.

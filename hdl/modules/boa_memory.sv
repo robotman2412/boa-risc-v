@@ -48,6 +48,8 @@ module boa_amo_ctl_1#(
     // CPU AMO ports.
     boa_amo_bus.MEM amo[cpus]
 );
+    genvar x;
+    
     // Address bus size, at least 8.
     localparam alen = amo[0].alen;
     

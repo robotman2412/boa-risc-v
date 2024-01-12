@@ -4,14 +4,35 @@
 `timescale 1ns/1ps
 
 module top(
-    input  logic      clk,
-    output logic      tx,
-    input  logic      rx,
-    input  logic[1:0] btn,
-    output logic      led_r,
-    output logic      led_g,
-    output logic      led_b,
-    inout  logic[7:0] pmod
+    // System clock.
+    input  logic        clk,
+    // UART send data.
+    output logic        tx,
+    // UART receive data.
+    input  logic        rx,
+    
+    // Top buttons.
+    input  logic[1:0]   btn,
+    // LED red component.
+    output logic        led_r,
+    // LED green component.
+    output logic        led_g,
+    // LED blue component.
+    output logic        led_b,
+    
+    // Top PMOD port.
+    inout  logic[7:0]   pmod,
+    
+    // SRAM read enable.
+    output logic        sram_oe_n,
+    // SRAM write enable.
+    output logic        sram_we_n,
+    // SRAM chip select.
+    output logic        sram_ce_n,
+    // SRAM address.
+    output logic[18:0]  sram_addr,
+    // SRAM data.
+    input  logic[7:0]   sram_data
 );
     genvar x;
     `include "boa_fileio.svh"
@@ -50,16 +71,30 @@ module top(
     lfsr128 lfsr(hyperspeed_clk, randomness);
     param_pll#(12000000, 48, 4) rng_pll(clk, hyperspeed_clk);
     
-    // External memory interface stubs.
+    // External memory interfaces.
     boa_mem_bus#(12) xmp_bus();
-    boa_mem_bus#(24) xmi_bus();
-    boa_mem_bus#(24) xmd_bus();
-    assign xmp_bus.ready = 1;
-    assign xmp_bus.rdata = 0;
-    assign xmi_bus.ready = 1;
-    assign xmi_bus.rdata = 0;
-    assign xmd_bus.ready = 1;
-    assign xmd_bus.rdata = 0;
+    boa_mem_bus#(31) extrom_bus();
+    boa_mem_bus#(19) extram_bus();
+    
+    // External peripherals.
+    // Extmem size device.
+    boa_peri_readable#('h600) xm_size(clk, rst, xmp_bus, 32'b1 << 19);
+    
+    // External ROM stub.
+    assign extrom_bus.ready = 1;
+    assign extrom_bus.rdata = 32'hffff_ffff;
+    
+    // External RAM interface.
+    logic       sram_re;
+    logic       sram_we;
+    logic[7:0]  sram_rdata;
+    logic[7:0]  sram_wdata;
+    assign sram_oe_n    = !(sram_re && !sram_we);
+    assign sram_we_n    = !sram_we;
+    assign sram_ce_n    = 0;
+    assign sram_rdata   = sram_data;
+    assign sram_data    = sram_we ? sram_wdata : 'bz;
+    boa_extmem_sram#(19) sram_ctl(clk, rst, extram_bus, sram_re, sram_we, sram_addr, sram_wdata, sram_rdata);
     
     // Fence signals.
     logic fence_rl, fence_aq, fence_i;
@@ -74,7 +109,7 @@ module top(
         txd, rxd,
         gpio_out, gpio_oe, gpio_in,
         randomness,
-        xmp_bus, xmi_bus, xmd_bus,
+        xmp_bus, extrom_bus, extram_bus,
         fence_rl, fence_aq, fence_i,
         pmb
     );

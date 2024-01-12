@@ -15,7 +15,7 @@ __mtimecmp      = __start_cpummio + 8;
 
 __is_simulator_base = __start_peri + 0x310;
 __memsize_base      = __start_peri + 0x314;
-__xipctl_base       = __start_peri + 0x500;
+__xromctl_base      = __start_peri + 0x500;
 __xramctl_base      = __start_peri + 0x600;
 
 __uart0_base = __start_peri + 0x000;

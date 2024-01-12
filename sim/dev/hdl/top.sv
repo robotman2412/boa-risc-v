@@ -51,7 +51,7 @@ module top(
     
     // Additional peripherals.
     // Extmem size device.
-    boa_peri_readable#('h800) xm_size(clk, rst, xmp_bus, 32'b1 << xm_alen);
+    boa_peri_readable#('h600) xm_size(clk, rst, xmp_bus, 32'b1 << xm_alen);
     
     // Simulated external SRAM.
     logic               sram_re;

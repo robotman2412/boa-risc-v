@@ -128,4 +128,4 @@ set_property -dict { PACKAGE_PIN V14   IOSTANDARD LVCMOS33 } [get_ports { sram_d
 set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS33 } [get_ports { sram_data[7]  }]; #IO_25_14 Sch=sram-dq[7]
 set_property -dict { PACKAGE_PIN P19   IOSTANDARD LVCMOS33 } [get_ports { sram_oe_n     }]; #IO_L10P_T1_D14_14 Sch=sram-oe
 set_property -dict { PACKAGE_PIN R19   IOSTANDARD LVCMOS33 } [get_ports { sram_we_n     }]; #IO_L10N_T1_D15_14 Sch=sram-we
-set_property -dict { PACKAGE_PIN N19   IOSTANDARD LVCMOS33 } [get_ports { sram_cs_n     }]; #IO_L9N_T1_DQS_D13_14 Sch=sram-ce
+set_property -dict { PACKAGE_PIN N19   IOSTANDARD LVCMOS33 } [get_ports { sram_ce_n     }]; #IO_L9N_T1_DQS_D13_14 Sch=sram-ce

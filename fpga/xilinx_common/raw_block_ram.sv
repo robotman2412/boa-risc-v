@@ -109,21 +109,19 @@ module raw_sdp_block_ram#(
         .READ_DATA_WIDTH_B(dbits),
         .READ_LATENCY_B(1),
         .WRITE_DATA_WIDTH_A(dbits),
-        .WRITE_MODE_A(write_first ? "write_first" : "read_first")
+        .WRITE_MODE_B(write_first ? "write_first" : "read_first")
     )(
         .addra(a_addr),
         .addrb(b_addr),
         .clka(clk),
         .clkb(clk),
         .dina(a_wdata),
-        .dinb(b_wdata),
         .doutb(b_rdata),
         .ena(1),
         .enb(1),
         .injectdbiterra(0),
         .injectsbiterra(0),
         .regceb(1),
-        .rsta(0),
         .rstb(0),
         .sbiterrb(),
         .dbiterrb(),

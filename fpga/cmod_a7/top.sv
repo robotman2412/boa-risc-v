@@ -32,14 +32,12 @@ module top(
     // SRAM address.
     output logic[18:0]  sram_addr,
     // SRAM data.
-    input  logic[7:0]   sram_data
+    inout  logic[7:0]   sram_data
 );
     genvar x;
     `include "boa_fileio.svh"
     
-    localparam rst_len = 3;
-    
-    logic[$clog2(rst_len)-1:0] rst = rst_len;
+    logic rst  = 1;
     logic shdn = 0;
     
     logic txd, rxd;
@@ -120,10 +118,10 @@ module top(
             shdn <= 1;
         end
         if (pmb.rst || btnd[0]) begin
-            rst  <= rst_len;
+            rst  <= 1;
             shdn <= 0;
-        end else if (rst) begin
-            rst  <= rst - 1;
+        end else begin
+            rst  <= 0;
         end
     end
     

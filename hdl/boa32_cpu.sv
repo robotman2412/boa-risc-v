@@ -617,8 +617,6 @@ module boa32_csrs#(
     logic       csr_misa_m;
     // CSR mstatus: M-mode previous interrupt enable.
     logic       csr_mstatus_mpie;
-    // CSR mstatus: M-mode interrupt enable.
-    logic       csr_mstatus_mie;
     // CSR mcause: Interrupt number / trap number.
     logic[4:0]  csr_mcause_no;
     // CSR mcause: Is an interrupt.

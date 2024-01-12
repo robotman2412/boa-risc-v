@@ -55,14 +55,14 @@ module boa_stage_aligned_if#(
     // Stall IF stage.
     input  logic        fw_stall_if
 );
-    assign if_next_pc = pc;
-    
     // Current program counter.
     logic[31:1] pc      = entrypoint[31:1];
     // Next program counter.
     wire [31:1] next_pc = pc[31:1] + pbus.ready*2;
     // Next memory read is valid.
     logic       valid;
+    
+    assign if_next_pc = pc;
     
     // Program bus logic.
     assign pbus.re      = !fw_stall_if;
@@ -156,7 +156,6 @@ module boa_stage_if#(
     input  logic        fw_stall_if
 );
     genvar x;
-    assign if_next_pc = pc;
     
     // Instruction read from cache and or pbus.rdata.
     logic[31:0] insn;
@@ -164,14 +163,16 @@ module boa_stage_if#(
     logic[1:0]  insn_valid;
     // Current program counter.
     logic[31:1] pc         = entrypoint[31:1];
-    // Next program counter.
-    wire [31:1] next_addr  = addr[31:1] + 1 + (insn[1:0] == 2'b11);
     // Next memory read is valid.
     logic       valid;
     // Address of requested instruction.
     logic[31:1] addr;
+    // Next program counter.
+    wire [31:1] next_addr  = addr[31:1] + 1 + (insn[1:0] == 2'b11);
     // Next 16-bit word after address of requested instruction.
     wire [31:1] next_hw    = addr[31:1] + 1;
+    
+    assign if_next_pc = pc;
     
     // Program counter generation.
     always @(*) begin

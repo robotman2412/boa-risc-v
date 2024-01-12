@@ -63,6 +63,22 @@ module boa_cache#(
 );
     genvar x, y;
     
+    // Flushing cached reads.
+    logic               fl_r;
+    // Flushing cached writes.
+    logic               fl_w;
+    // Doing a precise invalidation.
+    logic               fl_pi;
+    // Line to flush next.
+    logic[lwidth-1:0]   fl_line;
+    // Way to flush next.
+    logic[wwidth-1:0]   fl_way;
+    // Precise invalidation address.
+    logic[alen-1:2]     fl_addr;
+    // This is the last invalidation operation.
+    wire                fl_end = fl_pi || (fl_way == ways-1 && fl_line == lines-1);
+    
+    
     // A tag has an address to map to external memory and a few flags.
     // The address truncates the bottom `tgrain` bits from an `alen`-bit address.
     // The valid flag indicates the cache entry contains valid data.
@@ -189,21 +205,6 @@ module boa_cache#(
         end
     endgenerate
     
-    
-    // Flushing cached reads.
-    logic               fl_r;
-    // Flushing cached writes.
-    logic               fl_w;
-    // Doing a precise invalidation.
-    logic               fl_pi;
-    // Line to flush next.
-    logic[lwidth-1:0]   fl_line;
-    // Way to flush next.
-    logic[wwidth-1:0]   fl_way;
-    // Precise invalidation address.
-    logic[alen-1:2]     fl_addr;
-    // This is the last invalidation operation.
-    wire                fl_end = fl_pi || (fl_way == ways-1 && fl_line == lines-1);
     
     // Copying from extmem to cache.
     logic xm_to_cache;

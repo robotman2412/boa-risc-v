@@ -58,8 +58,6 @@ module boa_amo_ctl_1#(
     
     // Reservation address.
     logic[alen-1:2] addr;
-    // Next reservation address.
-    logic[alen-1:2] next_addr;
     // Reservation valid.
     logic           valid;
     
@@ -84,7 +82,7 @@ module boa_amo_ctl_1#(
             boa_arbiter_static#(cpus) arbiter(clk, rst, req, cur, next);
         end
     endgenerate
-    boa_sel_enc#(cpus, alen) enc(next, req_addr, next_addr);
+    boa_sel_enc#(cpus, alen) enc(next, req_addr, addr);
     
     // Matching write access detected.
     logic[watchers-1:0] wmatch_mask;
@@ -99,9 +97,12 @@ module boa_amo_ctl_1#(
     endgenerate
     
     // AMO fulfilling logic.
+    logic[cpus-1:0] valid_mask;
+    assign valid = valid_mask != 0;
     generate
         for (x = 0; x < cpus; x = x + 1) begin
-            assign amo[x].valid = valid && cur[x] && !wmatch;
+            assign amo[x].valid  = req[x] && next[x] && !wmatch;
+            assign valid_mask[x] = amo[x].valid;
         end
     endgenerate
     
@@ -109,14 +110,8 @@ module boa_amo_ctl_1#(
     always @(posedge clk) begin
         if (rst) begin
             cur     <= 1;
-            valid   <= 0;
-            addr    <= 'bx;
-        end else if (req != 0) begin
+        end else if (valid) begin
             cur     <= next;
-            valid   <= !wmatch;
-            addr    <= next_addr;
-        end else begin
-            valid   <= 0;
         end
     end
 endmodule
@@ -392,7 +387,7 @@ module boa_arbiter_rr#(
             assign arbiter[i] = cur[i-1]
                     || (arbiter[i-1] && !req[i-1]);
             assign arbiter[i+ports] = cur[i-1]
-                    || (arbiter[i-1] && !req[i-1]);
+                    || (arbiter[i+ports-1] && !req[i-1]);
         end
     endgenerate
     /* verilator lint_on UNOPTFLAT */

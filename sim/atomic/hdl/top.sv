@@ -39,12 +39,12 @@ module top(
             watchbus[0].addr    = 39;
         end else if (cycle == 7) begin
             amobus[0].req       = 1;
-            amobus[0].addr      = 39;
+            amobus[0].addr      = 136;
             amobus[1].req       = 1;
             amobus[1].addr      = 69;
         end else if (cycle == 9) begin
-            amobus[1].req       = 1;
-            amobus[1].addr      = 69;
+            amobus[0].req       = 1;
+            amobus[0].addr      = 136;
         end
     end
 endmodule

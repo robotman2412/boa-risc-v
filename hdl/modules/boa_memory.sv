@@ -35,23 +35,26 @@ endmodule
 
 // Single reservation boa atomic memory operation controller.
 module boa_amo_ctl_1#(
+    // Address bus size, at least 8.
+    parameter alen = 32,
     // Number of CPUs, 2+.
     parameter cpus      = 2,
+    // Number of memory buses to watch, 2+.
+    parameter watchers  = 2,
     // Arbitration strategy.
     parameter arbiter   = `BOA_ARBITER_RR
 )(
     // CPU clock.
-    input  logic    clk,
+    input  logic        clk,
     // Synchronous reset.
-    input  logic    rst,
+    input  logic        rst,
     
     // CPU AMO ports.
-    boa_amo_bus.MEM amo[cpus]
+    boa_amo_bus.MEM     amo[cpus],
+    // WATCH MEM ports.
+    boa_mem_bus.WATCH   watch[watchers]
 );
     genvar x;
-    
-    // Address bus size, at least 8.
-    localparam alen = amo[0].alen;
     
     // Reservation address.
     logic[alen-1:2] addr;
@@ -72,8 +75,8 @@ module boa_amo_ctl_1#(
     // Arbitration.
     generate
         for (x = 0; x < cpus; x = x + 1) begin
-            assign req[x]      = cpu[x].req;
-            assign req_addr[x] = cpu[x].addr;
+            assign req[x]      = amo[x].req;
+            assign req_addr[x] = amo[x].addr;
         end
         if (arbiter == `BOA_ARBITER_RR) begin: arbiter_rr
             boa_arbiter_rr#(cpus) arbiter(clk, rst, req, cur, next);
@@ -83,16 +86,37 @@ module boa_amo_ctl_1#(
     endgenerate
     boa_sel_enc#(cpus, alen) enc(next, req_addr, next_addr);
     
+    // Matching write access detected.
+    logic[watchers-1:0] wmatch_mask;
+    // Matching write access detected.
+    logic               wmatch;
+    // Memory bus watch.
+    assign wmatch = wmatch_mask != 0;
+    generate
+        for (x = 0; x < watchers; x = x + 1) begin
+            assign wmatch_mask[x] = watch[x].we != 0 && watch[x].addr == addr;
+        end
+    endgenerate
+    
+    // AMO fulfilling logic.
+    generate
+        for (x = 0; x < cpus; x = x + 1) begin
+            assign amo[x].valid = valid && cur[x] && !wmatch;
+        end
+    endgenerate
+    
     // Latch arbitration result.
     always @(posedge clk) begin
         if (rst) begin
-            cur <= 1;
-        end else if (next != 0) begin
-            cur   <= next;
-            valid <= 1;
-            addr  <= next_addr;
+            cur     <= 1;
+            valid   <= 0;
+            addr    <= 'bx;
+        end else if (req != 0) begin
+            cur     <= next;
+            valid   <= !wmatch;
+            addr    <= next_addr;
         end else begin
-            valid <= 0;
+            valid   <= 0;
         end
     end
 endmodule
@@ -123,9 +147,11 @@ interface boa_mem_bus#(
     logic[dlen-1:0] rdata;
     
     // Directions from CPU perspective.
-    modport CPU (output re, we, addr, wdata, input ready, rdata);
+    modport CPU   (output re, we, addr, wdata, input ready, rdata);
     // Directions from MEM perspective.
-    modport MEM (output ready, rdata, input re, we, addr, wdata);
+    modport MEM   (output ready, rdata, input re, we, addr, wdata);
+    // Directions from WATCH perspective.
+    modport WATCH (input re, we, addr, wdata, ready, rdata);
 endinterface
 
 // Boa memory bus connector.
@@ -346,6 +372,16 @@ module boa_arbiter_rr#(
 );
     genvar i;
     
+    logic hold;
+    
+    always @(posedge clk) begin
+        if (rst) begin
+            hold <= 0;
+        end else begin
+            hold <= req != 0;
+        end
+    end
+    
     /* verilator lint_off UNOPTFLAT */
     logic[ports*2-1:0] arbiter;
     assign arbiter[0] = 0;
@@ -363,7 +399,7 @@ module boa_arbiter_rr#(
     
     generate
         for (i = 0; i < ports; i = i + 1) begin
-            assign next[i] = (arbiter[i] || arbiter[i+ports]) && req[i];
+            assign next[i] = hold ? cur[i] : (arbiter[i] || arbiter[i+ports]) && req[i];
         end
     endgenerate
 endmodule
@@ -386,10 +422,21 @@ module boa_arbiter_static#(
     output logic[ports-1:0] next
 );
     genvar x;
+    
+    logic hold;
+    
+    always @(posedge clk) begin
+        if (rst) begin
+            hold <= 0;
+        end else begin
+            hold <= req != 0;
+        end
+    end
+    
     generate
         assign next[0] = req == cur ? cur[0] : req[0];
         for (x = 1; x < ports; x = x + 1) begin
-            assign next[x] = req == cur ? cur[x] : req[x] && req[x-1:0] == 0;
+            assign next[x] = hold ? cur[x] : req[x] && req[x-1:0] == 0;
         end
     endgenerate
 endmodule

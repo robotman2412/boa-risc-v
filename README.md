@@ -66,14 +66,19 @@ Other bits of `mipid` are currently reserved for future use and should be 0 unti
 
 Parameters encodable by standard means include:
 - Maximum supported ISA (value of `misa` at reset)
-- Minimum supported ISA (value of `misa` after writing `0`; `Zicsr` and `Zifencei` always supported)
+- Minimum supported ISA (value of `misa` after writing `0`)
 - Supported interrup vectoring modes (possible values of `mtvec`)
-- Address bus width (always 32)
 - CPU index (value of `mhartid`)
 
 Parameters not encodable by CSRs include:
 - Entrypoint address
 - CPU-local MMIO address
+
+Fixed propertied of the CPU include:
+- Extensions not covered in `misa` (`Zicsr` and `Zifencei`)
+- Address bus width (32)
+- Data bus width (32)
+- Multiplier latency (0)
 
 
 # License

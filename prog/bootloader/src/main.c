@@ -304,9 +304,24 @@ void main() {
     }
 
     // AMO test.
-    uint32_t tmp;
-    uint32_t storage = 0xffff0000;
-    asm volatile("amoswap.w %0, %1, 0(%2)" : "=r"(tmp) : "r"(0x00ff00ff), "r"(&storage) : "memory");
+    uint32_t register tmp;
+    uint32_t volatile storage = 0xffff0000;
+    asm volatile("lr.w.aq %0, (%1)" : "=r"(tmp) : "r"(&storage));
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("c.nop 4");
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("c.nop 8");
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("c.nop 12");
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("c.nop");
+    asm volatile("sc.w.rl %0, %1, (%2)" : "=r"(tmp) : "r"(19), "r"(&storage));
     halt();
 
     while (1) {

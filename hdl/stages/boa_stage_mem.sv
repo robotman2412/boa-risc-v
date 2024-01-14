@@ -22,17 +22,17 @@ module boa_stage_mem#(
     boa_mem_bus.CPU     dbus,
     // CSR access bus.
     boa_csr_bus.CPU     csr,
-    // Perform a RMW AMO operation.
+    // Current memory access is an AMO (disable caches).
     // Always 0 if A extension isn't enabled.
-    output logic        amo_rmw,
-    // Atomic memory operations bus.
+    output logic        amo_en,
+    // Atomic reservation bus for LR/SC sequences.
     // Never used if A extension isn't enabled.
-    boa_amo_bus.CPU     amo,
+    boa_amo_bus.CPU     resv_bus,
     
     // Perform a release data fence.
-    output logic    fence_rl,
+    output logic        fence_rl,
     // Perform an acquire data fence.
-    output logic    fence_aq,
+    output logic        fence_aq,
     
     
     // EX/MEM: Result valid.
@@ -114,9 +114,87 @@ module boa_stage_mem#(
     
     /* ==== Fence logic ==== */
     // Is this a FENCE instruction?
-    wire   is_fence = r_valid  && !clear && !fw_stall_mem && r_insn[6:2] == `RV_OP_MISC_MEM && r_insn[14:12] == 0;
-    assign fence_aq = is_fence && r_insn[27:24] != 0;
-    assign fence_rl = is_fence && r_insn[23:20] != 0;
+    always @(*) begin
+        fence_aq = 0;
+        fence_rl = 0;
+        if (!r_valid || clear || rst || fw_stall_mem) begin
+            // Invalid instruction, no fencing.
+        end else if (r_insn[6:2] == `RV_OP_MISC_MEM && r_insn[14:12] == 0) begin
+            // FENCE instruction.
+            fence_aq = r_insn[27:24] != 0;
+            fence_rl = r_insn[23:20] != 0;
+        end else if (has_a && r_insn[6:2] == `RV_OP_AMO) begin
+            // AMO instruction.
+            fence_aq = r_insn[26];
+            fence_rl = r_insn[25];
+        end
+    end
+    
+    /* ==== Reservation logic ==== */
+    // Whether to keep the reservation next cycle.
+    logic       resv_keep;
+    // Whether the reservation is currently valid.
+    logic       resv_valid;
+    // The address of the reservation.
+    logic[31:2] resv_addr;
+    // How many instructions ago the reservation was made.
+    logic[3:0]  resv_age;
+    generate
+        if (has_a) begin: a
+            always @(*) begin
+                if (!d_valid || trap || clear) begin
+                    // Invalid instruction, no memory access.
+                    resv_bus.req    = resv_valid;
+                    resv_keep       = 1;
+                end else if (d_insn[6:2] == `RV_OP_LOAD) begin
+                    // Load instructions.
+                    resv_bus.req    = 0;
+                    resv_keep       = 0;
+                end else if (d_insn[6:2] == `RV_OP_STORE) begin
+                    // Store instructions.
+                    resv_bus.req    = 0;
+                    resv_keep       = 0;
+                end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28] == 0) begin
+                    // Read-modify-write AMO instructions.
+                    resv_bus.req    = 0;
+                    resv_keep       = 0;
+                end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b10) begin
+                    // LR instructions.
+                    resv_bus.req    = d_addr[1:0] == 0;
+                    resv_keep       = 1;
+                end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b11) begin
+                    // SC instructions.
+                    resv_bus.req    = resv_valid;
+                    resv_keep       = 0;
+                end else begin
+                    // Other instructions.
+                    resv_bus.req    = resv_valid;
+                    resv_keep       = 1;
+                end
+                if (resv_valid && resv_age == 15) begin
+                    // Ran outta time.
+                    resv_keep       = 0;
+                end
+            end
+            
+            always @(posedge clk) begin
+                resv_valid <= !rst && !trap && !clear && resv_bus.valid && resv_keep;
+                if (resv_valid && d_valid && !trap && !clear) begin
+                    resv_age    <= resv_age + 1;
+                end
+                if (!resv_valid && resv_bus.req) begin
+                    resv_addr   <= d_addr[31:2];
+                    resv_age    <= 0;
+                end
+            end
+        end else begin: not_a
+            assign resv_bus.req = 0;
+            assign resv_keep    = 'bx;
+            assign resv_valid   = 0;
+            assign resv_addr    = 'bx;
+            assign resv_age     = 'bx;
+        end
+    endgenerate
     
     /* ==== Memory access logic ==== */
     // Alignment error.
@@ -128,6 +206,8 @@ module boa_stage_mem#(
     
     // Enable RMW AMO logic.
     logic       d_rmw_en;
+    // Enable atomic memory access.
+    logic       d_amo_en;
     // Read enable.
     logic       d_re;
     // Write enable.
@@ -143,6 +223,7 @@ module boa_stage_mem#(
     
     always @(*) begin
         d_rmw_en = 0;
+        d_amo_en = 0;
         d_re     = 0;
         d_we     = 0;
         if (!d_valid || trap || clear) begin
@@ -153,24 +234,30 @@ module boa_stage_mem#(
         end else if (d_insn[6:2] == `RV_OP_STORE) begin
             // Store instructions.
             d_we        = 1;
-        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b00) begin
+        end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b00) begin
             // Read-modify-write AMO instructions.
             d_rmw_en    = 1;
-        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b01) begin
+            d_amo_en    = 1;
+        end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b01) begin
             // AMOSWAP instructions.
             d_re        = 1;
             d_we        = 1;
-        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b10) begin
+            d_amo_en    = 1;
+        end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b10) begin
             // LR instructions.
             d_re        = 1;
-        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b11) begin
+            d_amo_en    = 1;
+        end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b11) begin
             // SC instructions.
-            d_we        = 1;
+            d_we        = resv_bus.valid && d_addr[31:2] == resv_addr[31:2] && d_addr[1:0] == 0;
+            d_amo_en    = resv_bus.valid;
         end
     end
     
-    // Enable RMW AMO logic.
+    // Enable RMW logic.
     logic       r_rmw_en;
+    // Enable atomic memory access.
+    logic       r_amo_en;
     // Read enable.
     logic       r_re;
     // Write enable.
@@ -190,6 +277,7 @@ module boa_stage_mem#(
     always @(posedge clk) begin
         if (rst || clear) begin
             r_rmw_en    <= 0;
+            r_amo_en    <= 0;
             r_re        <= 0;
             r_we        <= 0;
             r_sign      <= 'bx;
@@ -198,6 +286,7 @@ module boa_stage_mem#(
             r_wdata     <= 'bx;
         end else if (ready || !(r_re || r_we || r_rmw_en)) begin
             r_rmw_en    <= d_rmw_en;
+            r_amo_en    <= d_amo_en;
             r_re        <= d_re;
             r_we        <= d_we;
             r_sign      <= d_sign;
@@ -207,9 +296,9 @@ module boa_stage_mem#(
         end
     end
     
-    assign amo_rmw = rsel ? r_rmw_en : d_rmw_en;
+    assign amo_en = rsel ? r_amo_en : d_amo_en;
     boa_stage_mem_access#(has_a) mem_if(
-        clk,
+        clk, rst,
         rsel ? r_rmw_en      : d_rmw_en,
         rsel ? r_insn[31:29] : d_insn[31:29],
         rsel ? r_re          : d_re,
@@ -303,7 +392,6 @@ module boa_stage_mem#(
 endmodule
 
 
-
 // Boa³² pipline stage forwarding helper: MEM (memory and CSR access).
 module boa_stage_mem_fw(
     // Current instruction word.
@@ -354,11 +442,10 @@ module boa_stage_mem_fw(
 endmodule
 
 
-
 // RMW AMO write data calculator.
 module boa_stage_mem_rmw(
     // Mode for RMW AMOs.
-    input  logic[2:0]   amo_mode,
+    input  logic[2:0]   rmw_mode,
     // Read data.
     input  logic[31:0]  rdata,
     // Write mask / value.
@@ -394,7 +481,7 @@ module boa_stage_mem_rmw(
     
     // Output multiplexer.
     always @(*) begin
-        case(amo_mode)
+        case(rmw_mode)
             3'b000: begin sub_mode=0;   inv_msb=0;   wdata=add_res; end
             3'b001: begin sub_mode='bx; inv_msb='bx; wdata=rdata^wmask; end
             3'b010: begin sub_mode='bx; inv_msb='bx; wdata=rdata|wmask; end
@@ -407,6 +494,7 @@ module boa_stage_mem_rmw(
     end
 endmodule
 
+
 // Memory access helper.
 module boa_stage_mem_access#(
     // Support A (atomic memory operation) instructions.
@@ -414,11 +502,13 @@ module boa_stage_mem_access#(
 )(
     // CPU clock.
     input  logic        clk,
+    // Synchronous reset.
+    input  logic        rst,
     
     // Enable RMW AMO logic.
-    input  logic        amo_en,
+    input  logic        rmw_en,
     // Mode for RMW AMOs.
-    input  logic[2:0]   amo_mode,
+    input  logic[2:0]   rmw_mode,
     
     // Read enable.
     input  logic        re,
@@ -460,27 +550,41 @@ module boa_stage_mem_access#(
     logic[1:0]  asize_reg;
     logic[1:0]  addr_reg;
     always @(posedge clk) begin
-        sign_reg    <= sign;
-        asize_reg   <= asize;
-        addr_reg    <= addr[1:0];
-        if (amo_en && amo_stage == 0) begin
-            // Transistion from read to modify/write.
-            amo_stage       <= 1;
-        end else if (amo_en && bus.ready) begin
-            // Transition from modify/write to idle or read.
+        if (rst) begin
+            sign_reg        <= 'bx;
+            asize_reg       <= 'bx;
+            addr_reg        <= 'bx;
             amo_stage       <= 0;
-            amo_rdata_reg   <= bus.rdata;
+            amo_rdata_reg   <= 'bx;
+        end else begin
+            sign_reg    <= sign;
+            asize_reg   <= asize;
+            addr_reg    <= addr[1:0];
+            if (has_a && rmw_en && amo_stage == 0) begin
+                // Transistion from read to modify/write.
+                amo_stage       <= 1;
+            end else if (has_a && rmw_en && bus.ready) begin
+                // Transition from modify/write to idle or read.
+                amo_stage       <= 0;
+                amo_rdata_reg   <= bus.rdata;
+            end
         end
     end
     
     // Write data logic.
-    boa_stage_mem_rmw rmw(amo_mode, bus.ready ? bus.rdata : amo_rdata_reg, wmask, amo_wdata);
-    assign wdata = amo_en ? amo_wdata : wmask;
+    generate
+        if (has_a) begin: a
+            boa_stage_mem_rmw rmw(rmw_mode, bus.ready ? bus.rdata : amo_rdata_reg, wmask, amo_wdata);
+            assign wdata = rmw_en ? amo_wdata : wmask;
+        end else begin: not_a
+            assign wdata = wmask;
+        end
+    endgenerate
     
     // Request logic.
     always @(*) begin
         bit re_tmp, we_tmp;
-        if (amo_en) begin
+        if (has_a && rmw_en) begin
             // Divide RMW AMOs into two accesses.
             re_tmp = !amo_stage;
             we_tmp = amo_stage;
@@ -532,7 +636,7 @@ module boa_stage_mem_access#(
     
     // Response logic.
     always @(*) begin
-        if (amo_stage) begin
+        if (has_a && amo_stage) begin
             // Override ready to 0 so the CPU waits for the write access too.
             ready = 0;
         end else begin

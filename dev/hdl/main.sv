@@ -95,6 +95,7 @@ module main#(
     // Atomics signals.
     logic       amo_rmw;
     boa_amo_bus amo_bus();
+    boa_amo_term amo_term(amo_bus);
     
     // Program ROM.
     dp_block_ram#(10, rom_file, 1) rom(clk, ibus[0], dbus[0]);

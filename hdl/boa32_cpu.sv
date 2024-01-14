@@ -79,12 +79,12 @@ module boa32_cpu#(
     // Perform an acquire instruction fence.
     output logic    fence_i,
     
-    // Perform a RMW AMO operation.
+    // Current memory access is an AMO (disable caches).
     // Always 0 if A extension isn't enabled.
-    output logic        amo_rmw,
-    // Atomic memory operations bus.
+    output logic    amo_en,
+    // Atomic reservation bus for LR/SC sequences.
     // Never used if A extension isn't enabled.
-    boa_amo_bus.CPU     amo,
+    boa_amo_bus.CPU resv_bus,
     
     // External interrupts 16 to 31.
     input  logic[31:16] irq
@@ -561,7 +561,7 @@ module boa32_cpu#(
     boa_stage_mem st_mem(
         clk, rst, clear_mem,
         // Memory buses.
-        dbus_in, csr, amo_rmw, amo,
+        dbus_in, csr, amo_en, resv_bus,
         // Data fence.
         fence_rl, fence_aq,
         // Pipeline input.

@@ -52,7 +52,7 @@ module boa32_cpu#(
     // Only applicable if has_m is 1.
     parameter div_latency   = 2,
     // Support configurability through misa.
-    parameter misa_we       = 1,
+    parameter misa_we       = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.

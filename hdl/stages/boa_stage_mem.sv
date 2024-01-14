@@ -139,6 +139,9 @@ module boa_stage_mem#(
     logic[31:2] resv_addr;
     // How many instructions ago the reservation was made.
     logic[3:0]  resv_age;
+    // Whether a SC was successfull.
+    logic       sc_success;
+    
     generate
         if (has_a) begin: a
             always @(*) begin
@@ -178,13 +181,23 @@ module boa_stage_mem#(
             end
             
             always @(posedge clk) begin
+                // Reservation validity logic.
                 resv_valid <= !rst && !trap && !clear && resv_bus.valid && resv_keep;
+                // Reservation age logic.
                 if (resv_valid && d_valid && !trap && !clear) begin
                     resv_age    <= resv_age + 1;
                 end
                 if (!resv_valid && resv_bus.req) begin
+                    // Reservation outdated.
                     resv_addr   <= d_addr[31:2];
                     resv_age    <= 0;
+                end
+                
+                if (!d_valid || trap || clear) begin
+                    // Invalid instruction, no memory access.
+                end else if (has_a && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b11) begin
+                    // SC instructions.
+                    sc_success  <= d_we;
                 end
             end
         end else begin: not_a
@@ -381,11 +394,17 @@ module boa_stage_mem#(
     assign  q_trap      = trap;
     assign  q_cause     = cause;
     always @(*) begin
-        if (r_csr_re && !(r_re || r_rmw_en)) begin
+        if (r_csr_re) begin
+            // CSR instructions.
             q_rd_val = r_csr_rdata;
-        end else if ((r_re || r_rmw_en) && !r_csr_re) begin
+        end else if (r_re || r_rmw_en) begin
+            // Memory access.
             q_rd_val = mem_if.rdata;
+        end else if (has_a && r_insn[6:2] == `RV_OP_AMO && r_insn[28:27] == 2'b11) begin
+            // Store conditional.
+            q_rd_val = !sc_success;
         end else begin
+            // Other instructions.
             q_rd_val = r_rs1_val;
         end
     end

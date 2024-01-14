@@ -74,3 +74,15 @@ riscv-tests/isa/rv32mi/shamt.S
 riscv-tests/isa/rv32mi/sh-misaligned.S
 riscv-tests/isa/rv32mi/sw-misaligned.S
 # riscv-tests/isa/rv32mi/zicntr.S # Unsupported
+
+# A extension
+riscv-tests/isa/rv32ua/amomaxu_w.S
+riscv-tests/isa/rv32ua/amoxor_w.S
+riscv-tests/isa/rv32ua/amoand_w.S
+riscv-tests/isa/rv32ua/amomax_w.S
+riscv-tests/isa/rv32ua/amominu_w.S
+riscv-tests/isa/rv32ua/amoadd_w.S
+riscv-tests/isa/rv32ua/lrsc.S
+riscv-tests/isa/rv32ua/amomin_w.S
+riscv-tests/isa/rv32ua/amoor_w.S
+riscv-tests/isa/rv32ua/amoswap_w.S

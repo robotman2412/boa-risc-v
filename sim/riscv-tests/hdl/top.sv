@@ -50,13 +50,21 @@ module top(
     end
     
     // The boa CPU core.
-    logic fence_rl, fence_aq, fence_i;
+    logic fence_rl, fence_aq, fence_i, amo_en;
+    boa_amo_bus resv_bus();
+    boa_amo_term resv_term(resv_bus);
     boa32_cpu#(
         .entrypoint(32'h8000_0000),
-        .has_c(1),
-        .has_m(1)
+        .misa_we(0),
+        .has_m(1),
+        .has_a(1),
+        .has_c(1)
     ) cpu (
-        clk, clk, rst, pbus, dbus, fence_rl, fence_aq, fence_i, 0
+        clk, clk, rst,
+        pbus, dbus,
+        fence_rl, fence_aq, fence_i,
+        amo_en, resv_bus,
+        0
     );
 endmodule
 

@@ -148,7 +148,8 @@ void p_speed() {
     }
 
     // Wait for UART to finish sending.
-    while (UART0.status.tx_busy || UART0.status.rx_hasdat);
+    while (UART0.status.tx_busy || UART0.status.rx_hasdat)
+        ;
     // Configure new frequency.
     UART0.clk_div = divider;
 }
@@ -298,31 +299,10 @@ void main() {
         mtime     = 0;
         GPIO.oe   = 1 << 8;
         GPIO.port = 1 << 8;
-        while (mtime < 100000);
+        while (mtime < 100000) continue;
         GPIO.oe   = 0;
         GPIO.port = 0;
     }
-
-    // AMO test.
-    uint32_t register tmp;
-    uint32_t volatile storage = 0xffff0000;
-    asm volatile("lr.w.aq %0, (%1)" : "=r"(tmp) : "r"(&storage));
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("c.nop 4");
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("c.nop 8");
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("c.nop 12");
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("c.nop");
-    asm volatile("sc.w.rl %0, %1, (%2)" : "=r"(tmp) : "r"(19), "r"(&storage));
-    halt();
 
     while (1) {
         if (UART0.status.rx_hasdat) {

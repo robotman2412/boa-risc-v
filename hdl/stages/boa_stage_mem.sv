@@ -127,11 +127,11 @@ module boa_stage_mem#(
     logic[31:1] rdata;
     
     // Enable RMW AMO logic.
-    wire        d_rmw_en    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 0;
+    logic       d_rmw_en;
     // Read enable.
-    wire        d_re        = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_LOAD;
+    logic       d_re;
     // Write enable.
-    wire        d_we        = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_STORE;
+    logic       d_we;
     // Access is signed.
     wire        d_sign      = !d_insn[14];
     // Access size.
@@ -140,6 +140,34 @@ module boa_stage_mem#(
     wire [31:0] d_addr      = d_rs1_val;
     // Data to write.
     wire [31:0] d_wdata     = d_rs2_val;
+    
+    always @(*) begin
+        d_rmw_en = 0;
+        d_re     = 0;
+        d_we     = 0;
+        if (!d_valid || trap || clear) begin
+            // Invalid instruction, no memory access.
+        end else if (d_insn[6:2] == `RV_OP_LOAD) begin
+            // Load instructions.
+            d_re        = 1;
+        end else if (d_insn[6:2] == `RV_OP_STORE) begin
+            // Store instructions.
+            d_we        = 1;
+        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b00) begin
+            // Read-modify-write AMO instructions.
+            d_rmw_en    = 1;
+        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b01) begin
+            // AMOSWAP instructions.
+            d_re        = 1;
+            d_we        = 1;
+        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b10) begin
+            // LR instructions.
+            d_re        = 1;
+        end else if (d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 2'b11) begin
+            // SC instructions.
+            d_we        = 1;
+        end
+    end
     
     // Enable RMW AMO logic.
     logic       r_rmw_en;
@@ -264,9 +292,9 @@ module boa_stage_mem#(
     assign  q_trap      = trap;
     assign  q_cause     = cause;
     always @(*) begin
-        if (r_csr_re && !r_re) begin
+        if (r_csr_re && !(r_re || r_rmw_en)) begin
             q_rd_val = r_csr_rdata;
-        end else if (r_re && !r_csr_re) begin
+        end else if ((r_re || r_rmw_en) && !r_csr_re) begin
             q_rd_val = mem_if.rdata;
         end else begin
             q_rd_val = r_rs1_val;

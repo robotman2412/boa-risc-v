@@ -169,7 +169,7 @@ module boa_stage_id#(
     
     // Register decoder.
     logic use_rs1, use_rs2, use_rs3, use_rd;
-    boa_reg_decoder reg_decd(insn, use_rs1, use_rs2, use_rs3, use_rd);
+    boa_reg_decoder#(.a(has_a)) reg_decd(insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
     boa_branch_decoder branch_decd(insn, r_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);

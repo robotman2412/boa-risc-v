@@ -708,9 +708,9 @@ module boa32_csrs#(
     // Semantic versioning PATCH.
     assign csr_mipid[3:0]   = 0;
     // Semantic versioning MINOR.
-    assign csr_mipid[7:4]   = 4;
+    assign csr_mipid[7:4]   = 0;
     // Semantic versioning MAJOR.
-    assign csr_mipid[15:8]  = 1;
+    assign csr_mipid[15:8]  = 2;
     // Divider latency.
     assign csr_mipid[21:16] = div_latency;
     // DIV/MOD fusion support.

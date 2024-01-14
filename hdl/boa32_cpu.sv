@@ -53,6 +53,10 @@ module boa32_cpu#(
     parameter div_latency   = 2,
     // Support configurability through misa.
     parameter misa_we       = 0,
+    // Support user mode.
+    parameter has_u_mode    = 0,
+    // Support supervisor mode and virtual memory (depends on has_u_mode).
+    parameter has_s_mode    = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
@@ -177,13 +181,15 @@ module boa32_cpu#(
     // CSR misa: M-mode ISA description.
     logic[31:0] csr_misa;
     // CSR mstatus.MIE: M-mode interrupt enable.
-    logic       csr_mstatus_mie;
+    logic       csr_status_mie;
     
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
     boa32_csrs#(
         .hartid(hartid),
         .misa_we(misa_we),
+        .has_u_mode(has_u_mode),
+        .has_s_mode(has_s_mode),
         .has_m(has_m),
         .has_a(has_a),
         .has_c(has_c)
@@ -191,7 +197,7 @@ module boa32_cpu#(
         clk, rst,
         csr, csr_ex,
         csr_misa,
-        csr_mstatus_mie
+        csr_status_mie
     );
     
     
@@ -464,9 +470,9 @@ module boa32_cpu#(
     // Interrupt enable logic.
     localparam p_mie_depth = 2;
     logic[p_mie_depth-1:0] p_mie;
-    wire fw_irq_en = (p_mie == (1 << p_mie_depth) - 1) && csr_mstatus_mie;
+    wire fw_irq_en = (p_mie == (1 << p_mie_depth) - 1) && csr_status_mie;
     always @(posedge clk) begin
-        p_mie <= (p_mie << 1) | csr_mstatus_mie;
+        p_mie <= (p_mie << 1) | csr_status_mie;
     end
     
     // Exception dispatch logic.
@@ -592,6 +598,10 @@ module boa32_csrs#(
     parameter div_latency   = 2,
     // Support configurability through misa.
     parameter misa_we       = 1,
+    // Support user mode.
+    parameter has_u_mode    = 0,
+    // Support supervisor mode and virtual memory (depends on has_u_mode).
+    parameter has_s_mode    = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
@@ -611,8 +621,10 @@ module boa32_csrs#(
     
     // CSR misa: M-mode ISA description.
     output logic[31:0]  csr_misa,
-    // CSR mstatus.MIE: M-mode interrupt enable.
-    output logic        csr_mstatus_mie
+    // CSR status.MIE: M-mode interrupt enable.
+    output logic        csr_status_mie,
+    // CSR status.SIE: S-mode interrupt enable.
+    output logic        csr_status_sie
 );
     /* ==== CSR STORAGE ==== */
     // CSR misa: Enable A instructions.
@@ -621,15 +633,26 @@ module boa32_csrs#(
     logic       csr_misa_c;
     // CSR misa: Enable M instructions.
     logic       csr_misa_m;
-    // CSR mstatus: M-mode previous interrupt enable.
-    logic       csr_mstatus_mpie;
+    
+    // CSR status: Modify M-mode memory access privilege.
+    logic       csr_status_mprv;
+    // CSR status: M-mode previous privilege.
+    logic[1:0]  csr_status_mpp;
+    // CSR status: S-mode previous privilege.
+    logic       csr_status_spp;
+    // CSR status: M-mode previous interrupt enable.
+    logic       csr_status_mpie;
+    // CSR status: S-mode previous interrupt enable.
+    logic       csr_status_spie;
+    
     // CSR mcause: Interrupt number / trap number.
     logic[4:0]  csr_mcause_no;
     // CSR mcause: Is an interrupt.
     logic       csr_mcause_int;
     
+    
     // CSR mstatus: M-mode status.
-    wire [31:0] csr_mstatus     = (csr_mstatus_mie << 3) | (csr_mstatus_mpie << 7);
+    wire [31:0] csr_mstatus;
     // CSR medeleg: M-mode trap delegation.
     wire [31:0] csr_medeleg     = 0;
     // CSR medeleg: M-mode interrupt delegation.
@@ -662,6 +685,7 @@ module boa32_csrs#(
     wire [31:0] csr_mhartid     = hartid;
     // CSR mconfigptr: M-mode configuration pointer.
     wire [31:0] csr_mconfigptr  = 0;
+    
     
     /* ==== CSR misa value ==== */
     // Instruction set extensions.
@@ -703,6 +727,38 @@ module boa32_csrs#(
             assign csr_misa_m = has_m;
         end
     endgenerate
+    
+    
+    /* ==== CSR status value ==== */
+    // CSR mstatus value.
+    assign csr_mstatus[0]       = 0;
+    assign csr_mstatus[1]       = csr_status_sie;
+    assign csr_mstatus[2]       = 0;
+    assign csr_mstatus[3]       = csr_status_mie;
+    assign csr_mstatus[4]       = 0;
+    assign csr_mstatus[5]       = csr_status_spie;
+    assign csr_mstatus[6]       = 0;
+    assign csr_mstatus[7]       = csr_status_mpie;
+    assign csr_mstatus[8]       = csr_status_spp;
+    assign csr_mstatus[10:9]    = 0;
+    assign csr_mstatus[12:11]   = csr_status_mpp;
+    assign csr_mstatus[16:13]   = 0;
+    assign csr_mstatus[17]      = csr_status_mprv;
+    assign csr_mstatus[31:18]   = 0;
+    
+    // CSR sstatus value.
+    assign csr_mstatus[0]       = 0;
+    assign csr_mstatus[1]       = csr_status_sie;
+    assign csr_mstatus[4:2]     = 0;
+    assign csr_mstatus[5]       = csr_status_spie;
+    assign csr_mstatus[7:6]     = 0;
+    assign csr_mstatus[8]       = csr_status_spp;
+    assign csr_mstatus[31:9]    = 0;
+    
+    // CSR status storage.
+    generate
+    endgenerate
+    
     
     /* ==== CSR mipid value ==== */
     // Semantic versioning PATCH.
@@ -758,8 +814,8 @@ module boa32_csrs#(
     always @(posedge clk) begin
         if (rst) begin
             // Rset CSRs to default values.
-            csr_mstatus_mpie    <= 0;
-            csr_mstatus_mie     <= 0;
+            csr_status_mpie    <= 0;
+            csr_status_mie     <= 0;
             csr_mcause_int      <= 0;
             csr_mcause_no       <= 0;
             csr_mie             <= 0;
@@ -769,8 +825,8 @@ module boa32_csrs#(
             
         end else if (ex.ex_trap || ex.ex_irq) begin
             // CSR changes on trap or interrupt.
-            csr_mstatus_mpie    <= csr_mstatus_mie;
-            csr_mstatus_mie     <= 0;
+            csr_status_mpie    <= csr_status_mie;
+            csr_status_mie     <= 0;
             csr_mepc            <= ex.ex_epc;
             csr_mcause_int      <= ex.ex_irq;
             csr_mcause_no       <= ex.ex_cause;
@@ -779,7 +835,7 @@ module boa32_csrs#(
             // CSR write logic.
             case (csr.addr)
                 default:            /* No action required. */;
-                `RV_CSR_MSTATUS:    begin csr_mstatus_mpie <= csr.wdata[7]; csr_mstatus_mie <= csr.wdata[3]; end
+                `RV_CSR_MSTATUS:    begin csr_status_mpie <= csr.wdata[7]; csr_status_mie <= csr.wdata[3]; end
                 `RV_CSR_MIE:        begin csr_mie <= csr.wdata; end
                 `RV_CSR_MTVEC:      begin csr_mtvec[31:2] <= csr.wdata[31:2]; end
                 `RV_CSR_MSCRATCH:   begin csr_mscratch <= csr.wdata; end
@@ -789,7 +845,7 @@ module boa32_csrs#(
             
         end else if (ex.ret) begin
             // CSR changes of mret instruction.
-            csr_mstatus_mie     <= csr_mstatus_mpie;
+            csr_status_mie     <= csr_status_mpie;
         end
     end
 endmodule

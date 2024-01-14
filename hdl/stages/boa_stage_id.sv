@@ -499,13 +499,15 @@ module boa_insn_validator#(
     always @(*) begin
         if (insn[14:12] == 3'b000) begin
             // Privileged instructions.
+            bit[1:0] required;
+            required = insn[29:28];
             casez (insn[31:20])
-                default:            begin valid_system = 0;          legal_system = 1; end
-                12'b0000000_0000?:  begin valid_system = 1;          legal_system = 1; end // ECALL and EBREAK
-                12'b0001000_00010:  begin valid_system = has_s_mode; legal_system = privilege[0]; end // SRET
-                12'b0011000_00010:  begin valid_system = 1;          legal_system = privilege[1]; end // MRET
-                12'b0001000_00101:  begin valid_system = 1;          legal_system = 1; end // WFI
+                default:            begin valid_system = 0; end
+                12'b00??000_0000?:  begin valid_system = 1; end // ECALL and EBREAK
+                12'b00??000_00010:  begin valid_system = 1; end // MRET/SRET
+                12'b00??000_00101:  begin valid_system = 1; end // WFI
             endcase
+            legal_system = privilege >= required;
         end else begin
             // CSR instructions.
             valid_system = insn[14:12] != 3'b100;

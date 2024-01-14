@@ -33,7 +33,8 @@ target_compile_options(${target} PUBLIC
 target_link_options(${target} PUBLIC
     -ffreestanding -nostdlib -nodefaultlibs
     -T${linkerscript}
-    -Wl,--gc-sections -Wl,-L${CMAKE_CURRENT_LIST_DIR}/ld
+    -Wl,-L${CMAKE_CURRENT_LIST_DIR}/ld
+    -Wl,--gc-sections
 )
 
 target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/system)

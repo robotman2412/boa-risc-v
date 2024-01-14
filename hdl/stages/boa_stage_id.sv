@@ -422,19 +422,19 @@ module boa_insn_validator#(
     parameter has_s_mode = 0
 )(
     // Instruction to verify.
-    input  logic[31:0] insn,
+    input  logic[31:0]  insn,
     // Current privilege level.
-    input  logic[1:0]  privilege,
+    input  logic[1:0]   privilege,
     // Allow RV64 instructions.
-    input  logic       rv64,
+    input  logic        rv64,
     // Current value of misa.
-    input  logic[31:0] misa,
+    input  logic[31:0]  misa,
     
     // Instruction is recognised.
-    output logic       valid,
+    output logic        valid,
     // Instruction is allowed in current privilege level.
     // May still be 1 if valid is 0.
-    output logic       legal
+    output logic        legal
 );
     // Evaluate misa.
     wire allow_m        = (misa & `RV_MISA_M) && has_m;

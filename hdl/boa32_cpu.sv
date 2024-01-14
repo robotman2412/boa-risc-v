@@ -7,7 +7,7 @@
 
 
 /*
-    Boa³² RV32IM_Zicsr processor.
+    Boa³² RV32IMC_Zicsr_Zifencei processor.
     
     Pipeline:   5 stages (IF, ID, EX, MEM, WB)
     IPC:        0.33 min, ?.?? avg, 1.00 max
@@ -30,7 +30,7 @@
         0x343   mtval       (0)
         
         0xf11   mvendorid   (0)
-        0xf12   marchid     (0)
+        0xf12   marchid     (37)
         0xf13   mipid       (derived from parameters)
         0xf14   mhartid     (parameter)
         0xf15   mconfigptr  (0)
@@ -56,7 +56,7 @@ module boa32_cpu#(
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
-    localparam has_a         = 0,
+    parameter has_a         = 1,
     // Support C (compressed) instructions.
     parameter has_c         = 1
 )(
@@ -79,8 +79,12 @@ module boa32_cpu#(
     // Perform an acquire instruction fence.
     output logic    fence_i,
     
+    // Perform a RMW AMO operation.
+    // Always 0 if A extension isn't enabled.
+    output logic        amo_rmw,
     // Atomic memory operations bus.
-    // boa_amo_bus.CPU amo,
+    // Never used if A extension isn't enabled.
+    boa_amo_bus.CPU     amo,
     
     // External interrupts 16 to 31.
     input  logic[31:16] irq
@@ -555,7 +559,9 @@ module boa32_cpu#(
         fw_branch_correct, fw_stall_ex, fw_rd_ex, ex_stall_req
     );
     boa_stage_mem st_mem(
-        clk, rst, clear_mem, dbus_in, csr,
+        clk, rst, clear_mem,
+        // Memory buses.
+        dbus_in, csr, amo_rmw, amo,
         // Data fence.
         fence_rl, fence_aq,
         // Pipeline input.

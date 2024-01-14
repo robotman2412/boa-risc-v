@@ -99,11 +99,12 @@ _reset:
 
 
 
-    .section ".bss"
+    .section ".noinit", "w"
     .align 4
     .global __stack_size
     .global __stack_bottom
     .global __stack_top
     .equ __stack_size, 4096
-    .lcomm __stack_bottom, __stack_size
-    .equ __stack_top, __stack_bottom + __stack_size
+__stack_bottom:
+    .skip __stack_size
+__stack_top:

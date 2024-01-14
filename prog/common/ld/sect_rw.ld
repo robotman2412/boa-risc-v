@@ -12,3 +12,8 @@ __start_bss = .;
 .bss : { *(.bss) *(.bss.*) *(.sbss) *(.sbss.*) } :NONE
 . = ALIGN(16);
 __stop_bss = .;
+
+__start_noinit = .;
+.noinit : { *(.noinit) *(.noinit.*) } :NONE
+. = ALIGN(16);
+__stop_noinit = .;

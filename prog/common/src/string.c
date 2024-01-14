@@ -328,7 +328,7 @@ char *strndup(char const *__mem, size_t __len) {
         len = __len;
 
     // Allocate memory.
-    char *mem = malloc((len + 1) * sizeof(char));
+    char *mem = NULL; // malloc((len + 1) * sizeof(char));
     if (!mem)
         return NULL;
 

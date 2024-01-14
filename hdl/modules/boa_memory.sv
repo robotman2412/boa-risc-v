@@ -29,7 +29,7 @@ endinterface
 module boa_amo_term(
     boa_amo_bus.MEM mem
 );
-    assign mem.valid = 1;
+    assign mem.valid = mem.req;
 endmodule
 
 

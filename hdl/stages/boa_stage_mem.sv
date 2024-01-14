@@ -7,7 +7,10 @@
 
 
 // Boa³² pipline stage: MEM (memory and CSR access).
-module boa_stage_mem(
+module boa_stage_mem#(
+    // Support A (atomic memory operation) instructions.
+    parameter has_a         = 1
+)(
     // CPU clock.
     input  logic        clk,
     // Synchronous reset.
@@ -19,6 +22,12 @@ module boa_stage_mem(
     boa_mem_bus.CPU     dbus,
     // CSR access bus.
     boa_csr_bus.CPU     csr,
+    // Perform a RMW AMO operation.
+    // Always 0 if A extension isn't enabled.
+    output logic        amo_rmw,
+    // Atomic memory operations bus.
+    // Never used if A extension isn't enabled.
+    boa_amo_bus.CPU     amo,
     
     // Perform a release data fence.
     output logic    fence_rl,
@@ -117,19 +126,23 @@ module boa_stage_mem(
     // Read data.
     logic[31:1] rdata;
     
+    // Enable RMW AMO logic.
+    wire        d_rmw_en    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_AMO && d_insn[28:27] == 0;
     // Read enable.
-    wire        d_re    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_LOAD;
+    wire        d_re        = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_LOAD;
     // Write enable.
-    wire        d_we    = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_STORE;
+    wire        d_we        = d_valid && !trap && !clear && d_insn[6:2] == `RV_OP_STORE;
     // Access is signed.
-    wire        d_sign  = !d_insn[14];
+    wire        d_sign      = !d_insn[14];
     // Access size.
-    wire [1:0]  d_asize = d_insn[13:12];
+    wire [1:0]  d_asize     = d_insn[13:12];
     // Memory access address.
-    wire [31:0] d_addr  = d_rs1_val;
+    wire [31:0] d_addr      = d_rs1_val;
     // Data to write.
-    wire [31:0] d_wdata = d_rs2_val;
+    wire [31:0] d_wdata     = d_rs2_val;
     
+    // Enable RMW AMO logic.
+    logic       r_rmw_en;
     // Read enable.
     logic       r_re;
     // Write enable.
@@ -144,29 +157,39 @@ module boa_stage_mem(
     logic[31:0] r_wdata;
     
     // Memory register select.
-    wire        rsel    = (r_re || r_we) && !ready;
+    wire        rsel    = (r_re || r_we || r_rmw_en) && !ready;
     
     always @(posedge clk) begin
         if (rst || clear) begin
-            r_re    <= 0;
-            r_we    <= 0;
-            r_sign  <= 'bx;
-            r_asize <= 'bx;
-            r_addr  <= 'bx;
-            r_wdata <= 'bx;
-        end else if (ready || !(r_re || r_we)) begin
-            r_re    <= d_re;
-            r_we    <= d_we;
-            r_sign  <= d_sign;
-            r_asize <= d_asize;
-            r_addr  <= d_addr;
-            r_wdata <= d_wdata;
+            r_rmw_en    <= 0;
+            r_re        <= 0;
+            r_we        <= 0;
+            r_sign      <= 'bx;
+            r_asize     <= 'bx;
+            r_addr      <= 'bx;
+            r_wdata     <= 'bx;
+        end else if (ready || !(r_re || r_we || r_rmw_en)) begin
+            r_rmw_en    <= d_rmw_en;
+            r_re        <= d_re;
+            r_we        <= d_we;
+            r_sign      <= d_sign;
+            r_asize     <= d_asize;
+            r_addr      <= d_addr;
+            r_wdata     <= d_wdata;
         end
     end
     
-    boa_mem_helper mem_if(
+    assign amo_rmw = rsel ? r_rmw_en : d_rmw_en;
+    boa_stage_mem_access#(has_a) mem_if(
         clk,
-        rsel ? r_re : d_re, rsel ? r_we : d_we, rsel ? r_sign : d_sign, rsel ? r_asize : d_asize, rsel ? r_addr : d_addr, rsel ? r_wdata : d_wdata,
+        rsel ? r_rmw_en      : d_rmw_en,
+        rsel ? r_insn[31:29] : d_insn[31:29],
+        rsel ? r_re          : d_re,
+        rsel ? r_we          : d_we,
+        rsel ? r_sign        : d_sign,
+        rsel ? r_asize       : d_asize,
+        rsel ? r_addr        : d_addr,
+        rsel ? r_wdata       : d_wdata,
         ealign, ready, rdata,
         dbus
     );
@@ -233,7 +256,7 @@ module boa_stage_mem(
     
     
     // Pipeline barrier logic.
-    assign  stall_req   = (r_re || r_we) && !mem_if.ready;
+    assign  stall_req   = (r_re || r_we || r_rmw_en) && !mem_if.ready;
     assign  q_valid     = r_valid && !trap && !clear;
     assign  q_pc        = r_pc;
     assign  q_insn      = r_insn;
@@ -265,7 +288,11 @@ module boa_stage_mem_fw(
 );
     // Usage calculator.
     always @(*) begin
-        if (d_insn[6:2] == `RV_OP_LOAD) begin
+        if (d_insn[6:2] == `RV_OP_AMO) begin
+            // AMO instructions.
+            use_rs1 = 1;
+            use_rs2 = d_insn[28:27] != 2'b10;
+        end else if (d_insn[6:2] == `RV_OP_LOAD) begin
             // LOAD instructions.
             // RS1 not used because EX calculates the address.
             use_rs1 = 0;
@@ -300,10 +327,70 @@ endmodule
 
 
 
+// RMW AMO write data calculator.
+module boa_stage_mem_rmw(
+    // Mode for RMW AMOs.
+    input  logic[2:0]   amo_mode,
+    // Read data.
+    input  logic[31:0]  rdata,
+    // Write mask / value.
+    input  logic[31:0]  wmask,
+    // Write data.
+    output logic[31:0]  wdata
+);
+    // Subtract mode.
+    logic       sub_mode;
+    // Invert adder MSB.
+    logic       inv_msb;
+    // Adder output.
+    logic[31:0] add_res;
+    // LHS >= RHS.
+    logic       cmp_ge;
+    
+    // Adder logic.
+    always @(*) begin
+        bit[31:0] lhs = rdata;
+        bit[31:0] rhs = wmask;
+        bit[32:0] res;
+        if (sub_mode) begin
+            rhs ^= 32'hffff_ffff;
+        end
+        if (inv_msb) begin
+            lhs ^= 32'h8000_0000;
+            rhs ^= 32'h8000_0000;
+        end
+        res     = lhs + rhs;
+        add_res = res[31:0];
+        cmp_ge  = res[32];
+    end
+    
+    // Output multiplexer.
+    always @(*) begin
+        case(amo_mode)
+            3'b000: begin sub_mode=0;   inv_msb=0;   wdata=add_res; end
+            3'b001: begin sub_mode='bx; inv_msb='bx; wdata=rdata^wmask; end
+            3'b010: begin sub_mode='bx; inv_msb='bx; wdata=rdata|wmask; end
+            3'b011: begin sub_mode='bx; inv_msb='bx; wdata=rdata&wmask; end
+            3'b100: begin sub_mode=1;   inv_msb=1;   wdata=cmp_ge?wmask:rdata; end
+            3'b101: begin sub_mode=1;   inv_msb=1;   wdata=cmp_ge?rdata:wmask; end
+            3'b110: begin sub_mode=1;   inv_msb=0;   wdata=cmp_ge?wmask:rdata; end
+            3'b111: begin sub_mode=1;   inv_msb=0;   wdata=cmp_ge?rdata:wmask; end
+        endcase
+    end
+endmodule
+
 // Memory access helper.
-module boa_mem_helper(
+module boa_stage_mem_access#(
+    // Support A (atomic memory operation) instructions.
+    parameter has_a         = 1
+)(
     // CPU clock.
     input  logic        clk,
+    
+    // Enable RMW AMO logic.
+    input  logic        amo_en,
+    // Mode for RMW AMOs.
+    input  logic[2:0]   amo_mode,
     
     // Read enable.
     input  logic        re,
@@ -315,8 +402,8 @@ module boa_mem_helper(
     input  logic[1:0]   asize,
     // Memory access address.
     input  logic[31:0]  addr,
-    // Data to write.
-    input  logic[31:0]  wdata,
+    // Data to write or RHS for RMW AMOs.
+    input  logic[31:0]  wmask,
     
     // Alignment error.
     output logic        ealign,
@@ -328,29 +415,61 @@ module boa_mem_helper(
     // Memory bus.
     boa_mem_bus.CPU     bus
 );
-    assign ready = bus.ready;
     assign bus.addr[31:2] = addr[31:2];
     
+    // Memory write data.
+    logic[31:0] wdata;
+    
+    // RMW AMO phase; 0 is read, 1 is modify/write.
+    logic       amo_stage;
+    // RMW AMO read data latch.
+    logic[31:0] amo_rdata_reg;
+    // RMW AMO write data.
+    logic[31:0] amo_wdata;
+    
     // Latch the req.
-    logic      sign_reg;
-    logic[1:0] asize_reg;
-    logic[1:0] addr_reg;
+    logic       sign_reg;
+    logic[1:0]  asize_reg;
+    logic[1:0]  addr_reg;
     always @(posedge clk) begin
         sign_reg    <= sign;
         asize_reg   <= asize;
         addr_reg    <= addr[1:0];
+        if (amo_en && amo_stage == 0) begin
+            // Transistion from read to modify/write.
+            amo_stage       <= 1;
+        end else if (amo_en && bus.ready) begin
+            // Transition from modify/write to idle or read.
+            amo_stage       <= 0;
+            amo_rdata_reg   <= bus.rdata;
+        end
     end
+    
+    // Write data logic.
+    boa_stage_mem_rmw rmw(amo_mode, bus.ready ? bus.rdata : amo_rdata_reg, wmask, amo_wdata);
+    assign wdata = amo_en ? amo_wdata : wmask;
     
     // Request logic.
     always @(*) begin
+        bit re_tmp, we_tmp;
+        if (amo_en) begin
+            // Divide RMW AMOs into two accesses.
+            re_tmp = !amo_stage;
+            we_tmp = amo_stage;
+        end else begin
+            // NON-RMW AMO or normal access.
+            re_tmp = re;
+            we_tmp = we;
+        end
+        
         if (asize == 2'b00) begin
             // 8-bit access.
             ealign              = 0;
-            bus.re              = re;
-            bus.we[0]           = we && (addr[1:0] == 2'b00);
-            bus.we[1]           = we && (addr[1:0] == 2'b01);
-            bus.we[2]           = we && (addr[1:0] == 2'b10);
-            bus.we[3]           = we && (addr[1:0] == 2'b11);
+            bus.re              = re_tmp;
+            bus.we[0]           = we_tmp && (addr[1:0] == 2'b00);
+            bus.we[1]           = we_tmp && (addr[1:0] == 2'b01);
+            bus.we[2]           = we_tmp && (addr[1:0] == 2'b10);
+            bus.we[3]           = we_tmp && (addr[1:0] == 2'b11);
             bus.wdata[7:0]      = wdata[7:0];
             bus.wdata[15:8]     = wdata[7:0];
             bus.wdata[23:16]    = wdata[7:0];
@@ -359,19 +478,19 @@ module boa_mem_helper(
         end else if (asize == 2'b01) begin
             // 16-bit access.
             ealign              = addr[0];
-            bus.re              = re && !addr[0];
-            bus.we[0]           = we && !addr[0] && !addr[1];
-            bus.we[1]           = we && !addr[0] && !addr[1];
-            bus.we[2]           = we && !addr[0] &&  addr[1];
-            bus.we[3]           = we && !addr[0] &&  addr[1];
+            bus.re              = re_tmp && !addr[0];
+            bus.we[0]           = we_tmp && !addr[0] && !addr[1];
+            bus.we[1]           = we_tmp && !addr[0] && !addr[1];
+            bus.we[2]           = we_tmp && !addr[0] &&  addr[1];
+            bus.we[3]           = we_tmp && !addr[0] &&  addr[1];
             bus.wdata[15:0]     = wdata[15:0];
             bus.wdata[31:16]    = wdata[15:0];
             
         end else if (asize == 2'b10) begin
             // 32-bit access.
             ealign              = addr[1:0] != 2'b00;
-            bus.re              = re && (addr[1:0] == 2'b00);
-            bus.we              = we && (addr[1:0] == 2'b00) ? 4'b1111 : 4'b0000;
+            bus.re              = re_tmp && (addr[1:0] == 2'b00);
+            bus.we              = we_tmp && (addr[1:0] == 2'b00) ? 4'b1111 : 4'b0000;
             bus.wdata           = wdata;
             
         end else begin
@@ -385,6 +504,14 @@ module boa_mem_helper(
     
     // Response logic.
     always @(*) begin
+        if (amo_stage) begin
+            // Override ready to 0 so the CPU waits for the write access too.
+            ready = 0;
+        end else begin
+            // Normal access or second half of RMW.
+            ready = bus.ready;
+        end
+        
         if (asize_reg == 2'b00) begin
             // 8-bit access.
             case (addr_reg)

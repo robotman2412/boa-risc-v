@@ -303,6 +303,14 @@ void main() {
         GPIO.port = 0;
     }
 
+    // AMO test.
+    uint32_t tmp;
+    uint32_t storage = 0xffff0000;
+    asm volatile("amoand.w %0, %1, 0(%2)" : "=r"(tmp) : "r"(0xff0000f0), "r"(&storage) : "memory");
+    asm volatile("amoor.w %0, %1, 0(%2)" : "=r"(tmp) : "r"(0x0f00000f), "r"(&storage) : "memory");
+    asm volatile("amoxor.w %0, %1, 0(%2)" : "=r"(tmp) : "r"(0x0f00000f), "r"(&storage) : "memory");
+    halt();
+
     while (1) {
         if (UART0.status.rx_hasdat) {
             handle_rx(UART0.fifo);

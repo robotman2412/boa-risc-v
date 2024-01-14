@@ -92,6 +92,10 @@ module main#(
     boa_mem_bus dbus[4]();
     boa_mem_bus#(12) peri_bus[14]();
     
+    // Atomics signals.
+    logic       amo_rmw;
+    boa_amo_bus amo_bus();
+    
     // Program ROM.
     dp_block_ram#(10, rom_file, 1) rom(clk, ibus[0], dbus[0]);
     // RAM.
@@ -181,6 +185,7 @@ module main#(
         clk, rtc_clk, rst,
         cpu_ibus, cpu_dbus,
         fence_rl, fence_aq, fence_i,
+        amo_rmw, amo_bus,
         irq
     );
     

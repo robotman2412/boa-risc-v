@@ -4,3 +4,6 @@
 [submodule "riscv-tests"]
 	path = sim/riscv-tests/riscv-tests
 	url = https://github.com/riscv-software-src/riscv-tests
+[submodule "prog/coremark/coremark"]
+	path = prog/coremark/coremark
+	url = https://github.com/eembc/coremark

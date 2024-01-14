@@ -63,6 +63,9 @@ _stop_data_loop:
     csrw mtvec, t0
     
     # Jump to main function.
+    li a0, 0
+    li a1, 0
+    li a2, 0
     jal MAIN_NAME
 
 

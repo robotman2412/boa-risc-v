@@ -96,10 +96,10 @@ size_t strlen(char const *__mem) __pure;
 // Returns the index of the byte 0 in the c-string `__mem`, or `__len` if there was no 0 byte.
 size_t strnlen(char const *__mem, size_t __len) __pure;
 // Allocates memory and duplicates the c-string `__mem`.
-char  *strdup(char const *__mem) __pure;
+char  *strdup(char const *__mem);
 // Allocates memory and duplicates the c-string `__mem`.
 // Copies at most `__len` characters from the input before adding a NULL terminator.
-char  *strndup(char const *__mem, size_t __len) __pure;
+char  *strndup(char const *__mem, size_t __len);
 
 #ifdef __cplusplus
 } // extern "C"

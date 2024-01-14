@@ -34,7 +34,7 @@ module top(
     // Main microcontroller device.
     main#(
         .rom_file({boa_parentdir(`__FILE__), "/../obj_dir/rom.mem"}),
-        .uart_buf(8192),
+        .uart_buf(65536),
         .uart_div(4),
         .is_simulator(1),
         .extrom_alen(xm_alen),

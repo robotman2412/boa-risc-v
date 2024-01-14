@@ -31,6 +31,8 @@
 #define HEXDUMP_COLS  16
 // Number of bytes in a group.
 #define HEXDUMP_GROUP 4
+// Maximum block size of a write.
+#define BLOCK_SIZE    1024
 
 // Show raw transmissions in hexadecimal.
 bool show_hex;
@@ -262,6 +264,43 @@ unsigned int clog2(uintmax_t x) {
 
 
 
+// Write a bunch of data to the computer without splitting it up.
+bool write_mem_block(uint32_t addr, void const *wdata, size_t length) {
+    // Set up a write command.
+    phdr_t phdr = {
+        .type   = P_WRITE,
+        .length = sizeof(p_read_t),
+    };
+    p_read_t pdat = {
+        .addr   = addr,
+        .length = length,
+    };
+    if (!await_packet(&phdr, &pdat) || !expect_ack(A_ACK)) {
+        printf("P_WRITE failed.\n");
+        return false;
+    }
+
+    phdr = (phdr_t){
+        .type   = P_WDATA,
+        .length = length,
+    };
+    if (!await_packet(&phdr, wdata) || !expect_ack(A_ACK)) {
+        printf("P_WDATA failed.\n");
+        return false;
+    }
+
+    return true;
+}
+
+// Write a bunch of data to the computer.
+bool write_mem(uint32_t addr, void const *_wdata, size_t length) {
+    uint8_t const *wdata = _wdata;
+    for (size_t i = 0; i < length; i += BLOCK_SIZE) {
+        write_mem_block(addr + i, wdata + i, BLOCK_SIZE < length - i ? BLOCK_SIZE : length - i);
+    }
+    return true;
+}
+
 // Try to ping the computer.
 bool ping() {
     phdr_t phdr = {
@@ -356,31 +395,8 @@ bool f_upload_elf(char const *filename, bool run) {
         kbelf_segment seg = kbelf_inst_segment_get(inst, i);
         printf("Writing to 0x%08x (%zu%%)\n", seg.vaddr_req, (i + 1) * 100 / kbelf_inst_segment_len(inst));
 
-        // Request a write.
-        phdr_t phdr = {
-            .type   = P_WRITE,
-            .length = sizeof(p_write_t),
-        };
-        p_write_t p_write = {
-            .addr   = seg.vaddr_req,
-            .length = seg.size,
-        };
-        if (!await_packet(&phdr, &p_write) || !expect_ack(A_ACK)) {
-            printf("P_WRITE failed.\n");
-            kbelf_inst_unload(inst);
-            kbelf_file_close(file);
-            return false;
-        }
-
-        // Send write data.
-        phdr = (phdr_t){
-            .type   = P_WDATA,
-            .length = seg.size,
-        };
-        if (!await_packet(&phdr, (void const *)seg.laddr) || !expect_ack(A_ACK)) {
-            printf("P_WDATA failed.\n");
-            kbelf_inst_unload(inst);
-            kbelf_file_close(file);
+        // Write the memory.
+        if (!write_mem(seg.vaddr_req, (void const *)seg.laddr, seg.size)) {
             return false;
         }
     }
@@ -569,27 +585,8 @@ bool f_write(char const *raw_addr, char const *raw_len, char const *raw_file) {
         fclose(fd);
     }
 
-    // Set up a write command.
-    phdr_t phdr = {
-        .type   = P_WRITE,
-        .length = sizeof(p_read_t),
-    };
-    p_read_t pdat = {
-        .addr   = address,
-        .length = length,
-    };
-    if (!await_packet(&phdr, &pdat) || !expect_ack(A_ACK)) {
-        printf("P_WRITE failed.\n");
-        free(wdata);
-        return false;
-    }
-
-    phdr = (phdr_t){
-        .type   = P_WDATA,
-        .length = length,
-    };
-    if (!await_packet(&phdr, wdata) || !expect_ack(A_ACK)) {
-        printf("P_WDATA failed.\n");
+    // Write the memory.
+    if (!write_mem(address, wdata, length)) {
         free(wdata);
         return false;
     }

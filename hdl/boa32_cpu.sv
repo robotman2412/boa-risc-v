@@ -180,8 +180,10 @@ module boa32_cpu#(
     /* ==== CSR logic ==== */
     // CSR misa: M-mode ISA description.
     logic[31:0] csr_misa;
-    // CSR mstatus.MIE: M-mode interrupt enable.
+    // CSR status.MIE: M-mode interrupt enable.
     logic       csr_status_mie;
+    // CSR status.SIE: S-mode interrupt enable.
+    logic       csr_status_sie;
     
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
@@ -197,7 +199,8 @@ module boa32_cpu#(
         clk, rst,
         csr, csr_ex,
         csr_misa,
-        csr_status_mie
+        csr_status_mie,
+        csr_status_sie
     );
     
     
@@ -746,18 +749,22 @@ module boa32_csrs#(
     assign csr_mstatus[17]      = csr_status_mprv;
     assign csr_mstatus[31:18]   = 0;
     
+    assign csr_status_sie  = 0;
+    assign csr_status_spie = 0;
+    assign csr_status_spp  = 0;
+    assign csr_status_mpp  = 3;
+    assign csr_status_mprv = 0;
+    
     // CSR sstatus value.
-    assign csr_mstatus[0]       = 0;
-    assign csr_mstatus[1]       = csr_status_sie;
-    assign csr_mstatus[4:2]     = 0;
-    assign csr_mstatus[5]       = csr_status_spie;
-    assign csr_mstatus[7:6]     = 0;
-    assign csr_mstatus[8]       = csr_status_spp;
-    assign csr_mstatus[31:9]    = 0;
+    // assign csr_sstatus[0]       = 0;
+    // assign csr_sstatus[1]       = csr_status_sie;
+    // assign csr_sstatus[4:2]     = 0;
+    // assign csr_sstatus[5]       = csr_status_spie;
+    // assign csr_sstatus[7:6]     = 0;
+    // assign csr_sstatus[8]       = csr_status_spp;
+    // assign csr_sstatus[31:9]    = 0;
     
     // CSR status storage.
-    generate
-    endgenerate
     
     
     /* ==== CSR mipid value ==== */

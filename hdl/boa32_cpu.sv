@@ -12,7 +12,7 @@
     Pipeline:   5 stages (IF, ID, EX, MEM, WB)
     IPC:        0.33 min, ?.?? avg, 1.00 max
     Interrupts: 16 external, 1 internal
-    Privileges: M-mode
+    Privileges: M-mode, U-mode
     
     Implemented CSRs:
         0x300   mstatus
@@ -55,8 +55,6 @@ module boa32_cpu#(
     parameter misa_we       = 0,
     // Support user mode.
     parameter has_u_mode    = 0,
-    // Support supervisor mode and virtual memory (depends on has_u_mode).
-    parameter has_s_mode    = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
@@ -603,8 +601,6 @@ module boa32_csrs#(
     parameter misa_we       = 1,
     // Support user mode.
     parameter has_u_mode    = 0,
-    // Support supervisor mode and virtual memory (depends on has_u_mode).
-    parameter has_s_mode    = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
@@ -655,23 +651,23 @@ module boa32_csrs#(
     
     
     // CSR mstatus: M-mode status.
-    wire [31:0] csr_mstatus;
+    logic[31:0] csr_mstatus;
     // CSR medeleg: M-mode trap delegation.
     wire [31:0] csr_medeleg     = 0;
     // CSR medeleg: M-mode interrupt delegation.
     wire [31:0] csr_mideleg     = 0;
     // CSR mie: M-mode per-interrupt enable.
-    reg  [31:0] csr_mie;
+    logic[31:0] csr_mie;
     // CSR mtvec: M-mode trap and interrupt vector.
-    reg  [31:2] csr_mtvec;
+    logic[31:2] csr_mtvec;
     // CSR mstatush: M-mode status.
     wire [31:0] csr_mstatush    = 0;
     // CSR mip: M-mode interrupts pending.
     wire [31:0] csr_mip         = ex.irq_ip & csr_mie;
     // CSR mscratch: M-mode scratch pad register.
-    reg  [31:0] csr_mscratch;
+    logic[31:0] csr_mscratch;
     // CSR mepc: M-mode exception program counter.
-    reg  [31:1] csr_mepc;
+    logic[31:1] csr_mepc;
     // CSR mcause: M-mode interrupt / trap cause.
     wire [31:0] csr_mcause      = (csr_mcause_int << 31) | csr_mcause_no;
     // CSR mtval: M-mode trap value.
@@ -683,11 +679,30 @@ module boa32_csrs#(
     // It must not be modified and must be readable to any M-mode software.
     wire [31:0] csr_marchid     = 37;
     // CSR mipid: M-mode implementation ID.
-    wire [31:0] csr_mipid;
+    logic[31:0] csr_mipid;
     // CSR mhartid: M-mode HART ID.
     wire [31:0] csr_mhartid     = hartid;
     // CSR mconfigptr: M-mode configuration pointer.
     wire [31:0] csr_mconfigptr  = 0;
+    
+    // CSR sstatus: S-mode stats.
+    logic[31:0] csr_sstatus;
+    // CSR sie: S-mode per-interrupt enable.
+    logic[31:0] csr_sie;
+    // CSR stvec: S-mode trap and interrupt vector.
+    logic[31:2] csr_stvec;
+    // CSR sip: S-mode interrupts pending.
+    wire [31:0] csr_sip         = ex.irq_ip & csr_mideleg & csr_sie;
+    // CSR sscratch: S-mode scratch pad register.
+    logic[31:0] csr_sscratch;
+    // CSR sepc: S-mode exception program counter.
+    logic[31:1] csr_sepc;
+    // CSR scause: S-mode interrupt / trap cause.
+    wire [31:0] csr_scause      = (csr_scause_int << 31) | csr_scause_no;
+    // CSR stval: S-mode trap value.
+    wire [31:0] csr_stval       = 0;
+    // CSR satp: S-mode address translation and protection.
+    wire [31:0] csr_satp        = (csr_satp_mode << 31) | (csr_satp_asid << 22) | csr_satp_ppn;
     
     
     /* ==== CSR misa value ==== */

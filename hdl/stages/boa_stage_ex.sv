@@ -20,6 +20,8 @@ module boa_stage_ex#(
     input  logic        rst,
     // Invalidate results and clear traps.
     input  logic        clear,
+    // Current privilege mode.
+    input  logic[1:0]   cur_priv,
     
     
     // ID/EX: Result valid.

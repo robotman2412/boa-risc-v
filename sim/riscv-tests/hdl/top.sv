@@ -14,7 +14,7 @@ module top(
     `include "boa_defines.svh"
     
     // To host time.
-    assign is_ecall   = cpu.csr_ex.ex_trap && cpu.csr_ex.ex_cause == `RV_ECAUSE_M_ECALL;
+    assign is_ecall   = cpu.csr_ex.ex_trap && (cpu.csr_ex.ex_cause == `RV_ECAUSE_M_ECALL || cpu.csr_ex.ex_cause == `RV_ECAUSE_U_ECALL);
     assign is_ebreak  = cpu.csr_ex.ex_trap && cpu.csr_ex.ex_cause == `RV_ECAUSE_EBREAK;
     assign epc        = cpu.csr_ex.ex_epc;
     assign regs[0]    = 0;

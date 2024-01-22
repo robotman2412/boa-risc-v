@@ -23,6 +23,8 @@ module boa_stage_id#(
     input  logic        rst,
     // Invalidate results and clear traps.
     input  logic        clear,
+    // Current privilege mode.
+    input  logic[1:0]   cur_priv,
     
     
     // IF/ID: Result valid.
@@ -146,7 +148,7 @@ module boa_stage_id#(
     boa_insn_validator#(
         .has_m(has_m), .has_a(has_a)
     ) validator(
-        r_insn, 2'b11, 0, cur_misa,
+        r_insn, cur_priv, 0, cur_misa,
         insn_valid, insn_legal
     );
     
@@ -172,9 +174,11 @@ module boa_stage_id#(
     boa_reg_decoder#(.a(has_a)) reg_decd(insn, use_rs1, use_rs2, use_rs3, use_rd);
     
     // Branch decoding logic.
-    boa_branch_decoder branch_decd(insn, r_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret, is_branch, is_jump, branch_target, use_rs1_bt);
+    logic is_xret_tmp;
+    boa_branch_decoder branch_decd(insn, r_pc, fw_rs1_bt ? fw_val : rs1_val, is_xret_tmp, is_branch, is_jump, branch_target, use_rs1_bt);
     assign branch_predict = insn[31];
     assign is_sret        = !insn[29];
+    assign is_xret        = is_xret_tmp && insn_valid && insn_legal;
     
     // Pipeline output logic.
     assign q_pc             = r_pc;
@@ -194,14 +198,14 @@ module boa_stage_id#(
             q_valid = 0;
             q_trap  = !clear;
             q_cause = `RV_ECAUSE_IILLEGAL;
-        end else if (r_valid && !is_rvc && !insn_valid) begin
+        end else if (r_valid && !is_rvc && !insn_valid || (insn_valid && !insn_legal)) begin
             q_valid = 0;
             q_trap  = !clear;
             q_cause = `RV_ECAUSE_IILLEGAL;
         end else if (r_valid && is_ecall) begin
             q_valid = 0;
             q_trap  = !clear;
-            q_cause = `RV_ECAUSE_M_ECALL;
+            q_cause = cur_priv | `RV_ECAUSE_U_ECALL;
         end else if (r_valid && is_ebreak) begin
             q_valid = 0;
             q_trap  = !clear;

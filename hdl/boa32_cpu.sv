@@ -54,7 +54,7 @@ module boa32_cpu#(
     // Support configurability through misa.
     parameter misa_we       = 0,
     // Support user mode.
-    parameter has_u_mode    = 0,
+    parameter has_u_mode    = 1,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
@@ -92,6 +92,9 @@ module boa32_cpu#(
     input  logic[31:16] irq
 );
     genvar x;
+    
+    // Current privilege mode.
+    logic[1:0]  cur_priv;
     
     /* ==== Pipeline barriers ==== */
     // IF: Exception occurred.
@@ -189,7 +192,6 @@ module boa32_cpu#(
         .hartid(hartid),
         .misa_we(misa_we),
         .has_u_mode(has_u_mode),
-        .has_s_mode(has_s_mode),
         .has_m(has_m),
         .has_a(has_a),
         .has_c(has_c)
@@ -200,6 +202,30 @@ module boa32_cpu#(
         csr_status_mie,
         csr_status_sie
     );
+    
+    // Privilege mode switching logic.
+    assign csr_ex.ex_pp = cur_priv;
+    generate
+        if (has_u_mode) begin: priv_with_u
+            always @(posedge clk) begin
+                if (rst) begin
+                    // Reset.
+                    cur_priv <= 3;
+                    
+                end else if (csr_ex.ex_trap || csr_ex.ex_irq) begin
+                    // Exception.
+                    cur_priv <= 3;
+                    
+                end else if (csr_ex.ret) begin
+                    // Exception return.
+                    cur_priv <= csr_ex.ret_pp;
+                end
+            end
+        end else begin: priv_without_u
+            // Always M.
+            assign cur_priv = 3;
+        end
+    endgenerate
     
     
     /* ==== Control transfer logic ==== */
@@ -246,7 +272,7 @@ module boa32_cpu#(
         if (fw_branch_correct && debug) begin
             $strobe("Branch correction to %x", fw_branch_alt<<1);
         end
-        if (id_ex_valid && is_xret) begin
+        if (id_ex_valid && !fw_stall_id && is_xret) begin
             // MRET.
             csr_ex.ret          = 1;
             fw_branch_predict   = 1;
@@ -531,7 +557,7 @@ module boa32_cpu#(
     
     /* ==== Pipeline stages ==== */
     boa_stage_if#(.entrypoint(entrypoint)) st_if(
-        clk, rst, clear_if, pbus,
+        clk, rst, clear_if, cur_priv, pbus,
         // Pipeline output.
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
         // Instruction fetch fence.
@@ -542,7 +568,7 @@ module boa32_cpu#(
         fw_stall_if
     );
     boa_stage_id#(.debug(debug), .has_m(has_m), .has_c(has_c)) st_id(
-        clk, rst, clear_id,
+        clk, rst, clear_id, cur_priv,
         // Pipeline input.
         if_id_valid && !fw_stall_if, if_id_pc, if_id_insn, if_id_trap && !fw_stall_if, if_id_cause,
         // Pipeline output.
@@ -557,7 +583,7 @@ module boa32_cpu#(
         fw_stall_id, use_rs1_bt, fw_rs1_bt, fw_in_bt
     );
     boa_stage_ex#(.div_latency(div_latency), .has_m(has_m)) st_ex (
-        clk, rst, clear_ex,
+        clk, rst, clear_ex, cur_priv,
         // Pipeline input.
         id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,
         // Pipeline output.
@@ -566,7 +592,7 @@ module boa32_cpu#(
         fw_branch_correct, fw_stall_ex, fw_rd_ex, ex_stall_req
     );
     boa_stage_mem st_mem(
-        clk, rst, clear_mem,
+        clk, rst, clear_mem, cur_priv, cur_priv,
         // Memory buses.
         dbus_in, csr, amo_en, resv_bus,
         // Data fence.
@@ -685,25 +711,6 @@ module boa32_csrs#(
     // CSR mconfigptr: M-mode configuration pointer.
     wire [31:0] csr_mconfigptr  = 0;
     
-    // CSR sstatus: S-mode stats.
-    logic[31:0] csr_sstatus;
-    // CSR sie: S-mode per-interrupt enable.
-    logic[31:0] csr_sie;
-    // CSR stvec: S-mode trap and interrupt vector.
-    logic[31:2] csr_stvec;
-    // CSR sip: S-mode interrupts pending.
-    wire [31:0] csr_sip         = ex.irq_ip & csr_mideleg & csr_sie;
-    // CSR sscratch: S-mode scratch pad register.
-    logic[31:0] csr_sscratch;
-    // CSR sepc: S-mode exception program counter.
-    logic[31:1] csr_sepc;
-    // CSR scause: S-mode interrupt / trap cause.
-    wire [31:0] csr_scause      = (csr_scause_int << 31) | csr_scause_no;
-    // CSR stval: S-mode trap value.
-    wire [31:0] csr_stval       = 0;
-    // CSR satp: S-mode address translation and protection.
-    wire [31:0] csr_satp        = (csr_satp_mode << 31) | (csr_satp_asid << 22) | csr_satp_ppn;
-    
     
     /* ==== CSR misa value ==== */
     // Instruction set extensions.
@@ -767,20 +774,37 @@ module boa32_csrs#(
     assign csr_status_sie  = 0;
     assign csr_status_spie = 0;
     assign csr_status_spp  = 0;
-    assign csr_status_mpp  = 3;
-    assign csr_status_mprv = 0;
-    
-    // CSR sstatus value.
-    // assign csr_sstatus[0]       = 0;
-    // assign csr_sstatus[1]       = csr_status_sie;
-    // assign csr_sstatus[4:2]     = 0;
-    // assign csr_sstatus[5]       = csr_status_spie;
-    // assign csr_sstatus[7:6]     = 0;
-    // assign csr_sstatus[8]       = csr_status_spp;
-    // assign csr_sstatus[31:9]    = 0;
     
     // CSR status storage.
-    
+    generate
+        if (has_u_mode) begin: status_with_u
+            always @(posedge clk) begin
+                if (rst) begin
+                    // Reset.
+                    csr_status_mpp    <= 3;
+                    csr_status_mprv   <= 0;
+                    
+                end else if (ex.ex_trap || ex.ex_irq) begin
+                    // CSR changes on trap or interrupt.
+                    csr_status_mpp    <= ex.ex_pp;
+                    
+                end else if (ex.ret) begin
+                    // CSR changes on xret instruction.
+                    csr_status_mprv <= csr_status_mprv && csr_status_mpp == 3;
+                    
+                end else if (csr.we) begin
+                    // CSR write logic.
+                    case (csr.addr)
+                        default:            /* No action required. */;
+                        `RV_CSR_MSTATUS:    begin csr_status_mprv <= csr.wdata[17]; csr_status_mpp <= (csr.wdata[12:11] != 0) ? 3 : 0; end
+                    endcase
+                end
+            end
+        end else begin: status_without_u
+            assign csr_status_mpp    = 3;
+            assign csr_status_mprv   = 0;
+        end
+    endgenerate
     
     /* ==== CSR mimpid value ==== */
     // Semantic versioning PATCH.
@@ -804,6 +828,7 @@ module boa32_csrs#(
     /* ==== CSR ACCESS LOGIC ==== */
     assign csr.priv         = 'bx;
     assign ex.ret_epc       = csr_mepc;
+    assign ex.ret_pp        = csr_status_mpp;
     assign ex.ex_tvec       = csr_mtvec;
     assign ex.irq_mie       = csr_mie;
     assign ex.irq_medeleg   = 'bx;
@@ -836,22 +861,26 @@ module boa32_csrs#(
     always @(posedge clk) begin
         if (rst) begin
             // Rset CSRs to default values.
-            csr_status_mpie    <= 0;
-            csr_status_mie     <= 0;
-            csr_mcause_int      <= 0;
-            csr_mcause_no       <= 0;
-            csr_mie             <= 0;
-            csr_mtvec           <= 0;
-            csr_mscratch        <= 0;
-            csr_mepc            <= 0;
+            csr_status_mpie <= 0;
+            csr_status_mie  <= 0;
+            csr_mcause_int  <= 0;
+            csr_mcause_no   <= 0;
+            csr_mie         <= 0;
+            csr_mtvec       <= 0;
+            csr_mscratch    <= 0;
+            csr_mepc        <= 0;
             
         end else if (ex.ex_trap || ex.ex_irq) begin
             // CSR changes on trap or interrupt.
-            csr_status_mpie    <= csr_status_mie;
-            csr_status_mie     <= 0;
-            csr_mepc            <= ex.ex_epc;
-            csr_mcause_int      <= ex.ex_irq;
-            csr_mcause_no       <= ex.ex_cause;
+            csr_status_mpie <= csr_status_mie;
+            csr_status_mie  <= 0;
+            csr_mepc        <= ex.ex_epc;
+            csr_mcause_int  <= ex.ex_irq;
+            csr_mcause_no   <= ex.ex_cause;
+            
+        end else if (ex.ret) begin
+            // CSR changes on xret instruction.
+            csr_status_mie     <= csr_status_mpie;
             
         end else if (csr.we) begin
             // CSR write logic.
@@ -864,10 +893,6 @@ module boa32_csrs#(
                 `RV_CSR_MEPC:       begin csr_mepc[31:1] <= csr.wdata[31:1]; end
                 `RV_CSR_MCAUSE:     begin csr_mcause_int <= csr.wdata[31]; csr_mcause_no <= csr.wdata[4:0]; end
             endcase
-            
-        end else if (ex.ret) begin
-            // CSR changes of mret instruction.
-            csr_status_mie     <= csr_status_mpie;
         end
     end
 endmodule

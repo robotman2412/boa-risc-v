@@ -17,6 +17,10 @@ module boa_stage_mem#(
     input  logic        rst,
     // Invalidate results and clear traps.
     input  logic        clear,
+    // Current privilege mode.
+    input  logic[1:0]   cur_priv,
+    // Effective memory privilege mode.
+    input  logic[1:0]   mem_priv,
     
     // Data memory bus.
     boa_mem_bus.CPU     dbus,

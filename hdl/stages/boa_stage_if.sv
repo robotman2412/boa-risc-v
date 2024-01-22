@@ -17,6 +17,8 @@ module boa_stage_aligned_if#(
     input  logic        rst,
     // Invalidate results and clear traps.
     input  logic        clear,
+    // Current privilege mode.
+    input  logic[1:0]   cur_priv,
     
     // Program memory bus.
     boa_mem_bus.CPU     pbus,
@@ -117,6 +119,8 @@ module boa_stage_if#(
     input  logic        rst,
     // Invalidate results and clear traps.
     input  logic        clear,
+    // Current privilege mode.
+    input  logic[1:0]   cur_priv,
     
     // Program memory bus.
     boa_mem_bus.CPU     pbus,

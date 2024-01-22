@@ -14,6 +14,8 @@ interface boa_csr_ex_bus;
     logic       ex_irq;
     // CPU -> CSR: Exception is serviced in M-mode.
     logic       ex_priv;
+    // CPU -> CSR: Exception previous privilege.
+    logic[1:0]  ex_pp;
     // CPU -> CSR: Exception program counter.
     logic[31:1] ex_epc;
     // CPU -> CSR: Exception cause.
@@ -25,6 +27,8 @@ interface boa_csr_ex_bus;
     logic       ret;
     // CPU -> CSR: Returning to M-mode.
     logic       ret_priv;
+    // CSR -> CPU: Previous privilege.
+    logic[1:0]  ret_pp;
     // CSR -> CPU: Exception program counter.
     logic[31:1] ret_epc;
     
@@ -40,9 +44,9 @@ interface boa_csr_ex_bus;
     logic[31:0] irq_sie;
     
     // Directions from CPU perspective.
-    modport CPU (output ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, input  ex_tvec, output ret, ret_priv, input  ret_epc, output irq_ip, input  irq_mie, irq_mideleg, irq_medeleg, irq_sie);
+    modport CPU (output ex_trap, ex_irq, ex_priv, ex_pp, ex_epc, ex_cause, input  ex_tvec, output ret, ret_priv, input  ret_pp, ret_epc, output irq_ip, input  irq_mie, irq_mideleg, irq_medeleg, irq_sie);
     // Directions from CSR perspective.
-    modport CSR (input  ex_trap, ex_irq, ex_priv, ex_epc, ex_cause, output ex_tvec, input  ret, ret_priv, output ret_epc, input  irq_ip, output irq_mie, irq_mideleg, irq_medeleg, irq_sie);
+    modport CSR (input  ex_trap, ex_irq, ex_priv, ex_pp, ex_epc, ex_cause, output ex_tvec, input  ret, ret_priv, output ret_pp, ret_epc, input  irq_ip, output irq_mie, irq_mideleg, irq_medeleg, irq_sie);
 endinterface
 
 

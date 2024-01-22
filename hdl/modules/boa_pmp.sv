@@ -28,6 +28,15 @@ interface boa_pmp_bus#(
     modport PMP (output r, w, x, input addr, m_mode);
 endinterface
 
+// Boa PMP stub.
+module boa_pmp_stub(
+    boa_pmp_bus.PMP bus
+);
+    assign bus.r = 1;
+    assign bus.w = 1;
+    assign bus.x = 1;
+endmodule
+
 // Parametric implementation of RISC-V physical memory protection.
 module boa_pmp#(
     // Address width, grain+2 to 34.

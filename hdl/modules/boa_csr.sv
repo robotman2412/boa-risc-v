@@ -75,6 +75,41 @@ interface boa_csr_bus;
     modport CSR (output exists, rdonly, priv, rdata, input we, addr, wdata);
 endinterface
 
+// Boa³² CSR overlay.
+module boa_csr_overlay#(
+    // Number of CSR ports.
+    parameter csrs = 2
+)(
+    // CSR bus in.
+    boa_csr_bus.CSR cpu,
+    // CSR bus out.
+    boa_csr_bus.CPU csr[csrs]
+);
+    genvar x;
+    
+    // CSR exists selector.
+    logic[csrs-1:0] sel;
+    // CSR read-only encoder.
+    logic           rdonly[csrs];
+    // CSR privilege encoder.
+    logic[1:0]      priv[csrs];
+    // CSR read data encoder.
+    logic[31:0]     rdata[csrs];
+    
+    generate
+        for (x = 0; x < csrs; x++) begin
+            assign sel[x]       = csr[x].exists;
+            assign rdonly[x]    = csr[x].rdonly;
+            assign priv[x]      = csr[x].priv;
+            assign rdata[x]     = csr[x].rdata;
+        end
+    endgenerate
+    assign cpu.exists = sel != 0;
+    boa_sel_enc#(csrs, 1)  rdonly_enc(sel, rdonly, cpu.rdonly);
+    boa_sel_enc#(csrs, 2)  priv_enc  (sel, priv,   cpu.priv);
+    boa_sel_enc#(csrs, 32) rdata_enc (sel, rdata,  cpu.rdata);
+endmodule
+
 
 
 // Boa³² CSR write data helper.

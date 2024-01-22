@@ -9,10 +9,11 @@
 /*
     Boa³² RV32IMC_Zicsr_Zifencei processor.
     
-    Pipeline:   5 stages (IF, ID, EX, MEM, WB)
-    IPC:        0.33 min, ?.?? avg, 1.00 max
-    Interrupts: 16 external, 1 internal
-    Privileges: M-mode, U-mode
+    Pipeline:           5 stages (IF, ID, EX, MEM, WB)
+    IPC:                0.33 min, ?.?? avg, 1.00 max
+    Interrupts:         16 external, 1 internal
+    Privileges:         M-mode, U-mode
+    Memory protection:  PMP
     
     Implemented CSRs:
         0x300   mstatus
@@ -34,6 +35,13 @@
         0xf13   mimpid      (derived from parameters)
         0xf14   mhartid     (parameter)
         0xf15   mconfigptr  (0)
+        
+        0x3a0   pmpcfg0
+        ...     ...         ...
+        0x3af   pmpcfg15
+        0x3b0   pmpaddr0
+        ...     ...         ...
+        0x3ef   pmpaddr63
     
     Implemented MMIO:
         cpummio + 0x000     mtime
@@ -55,6 +63,10 @@ module boa32_cpu#(
     parameter misa_we       = 0,
     // Support user mode.
     parameter has_u_mode    = 1,
+    // Number of implemented PMPs, 0, 16 or 64.
+    parameter pmp_depth     = 16,
+    // If PMP is implemented: PMP granularity, 2-30.
+    parameter pmp_grain     = 12,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.
@@ -185,23 +197,68 @@ module boa32_cpu#(
     logic       csr_status_mie;
     // CSR status.SIE: S-mode interrupt enable.
     logic       csr_status_sie;
+    // CSR status.MPRV: Modify M-mode memory access privilege.
+    logic       csr_status_mprv;
+    // CSR status.MPP: M-mode previous privilege.
+    logic[1:0]  csr_status_mpp;
     
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
-    boa32_csrs#(
-        .hartid(hartid),
-        .misa_we(misa_we),
-        .has_u_mode(has_u_mode),
-        .has_m(has_m),
-        .has_a(has_a),
-        .has_c(has_c)
-    ) csrs (
-        clk, rst,
-        csr, csr_ex,
-        csr_misa,
-        csr_status_mie,
-        csr_status_sie
-    );
+    boa_pmp_bus pmpbus[2]();
+    generate
+        if (pmp_depth) begin: csr_without_pmp
+            // CSR mux.
+            boa_csr_bus csr_mux_bus[2]();
+            boa_csr_overlay#(2) csr_mux(csr, csr_mux_bus);
+            // PMP unit.
+            boa_pmp#(
+                .grain(pmp_grain),
+                .depth(pmp_depth),
+                .checkers(2)
+            ) pmp (
+                clk, rst,
+                csr_mux_bus[1], pmpbus
+            );
+            // CSR register file.
+            boa32_csrs#(
+                .hartid(hartid),
+                .misa_we(misa_we),
+                .has_u_mode(has_u_mode),
+                .has_m(has_m),
+                .has_a(has_a),
+                .has_c(has_c)
+            ) csrs (
+                clk, rst,
+                csr_mux_bus[0], csr_ex,
+                csr_misa,
+                csr_status_mie,
+                csr_status_sie,
+                csr_status_mprv,
+                csr_status_mpp
+            );
+        end else begin: csr_with_pmp
+            // PMP stubs.
+            boa_pmp_stub pmpstub0(pmpbus[0]);
+            boa_pmp_stub pmpstub1(pmpbus[1]);
+            // CSR register file.
+            boa32_csrs#(
+                .hartid(hartid),
+                .misa_we(misa_we),
+                .has_u_mode(has_u_mode),
+                .has_m(has_m),
+                .has_a(has_a),
+                .has_c(has_c)
+            ) csrs (
+                clk, rst,
+                csr, csr_ex,
+                csr_misa,
+                csr_status_mie,
+                csr_status_sie,
+                csr_status_mprv,
+                csr_status_mpp
+            );
+        end
+    endgenerate
     
     // Privilege mode switching logic.
     assign csr_ex.ex_pp = cur_priv;
@@ -557,7 +614,9 @@ module boa32_cpu#(
     
     /* ==== Pipeline stages ==== */
     boa_stage_if#(.entrypoint(entrypoint)) st_if(
-        clk, rst, clear_if, cur_priv, pbus,
+        clk, rst, clear_if, cur_priv,
+        // Memory buses.
+        pbus, pmpbus[0],
         // Pipeline output.
         if_id_valid, if_id_pc, if_id_insn, if_id_trap, if_id_cause,
         // Instruction fetch fence.
@@ -592,9 +651,9 @@ module boa32_cpu#(
         fw_branch_correct, fw_stall_ex, fw_rd_ex, ex_stall_req
     );
     boa_stage_mem st_mem(
-        clk, rst, clear_mem, cur_priv, cur_priv,
+        clk, rst, clear_mem, cur_priv, csr_status_mprv ? csr_status_mpp : cur_priv,
         // Memory buses.
-        dbus_in, csr, amo_en, resv_bus,
+        dbus_in, pmpbus[1], csr, amo_en, resv_bus,
         // Data fence.
         fence_rl, fence_aq,
         // Pipeline input.
@@ -649,7 +708,11 @@ module boa32_csrs#(
     // CSR status.MIE: M-mode interrupt enable.
     output logic        csr_status_mie,
     // CSR status.SIE: S-mode interrupt enable.
-    output logic        csr_status_sie
+    output logic        csr_status_sie,
+    // CSR status.MPRV: Modify M-mode memory access privilege.
+    output logic        csr_status_mprv,
+    // CSR status.MPP: M-mode previous privilege.
+    output logic[1:0]   csr_status_mpp
 );
     /* ==== CSR STORAGE ==== */
     // CSR misa: Enable A instructions.
@@ -659,10 +722,6 @@ module boa32_csrs#(
     // CSR misa: Enable M instructions.
     logic       csr_misa_m;
     
-    // CSR status: Modify M-mode memory access privilege.
-    logic       csr_status_mprv;
-    // CSR status: M-mode previous privilege.
-    logic[1:0]  csr_status_mpp;
     // CSR status: S-mode previous privilege.
     logic       csr_status_spp;
     // CSR status: M-mode previous interrupt enable.

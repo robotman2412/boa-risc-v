@@ -24,6 +24,8 @@ module boa_stage_mem#(
     
     // Data memory bus.
     boa_mem_bus.CPU     dbus,
+    // PMP checking bus.
+    boa_pmp_bus.CPU     pmp,
     // CSR access bus.
     boa_csr_bus.CPU     csr,
     // Current memory access is an AMO (disable caches).

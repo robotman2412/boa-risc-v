@@ -31,7 +31,7 @@
         
         0xf11   mvendorid   (0)
         0xf12   marchid     (37)
-        0xf13   mipid       (derived from parameters)
+        0xf13   mimpid      (derived from parameters)
         0xf14   mhartid     (parameter)
         0xf15   mconfigptr  (0)
     
@@ -678,8 +678,8 @@ module boa32_csrs#(
     // This CSR serves as attribution for tapeouts and FPGAs.
     // It must not be modified and must be readable to any M-mode software.
     wire [31:0] csr_marchid     = 37;
-    // CSR mipid: M-mode implementation ID.
-    logic[31:0] csr_mipid;
+    // CSR mimpid: M-mode implementation ID.
+    logic[31:0] csr_mimpid;
     // CSR mhartid: M-mode HART ID.
     wire [31:0] csr_mhartid     = hartid;
     // CSR mconfigptr: M-mode configuration pointer.
@@ -782,23 +782,23 @@ module boa32_csrs#(
     // CSR status storage.
     
     
-    /* ==== CSR mipid value ==== */
+    /* ==== CSR mimpid value ==== */
     // Semantic versioning PATCH.
-    assign csr_mipid[3:0]   = 0;
+    assign csr_mimpid[3:0]   = 0;
     // Semantic versioning MINOR.
-    assign csr_mipid[7:4]   = 0;
+    assign csr_mimpid[7:4]   = 0;
     // Semantic versioning MAJOR.
-    assign csr_mipid[15:8]  = 2;
+    assign csr_mimpid[15:8]  = 2;
     // Divider latency.
-    assign csr_mipid[21:16] = div_latency;
+    assign csr_mimpid[21:16] = div_latency;
     // DIV/MOD fusion support.
-    assign csr_mipid[22]    = 0;
+    assign csr_mimpid[22]    = 0;
     // MUL/MULH[S][U] fusion support.
-    assign csr_mipid[23]    = 0;
+    assign csr_mimpid[23]    = 0;
     // Reserved.
-    assign csr_mipid[30:24] = 0;
+    assign csr_mimpid[30:24] = 0;
     // Is a fork of Boa-RISC-V.
-    assign csr_mipid[31]    = 0;
+    assign csr_mimpid[31]    = 0;
     
     
     /* ==== CSR ACCESS LOGIC ==== */
@@ -826,7 +826,7 @@ module boa32_csrs#(
             `RV_CSR_MTVAL:      begin csr.exists = 1; csr.rdonly = 0; csr.rdata = csr_mtval; end
             `RV_CSR_MVENDORID:  begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mvendorid; end
             `RV_CSR_MARCHID:    begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_marchid; end
-            `RV_CSR_MIPID:      begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mipid; end
+            `RV_CSR_MIMPID:     begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mimpid; end
             `RV_CSR_MHARTID:    begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mhartid; end
             `RV_CSR_MCONFIGPTR: begin csr.exists = 1; csr.rdonly = 1; csr.rdata = csr_mconfigptr; end
             default:            begin csr.exists = 0; csr.rdonly = 'bx; csr.rdata = 'bx; end

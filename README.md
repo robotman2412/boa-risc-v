@@ -38,7 +38,7 @@ With the following CSRs present, all mandatory:
 | `0x343`     | `mtval`      | `0x0000_0000` | (unimplemented)
 | `0xf11`     | `mvendorid`  | `0x0000_0000` | (unimplemented)
 | `0xf12`     | `marchid`    | `37`          | Serves as attribution for tapeouts and FPGA bitstreams
-| `0xf13`     | `mipid`      | `0x0000_0000` | Helps distinguish between different versions and parametrizations
+| `0xf13`     | `mimpid`     | `0x0000_0000` | Helps distinguish between different versions and parametrizations
 | `0xf14`     | `mhartid`    | parameter     | Read-only query of CPU/HART ID
 | `0xf15`     | `mconfigptr` | `0x0000_0000` | (unimplemented)
 
@@ -49,10 +49,10 @@ Unsupported features on the TODO list:
 - `A` extension
 - U-mode
 
-## How to interpret mipid
-I use the `mipid` CSR to encode the version and implementation details not encodable by standard RISC-V means.
+## How to interpret mimpid
+I use the `mimpid` CSR to encode the version and implementation details not encodable by standard RISC-V means.
 
-The following bits op `mipid` are allocated:
+The following bits op `mimpid` are allocated:
 | Bits    | Name   | Default value      | Description
 | :------ | :----- | :----------------- | :----------
 | [3:0]   | PATCH  | Current version    | Semantic versioning PATCH number
@@ -62,7 +62,7 @@ The following bits op `mipid` are allocated:
 | [22]    | DIVMOD | `0`                | Fusion of division and modulo supported
 | [23]    | MULLH  | `0`                | Fusion of mul and mulh[s][u] instructions supported
 | [31]    | FORK   | `0`                | Recommended way to distinguish between official releases and fork releases of Boa-RISC-V
-Other bits of `mipid` are currently reserved for future use and should be 0 until allocated.
+Other bits of `mimpid` are currently reserved for future use and should be 0 until allocated.
 
 Parameters encodable by standard means include:
 - Maximum supported ISA (value of `misa` at reset)
@@ -88,4 +88,4 @@ Copyright © 2024, Julian Scheffers
 
 <img style="height:22px!important;margin-left:3px;vertical-align:text-bottom;" src="https://mirrors.creativecommons.org/presskit/icons/cc.svg?ref=chooser-v1"><img style="height:22px!important;margin-left:3px;vertical-align:text-bottom;" src="https://mirrors.creativecommons.org/presskit/icons/by.svg?ref=chooser-v1"></a></p>
 
-If you create an FPGA bitstream, a compiled simulation, a tapeout or other compiled design with a Boa-RISC-V core, the `marchid` CSR is all the necessary attribution. For this, the value of `marchid` must not be changed and it must be readable by software running in M-mode. It is recommended that any third-party releases of a modified Boa-RISC-V CPU set the highest bit of `mipid` to 1 to distinguish from official releases.
+If you create an FPGA bitstream, a compiled simulation, a tapeout or other compiled design with a Boa-RISC-V core, the `marchid` CSR is all the necessary attribution. For this, the value of `marchid` must not be changed and it must be readable by software running in M-mode. It is recommended that any third-party releases of a modified Boa-RISC-V CPU set the highest bit of `mimpid` to 1 to distinguish from official releases.

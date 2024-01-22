@@ -200,7 +200,7 @@
 `define RV_CSR_MSECCFGH     12'h757
 `define RV_CSR_MVENDORID    12'hF11
 `define RV_CSR_MARCHID      12'hF12
-`define RV_CSR_MIPID        12'hF13
+`define RV_CSR_MIMPID       12'hF13
 `define RV_CSR_MHARTID      12'hF14
 `define RV_CSR_MCONFIGPTR   12'hF15
 

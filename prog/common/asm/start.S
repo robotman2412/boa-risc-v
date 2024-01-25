@@ -11,6 +11,13 @@
     .global MAIN_NAME
     .global __isr_handler
 
+#define PROVIDE(x) __addr##x
+#define memory_napot(i, mem, tempreg, perm) \
+    pmp_write_addr_napot(i, __addr__start_##mem, __size_##mem, tempreg); \
+    pmp_set_cfg(i, PMPCFG_LOCK + PMPCFG_NAPOT + PMPCFG_##perm, tempreg)
+#include "memory_layout.ld"
+#include "pmp.h"
+
 
 
     .section ".boot.text"
@@ -56,6 +63,43 @@ _start_data_loop:
     addi a1, a1, 16
     blt a0, a2, _start_data_loop
 _stop_data_loop:
+#endif
+    
+#if !defined(memory_layout_bootloader) && !defined(pmp_disable)
+    # Set up PMP regions for memories.
+    memory_napot(14, rom, t0, RX)
+    memory_napot(13, sram, t0, RWX)
+    memory_napot(12, peri, t0, RW)
+    memory_napot(11, cpummio, t0, RW)
+    
+    # Detect and set address for extrom.
+    li t0, __addr__start_extrom
+    srli t0, 2
+    lw t1, __xromctl_base
+    srli t1, 2
+    addi t1, t0, t1
+    csrw pmpaddr10, t1
+    csrw pmpaddr9, t0
+    pmp_set_cfg(10, PMPCFG_LOCK + PMPCFG_TOR + PMPCFG_RX, t0)
+    
+    # Detect and set address for extram.
+    li t0, __addr__start_extram
+    srli t0, 2
+    lw t1, __xramctl_base
+    srli t1, 2
+    addi t1, t0, t1
+    csrw pmpaddr8, t1
+    csrw pmpaddr7, t0
+    pmp_set_cfg(8, PMPCFG_LOCK + PMPCFG_TOR + PMPCFG_RX, t0)
+    
+    # Set up PMP regions for text and rodata.
+#if defined(pmp_relax_exec)
+#else
+#endif
+    
+    # Make all other memory inaccessible.
+    li t0, -1; csrw pmpaddr15, t0
+    pmp_set_cfg(15, PMPCFG_LOCK + PMPCFG_TOR, t0)
 #endif
     
     # Set ISR handler.

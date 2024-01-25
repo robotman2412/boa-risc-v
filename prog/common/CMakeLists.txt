@@ -39,6 +39,7 @@ target_link_options(${target} PUBLIC
 
 target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/system)
 target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/ld)
 
 if(NOT DEFINED nodefaultsrc)
     target_sources(${target} PUBLIC

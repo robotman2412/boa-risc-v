@@ -4,6 +4,7 @@
 #include "gpio.h"
 #include "is_simulator.h"
 #include "mtime.h"
+#include "pmp.h"
 #include "print.h"
 #include "protocol.h"
 #include "uart.h"
@@ -294,14 +295,8 @@ void isr() {
 
 // Does stuff?
 void main() {
-    asm("csrw pmpaddr0, %0" ::"r"(0x000ff000 >> 2));
-    asm("csrw pmpcfg0, %0" ::"r"(0b10010001));
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    // (*(uint32_t volatile *)0x000ff000) = 0xdeadbeef;
-    uint32_t lol = *(uint32_t volatile *)0x000ff000;
-    // asm("jr %0" ::"r"(0x000ff000));
+    pmp_write_addr_napot(0, 0x3ffffffff, 512);
+    pmp_set_cfg(0, PMPCFG_LOCK + PMPCFG_R + PMPCFG_NAPOT);
 
     // Blink the LED red at startup.
     if (!IS_SIMULATOR) {

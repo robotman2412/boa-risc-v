@@ -206,7 +206,7 @@ module boa32_cpu#(
     boa_csr_ex_bus csr_ex();
     boa_pmp_bus pmpbus[2]();
     generate
-        if (pmp_depth) begin: csr_without_pmp
+        if (pmp_depth) begin: csr_with_pmp
             // CSR mux.
             boa_csr_bus csr_mux_bus[2]();
             boa_csr_overlay#(2) csr_mux(csr, csr_mux_bus);
@@ -236,7 +236,7 @@ module boa32_cpu#(
                 csr_status_mprv,
                 csr_status_mpp
             );
-        end else begin: csr_with_pmp
+        end else begin: csr_without_pmp
             // PMP stubs.
             boa_pmp_stub pmpstub0(pmpbus[0]);
             boa_pmp_stub pmpstub1(pmpbus[1]);

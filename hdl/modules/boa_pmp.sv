@@ -94,8 +94,9 @@ module boa_pmp#(
             
         end else if (csr.addr >= `RV_CSR_PMPADDR0 && csr.addr < `RV_CSR_PMPADDR0 + depth) begin
             // PMP address CSRs.
-            csr.rdata           = pmpaddr[csr.addr - `RV_CSR_PMPADDR0][alen-1:grain];
-            csr.exists          = 1;
+            csr.rdata[grain-2:0]        = pmpcfg[csr.addr - `RV_CSR_PMPADDR0][4:3] == 3 ? 32'hffff_ffff : 0;
+            csr.rdata[alen-3:grain-2]   = pmpaddr[csr.addr - `RV_CSR_PMPADDR0][alen-1:grain];
+            csr.exists                  = 1;
         end
     end
     
@@ -109,11 +110,19 @@ module boa_pmp#(
             end
         end else if (csr.we) begin
             if (csr.addr >= `RV_CSR_PMPCFG0 && csr.addr < `RV_CSR_PMPCFG0 + (depth + 3) / 4) begin
+                bit[31:0] wdata;
+                wdata = csr.wdata;
+                if (grain != 2) begin
+                    wdata[3   ] |= csr.wdata[4   ];
+                    wdata[3+8 ] |= csr.wdata[4+8 ];
+                    wdata[3+16] |= csr.wdata[4+16];
+                    wdata[3+24] |= csr.wdata[4+24];
+                end
                 // PMP config CSRs.
-                if (writeable[4 * csr.addr[3:0]])   pmpcfg[4 * csr.addr[3:0]]   <= csr.wdata[4:0];
-                if (writeable[4 * csr.addr[3:0]+1]) pmpcfg[4 * csr.addr[3:0]+1] <= csr.wdata[12:8];
-                if (writeable[4 * csr.addr[3:0]+2]) pmpcfg[4 * csr.addr[3:0]+2] <= csr.wdata[20:16];
-                if (writeable[4 * csr.addr[3:0]+3]) pmpcfg[4 * csr.addr[3:0]+3] <= csr.wdata[28:24];
+                if (writeable[4 * csr.addr[3:0]])   pmpcfg[4 * csr.addr[3:0]]   <= wdata[4:0];
+                if (writeable[4 * csr.addr[3:0]+1]) pmpcfg[4 * csr.addr[3:0]+1] <= wdata[12:8];
+                if (writeable[4 * csr.addr[3:0]+2]) pmpcfg[4 * csr.addr[3:0]+2] <= wdata[20:16];
+                if (writeable[4 * csr.addr[3:0]+3]) pmpcfg[4 * csr.addr[3:0]+3] <= wdata[28:24];
                 pmplock[4 * csr.addr[3:0]]   <= pmplock[4 * csr.addr[3:0]]   | csr.wdata[7];
                 pmplock[4 * csr.addr[3:0]+1] <= pmplock[4 * csr.addr[3:0]+1] | csr.wdata[15];
                 pmplock[4 * csr.addr[3:0]+2] <= pmplock[4 * csr.addr[3:0]+2] | csr.wdata[23];
@@ -122,7 +131,7 @@ module boa_pmp#(
             end else if (csr.addr >= `RV_CSR_PMPADDR0 && csr.addr < `RV_CSR_PMPADDR0 + depth) begin
                 // PMP address CSRs.
                 if (writeable[csr.addr - `RV_CSR_PMPADDR0]) begin
-                    pmpaddr[csr.addr - `RV_CSR_PMPADDR0][alen-1:grain] <= csr.wdata;
+                    pmpaddr[csr.addr - `RV_CSR_PMPADDR0][alen-1:grain] <= csr.wdata[alen-3:grain-2];
                 end
             end
         end

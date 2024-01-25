@@ -98,6 +98,9 @@ module boa_csr_overlay#(
     
     generate
         for (x = 0; x < csrs; x++) begin
+            assign csr[x].we    = cpu.we;
+            assign csr[x].addr  = cpu.addr;
+            assign csr[x].wdata = cpu.wdata;
             assign sel[x]       = csr[x].exists;
             assign rdonly[x]    = csr[x].rdonly;
             assign priv[x]      = csr[x].priv;

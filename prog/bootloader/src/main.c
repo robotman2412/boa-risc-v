@@ -294,6 +294,13 @@ void isr() {
 
 // Does stuff?
 void main() {
+    asm("csrw pmpaddr0, %0" ::"r"(0x000ff000 >> 2));
+    asm("csrw pmpcfg0, %0" ::"r"(0b10010011));
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("jr %0" ::"r"(0x000ff000));
+
     // Blink the LED red at startup.
     if (!IS_SIMULATOR) {
         mtime     = 0;

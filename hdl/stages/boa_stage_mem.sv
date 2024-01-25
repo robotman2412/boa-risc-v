@@ -273,6 +273,9 @@ module boa_stage_mem#(
         end
     end
     
+    assign pmp.m_mode = mem_priv == 3;
+    assign pmp.addr   = dbus.addr;
+    
     // Enable RMW logic.
     logic       r_rmw_en;
     // Enable atomic memory access.
@@ -295,6 +298,7 @@ module boa_stage_mem#(
     
     always @(posedge clk) begin
         if (rst || clear) begin
+            // Reset.
             r_rmw_en    <= 0;
             r_amo_en    <= 0;
             r_re        <= 0;
@@ -304,6 +308,7 @@ module boa_stage_mem#(
             r_addr      <= 'bx;
             r_wdata     <= 'bx;
         end else if (ready || !(r_re || r_we || r_rmw_en)) begin
+            // Set up memory access.
             r_rmw_en    <= d_rmw_en;
             r_amo_en    <= d_amo_en;
             r_re        <= d_re;
@@ -318,10 +323,10 @@ module boa_stage_mem#(
     assign amo_en = rsel ? r_amo_en : d_amo_en;
     boa_stage_mem_access#(has_a) mem_if(
         clk, rst,
-        rsel ? r_rmw_en      : d_rmw_en,
+        (rsel ? r_rmw_en      : d_rmw_en) && pmp.r && pmp.w,
         rsel ? r_insn[31:29] : d_insn[31:29],
-        rsel ? r_re          : d_re,
-        rsel ? r_we          : d_we,
+        (rsel ? r_re          : d_re) && pmp.r,
+        (rsel ? r_we          : d_we) && pmp.w,
         rsel ? r_sign        : d_sign,
         rsel ? r_asize       : d_asize,
         rsel ? r_addr        : d_addr,
@@ -373,6 +378,16 @@ module boa_stage_mem#(
             // Trap from an earlier stage.
             trap    <= 1;
             cause   <= d_cause;
+            
+        end else if ((d_we && !pmp.w) || (d_amo_en && (!pmp.r || !pmp.w))) begin
+            // Store/AMO access fault.
+            trap    <= 1;
+            cause   <= `RV_ECAUSE_SACCESS;
+            
+        end else if (d_re && !pmp.r) begin
+            // Load access fault.
+            trap    <= 1;
+            cause   <= `RV_ECAUSE_LACCESS;
             
         end else if ((mem_if.re || mem_if.we) && mem_if.ealign) begin
             // Memory alignment error.

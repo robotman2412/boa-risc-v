@@ -11,6 +11,7 @@ SECTIONS {
     /DISCARD/ : { *(.note.gnu.build-id) }
     
     INCLUDE memory_layout.ld
+    __sect_align = 16;
     
     . = __start_rom;
     INCLUDE sect_r.ld

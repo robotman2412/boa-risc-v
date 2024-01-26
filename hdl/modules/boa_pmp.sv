@@ -57,7 +57,10 @@ module boa_pmp#(
     boa_csr_bus.CSR     csr,
     
     // Access checking ports.
-    boa_pmp_bus.PMP     check_ports[checkers]
+    boa_pmp_bus.PMP     check_ports[checkers],
+    
+    // One of the PMPs is being locked.
+    output logic        locking
 );
     // PMP lock bits.
     reg                 pmplock[depth];
@@ -74,6 +77,17 @@ module boa_pmp#(
             writeable[i] = !pmplock[i] && !(pmplock[i+1] && pmpcfg[i+1][4:3] == `RV_PMP_TOR);
         end
         writeable[depth-1] = !pmplock[depth-1];
+    end
+    
+    // Locking detection.
+    always @(*) begin
+        locking = 0;
+        if (csr.we && csr.addr >= `RV_CSR_PMPCFG0 && csr.addr < `RV_CSR_PMPCFG0 + (depth + 3) / 4) begin
+            if (writeable[4 * csr.addr[3:0]] && csr.wdata[7])   locking = 1;
+            if (writeable[4 * csr.addr[3:0]+1] && csr.wdata[15]) locking = 1;
+            if (writeable[4 * csr.addr[3:0]+2] && csr.wdata[23]) locking = 1;
+            if (writeable[4 * csr.addr[3:0]+3] && csr.wdata[31]) locking = 1;
+        end
     end
     
     // CSR read interface.

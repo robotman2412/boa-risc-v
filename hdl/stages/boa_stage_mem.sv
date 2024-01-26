@@ -93,6 +93,23 @@ module boa_stage_mem#(
     // EX/MEM: Value from RS2 register / memory write data.
     logic[31:0] r_rs2_val;
     
+    // Enable RMW AMO logic.
+    logic       d_rmw_en;
+    // Enable atomic memory access.
+    logic       d_amo_en;
+    // Read enable.
+    logic       d_re;
+    // Write enable.
+    logic       d_we;
+    // Access is signed.
+    wire        d_sign      = !d_insn[14];
+    // Access size.
+    wire [1:0]  d_asize     = d_insn[13:12];
+    // Memory access address.
+    wire [31:0] d_addr      = d_rs1_val;
+    // Data to write.
+    wire [31:0] d_wdata     = d_rs2_val;
+    
     // Pipeline barrier register.
     always @(posedge clk) begin
         if (rst) begin
@@ -222,23 +239,6 @@ module boa_stage_mem#(
     logic       ready;
     // Read data.
     logic[31:1] rdata;
-    
-    // Enable RMW AMO logic.
-    logic       d_rmw_en;
-    // Enable atomic memory access.
-    logic       d_amo_en;
-    // Read enable.
-    logic       d_re;
-    // Write enable.
-    logic       d_we;
-    // Access is signed.
-    wire        d_sign      = !d_insn[14];
-    // Access size.
-    wire [1:0]  d_asize     = d_insn[13:12];
-    // Memory access address.
-    wire [31:0] d_addr      = d_rs1_val;
-    // Data to write.
-    wire [31:0] d_wdata     = d_rs2_val;
     
     always @(*) begin
         d_rmw_en = 0;
@@ -504,9 +504,11 @@ module boa_stage_mem_rmw(
     
     // Adder logic.
     always @(*) begin
-        bit[31:0] lhs = rdata;
-        bit[31:0] rhs = wmask;
-        bit[32:0] res;
+        automatic bit[31:0] lhs;
+        automatic bit[31:0] rhs;
+        automatic bit[32:0] res;
+        lhs = rdata;
+        rhs = wmask;
         if (sub_mode) begin
             rhs ^= 32'hffff_ffff;
         end

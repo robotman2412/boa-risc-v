@@ -41,7 +41,26 @@ extern void __isr_handler();
 extern void halt();
 
 // P_WHO response value.
-char const ident[] = "cpus=1,cpu0='Boa32',isa0='RV32IMC_Zicsr',maxdata=4096";
+char const ident[] = "cpus=1,cpu='Boa32',isa='RV32I"
+#ifdef __riscv_m
+                     "M"
+#endif
+#ifdef __riscv_a
+                     "A"
+#endif
+#ifdef __riscv_f
+                     "F"
+#endif
+#ifdef __riscv_d
+                     "D"
+#endif
+#ifdef __riscv_q
+                     "Q"
+#endif
+#ifdef __riscv_c
+                     "C"
+#endif
+                     "_Zicsr_Zifencei',maxdata=4096";
 
 
 

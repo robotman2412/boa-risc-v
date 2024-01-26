@@ -11,6 +11,7 @@ SECTIONS {
     /DISCARD/ : { *(.note.gnu.build-id) }
     
     INCLUDE memory_layout.ld
+    __sect_align = 1024;
     
     . = __start_sram;
     INCLUDE sect_r.ld

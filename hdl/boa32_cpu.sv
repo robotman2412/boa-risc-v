@@ -189,6 +189,19 @@ module boa32_cpu#(
     // WB: Current instruction word.
     logic[31:0] wb_insn;
     
+    // Stall IF stage.
+    logic       fw_stall_if;
+    // Stall ID stage.
+    logic       fw_stall_id;
+    // Stall EX stage.
+    logic       fw_stall_ex;
+    // Stall MEM stage.
+    logic       fw_stall_mem;
+    // Stall request from EX stage.
+    logic       ex_stall_req;
+    // Stall request from MEM stage.
+    logic       mem_stall_req;
+    
     
     /* ==== CSR logic ==== */
     // CSR misa: M-mode ISA description.
@@ -201,6 +214,8 @@ module boa32_cpu#(
     logic       csr_status_mprv;
     // CSR status.MPP: M-mode previous privilege.
     logic[1:0]  csr_status_mpp;
+    // One of the PMPs is being locked.
+    logic       pmp_locking;
     
     boa_csr_bus csr();
     boa_csr_ex_bus csr_ex();
@@ -217,7 +232,8 @@ module boa32_cpu#(
                 .checkers(2)
             ) pmp (
                 clk, rst,
-                csr_mux_bus[1], pmpbus
+                csr_mux_bus[1], pmpbus,
+                pmp_locking
             );
             // CSR register file.
             boa32_csrs#(
@@ -240,6 +256,7 @@ module boa32_cpu#(
             // PMP stubs.
             boa_pmp_stub pmpstub0(pmpbus[0]);
             boa_pmp_stub pmpstub1(pmpbus[1]);
+            assign pmp_locking = 0;
             // CSR register file.
             boa32_csrs#(
                 .hartid(hartid),
@@ -399,19 +416,6 @@ module boa32_cpu#(
     logic[31:0] fw_in_rs1_mem;
     // Forwarding input to MEM RS2.
     logic[31:0] fw_in_rs2_mem;
-    
-    // Stall IF stage.
-    logic       fw_stall_if;
-    // Stall ID stage.
-    logic       fw_stall_id;
-    // Stall EX stage.
-    logic       fw_stall_ex;
-    // Stall MEM stage.
-    logic       fw_stall_mem;
-    // Stall request from EX stage.
-    logic       ex_stall_req;
-    // Stall request from MEM stage.
-    logic       mem_stall_req;
     
     // RS1 for branch target matches RD for EX.
     wire eq_bt_rs1_ex_rd    = use_rs1_bt  && id_ex_valid  && ex_mem_valid && ex_mem_use_rd && (id_ex_insn[19:15] != 0)  && (id_ex_insn[19:15]  == ex_mem_insn[11:7]);

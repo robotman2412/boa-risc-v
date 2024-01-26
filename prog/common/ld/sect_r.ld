@@ -3,10 +3,10 @@
 
 __start_text = .;
 .text : AT(0) { *(.boot.text) *(.text) *(.text.*) } :codeseg
-. = ALIGN(16);
+. = ALIGN(__sect_align);
 __stop_text = .;
 
 __start_rodata = .;
 .rodata : AT(__stop_text - __start_text) { *(.rodata) *(.rodata.*) *(.srodata) *(.srodata.*) } :rodataseg
-. = ALIGN(16);
+. = ALIGN(__sect_align);
 __stop_rodata = .;

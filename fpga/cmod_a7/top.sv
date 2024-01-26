@@ -101,6 +101,8 @@ module top(
     main#(
         .rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"}),
         .uart_div(625),
+        .pmp_depth(16),
+        .pmp_grain(12),
         .is_simulator(0)
     ) main(
         clk || shdn, rtc_clk, rst!=0,

@@ -38,7 +38,12 @@ module main#(
     // Number of lines for the data cache.
     parameter integer dcache_lines      = 32,
     // Number of 4-byte words per data cache line.
-    parameter integer dcache_line_size  = 16
+    parameter integer dcache_line_size  = 16,
+    
+    // Number of PMP entries, 0, 16 or 64.
+    parameter integer pmp_depth         = 16,
+    // Granularity in bits of PMP entries, 2-30.
+    parameter integer pmp_grain         = 2
 )(
     // CPU clock.
     input  logic        clk,
@@ -181,7 +186,9 @@ module main#(
         .entrypoint(32'h4000_0000),
         .cpummio(32'h3000_0000),
         .hartid(0),
-        .debug(0)
+        .debug(0),
+        .pmp_depth(pmp_depth),
+        .pmp_grain(pmp_grain)
     ) cpu (
         clk, rtc_clk, rst,
         cpu_ibus, cpu_dbus,

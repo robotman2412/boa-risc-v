@@ -295,9 +295,6 @@ void isr() {
 
 // Does stuff?
 void main() {
-    pmp_write_addr_napot(0, 0x3ffffffff, 512);
-    pmp_set_cfg(0, PMPCFG_LOCK + PMPCFG_R + PMPCFG_NAPOT);
-
     // Blink the LED red at startup.
     if (!IS_SIMULATOR) {
         mtime     = 0;

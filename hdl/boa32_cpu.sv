@@ -66,7 +66,7 @@ module boa32_cpu#(
     // Number of implemented PMPs, 0, 16 or 64.
     parameter pmp_depth     = 16,
     // If PMP is implemented: PMP granularity, 2-30.
-    parameter pmp_grain     = 12,
+    parameter pmp_grain     = 2,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1,
     // Support A (atomic memory operation) instructions.

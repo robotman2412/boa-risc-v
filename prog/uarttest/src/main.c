@@ -38,7 +38,7 @@ void main() {
     // Set UART to 115200 baud.
     UART0.clk_div = 104;
     // Wait for a UART receive.
-    while (!UART0.status.rx_hasdat);
+    while (!UART0.status.rx_hasdat) continue;
     // Print a funny message.
     print("Hello, World at 115200 baud! I'm making this message extra long just to make sure it all gets received "
           "properly.\n");

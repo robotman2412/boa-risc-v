@@ -26,7 +26,7 @@ CC = riscv32-unknown-elf-gcc
 #	Use this flag to define compiler options. Note, you can add compiler options from the command line using XCFLAGS="other flags"
 PORT_CFLAGS = -O2 -march=rv32imac_zicsr_zifencei -mabi=ilp32 -DCORE_DEBUG -Dmemory_layout_ram -Wno-builtin-declaration-mismatch -nodefaultlibs -nostdlib -nostartfiles
 FLAGS_STR = "$(PORT_CFLAGS) $(XCFLAGS) $(XLFLAGS) $(LFLAGS_END)"
-CFLAGS = $(PORT_CFLAGS) -nostdinc -I$(PORT_DIR) -I. -I$(PORT_DIR)/../../common/system -I$(PORT_DIR)/../../common/include -DFLAGS_STR=\"$(FLAGS_STR)\"
+CFLAGS = $(PORT_CFLAGS) -nostdinc -I$(PORT_DIR) -I. -I$(PORT_DIR)/../../common/system -I$(PORT_DIR)/../../common/include -I$(PORT_DIR)/../../common/ld -DFLAGS_STR=\"$(FLAGS_STR)\"
 #Flag : LFLAGS_END
 #	Define any libraries needed for linking or other flags that should come at the end of the link line (e.g. linker scripts). 
 #	Note : On certain platforms, the default clock_gettime implementation is supported but requires linking of librt.

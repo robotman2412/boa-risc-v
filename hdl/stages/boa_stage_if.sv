@@ -201,6 +201,7 @@ module boa_stage_if#(
             // No permission to execute this address.
             q_trap  = 1;
             q_cause = `RV_ECAUSE_IACCESS;
+            q_pc    = addr;
         end else begin
             // Valid instruction.
             q_valid = 1;

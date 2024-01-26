@@ -13,8 +13,8 @@
 
 #define PROVIDE(x) __addr##x
 #define memory_napot(i, mem, tempreg, perm) \
-    pmp_write_addr_napot(i, __addr__start_##mem, __size_##mem, tempreg); \
-    pmp_set_cfg(i, PMPCFG_LOCK + PMPCFG_NAPOT + PMPCFG_##perm, tempreg)
+    pmp_write_addr_napot(i, __addr__start_##mem, __addr__stop_##mem-__addr__start_##mem, tempreg); \
+    pmp_set_cfg(i, PMPCFG_LOCK + PMPCFG_NAPOT + perm, tempreg)
 #include "memory_layout.ld"
 #include "pmp.h"
 
@@ -66,39 +66,62 @@ _stop_data_loop:
 #endif
     
 #if !defined(memory_layout_bootloader) && !defined(pmp_disable)
-    # Set up PMP regions for memories.
-    memory_napot(14, rom, t0, RX)
-    memory_napot(13, sram, t0, RWX)
-    memory_napot(12, peri, t0, RW)
-    memory_napot(11, cpummio, t0, RW)
-    
-    # Detect and set address for extrom.
-    li t0, __addr__start_extrom
-    srli t0, 2
-    lw t1, __xromctl_base
-    srli t1, 2
-    addi t1, t0, t1
-    csrw pmpaddr10, t1
-    csrw pmpaddr9, t0
-    pmp_set_cfg(10, PMPCFG_LOCK + PMPCFG_TOR + PMPCFG_RX, t0)
-    
-    # Detect and set address for extram.
-    li t0, __addr__start_extram
-    srli t0, 2
-    lw t1, __xramctl_base
-    srli t1, 2
-    addi t1, t0, t1
-    csrw pmpaddr8, t1
-    csrw pmpaddr7, t0
-    pmp_set_cfg(8, PMPCFG_LOCK + PMPCFG_TOR + PMPCFG_RX, t0)
-    
-    # Set up PMP regions for text and rodata.
-#if defined(pmp_relax_exec)
+#ifdef pmp_relax_exec
+#define RAM_PERM PMPCFG_RWX
+#define ROM_PERM PMPCFG_RX
 #else
+#define RAM_PERM PMPCFG_RW
+#define ROM_PERM PMPCFG_R
 #endif
     
+    # Set up PMP regions for text and rodata.
+#if !defined(pmp_disable_text) && !defined(pmp_disable_seg)
+    la   t0, __start_text
+    srl  t0, t0, 2
+    csrw pmpaddr5, t0
+    la   t0, __stop_text
+    srl  t0, t0, 2
+    csrw pmpaddr6, t0
+    pmp_set_cfg(6, PMPCFG_LOCK + PMPCFG_TOR + PMPCFG_RX, t0)
+#endif
+#if !defined(pmp_disable_rodata) && !defined(pmp_disable_seg)
+    la   t0, __start_rodata
+    srl  t0, t0, 2
+    csrw pmpaddr3, t0
+    la   t0, __stop_rodata
+    srl  t0, t0, 2
+    csrw pmpaddr4, t0
+    pmp_set_cfg(4, PMPCFG_LOCK + PMPCFG_TOR + PMPCFG_R, t0)
+#endif
+    
+    # Set up PMP regions for memories.
+    memory_napot(14, rom, t0, PMPCFG_RX)
+    memory_napot(13, sram, t0, RAM_PERM)
+    memory_napot(12, peri, t0, PMPCFG_RW)
+    memory_napot(11, cpummio, t0, PMPCFG_RW)
+    
+    # Detect and set address for extrom.
+    li   t0, __addr__start_extrom
+    srl  t0, t0, 2
+    lw   t1, __xromctl_base
+    srl  t1, t1, 2
+    add  t1, t0, t1
+    csrw pmpaddr10, t1
+    csrw pmpaddr9, t0
+    pmp_set_cfg(10, PMPCFG_LOCK + PMPCFG_TOR + ROM_PERM, t0)
+    
+    # Detect and set address for extram.
+    li   t0, __addr__start_extram
+    srl  t0, t0, 2
+    lw   t1, __xramctl_base
+    srl  t1, t1, 2
+    add  t1, t0, t1
+    csrw pmpaddr8, t1
+    csrw pmpaddr7, t0
+    pmp_set_cfg(8, PMPCFG_LOCK + PMPCFG_TOR + RAM_PERM, t0)
+    
     # Make all other memory inaccessible.
-    li t0, -1; csrw pmpaddr15, t0
+    li   t0, -1; csrw pmpaddr15, t0
     pmp_set_cfg(15, PMPCFG_LOCK + PMPCFG_TOR, t0)
 #endif
     

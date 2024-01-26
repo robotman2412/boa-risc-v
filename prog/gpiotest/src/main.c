@@ -24,7 +24,8 @@ uint8_t volatile pwm_g = 0;
 uint8_t volatile pwm_b = 0;
 
 void handle_mtime() {
-    static uint8_t pwm_state = 1;
+    static uint8_t pwm_state        = 1;
+    *(uint32_t volatile *)0x4000000 = 0xdeadbeef;
 
     // Update GPIO pins.
     uint32_t cur = GPIO.port;
@@ -71,7 +72,7 @@ static inline uint64_t time_us() {
 
 static void delay(uint64_t us) {
     uint64_t limit = time_us() + us;
-    while (time_us() < limit);
+    while (time_us() < limit) continue;
 }
 
 void main() {

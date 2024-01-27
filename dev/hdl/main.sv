@@ -17,6 +17,13 @@ module main#(
     // Whether we're running in the simulator.
     parameter bit     is_simulator      = 0,
     
+    // Divider latency.
+    parameter integer div_latency       = 2,
+    // Divider distribution, "begin", "end", "center" or "all".
+    parameter integer div_distr         = "center",
+    // Multiplier latency.
+    parameter integer mul_latency       = 1,
+    
     // Number of address bits for the internal memory, at least 16.
     parameter integer bram_alen         = 16,
     // Maximum number of address bits for the external ROM.
@@ -188,7 +195,10 @@ module main#(
         .hartid(0),
         .debug(0),
         .pmp_depth(pmp_depth),
-        .pmp_grain(pmp_grain)
+        .pmp_grain(pmp_grain),
+        .div_latency(div_latency),
+        .div_distr(div_distr),
+        .mul_latency(mul_latency)
     ) cpu (
         clk, rtc_clk, rst,
         cpu_ibus, cpu_dbus,

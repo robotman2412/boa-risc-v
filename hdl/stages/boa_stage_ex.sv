@@ -11,6 +11,12 @@ module boa_stage_ex#(
     // Divider latency, 0 to 33.
     // Only applicable if has_m is 1.
     parameter div_latency   = 2,
+    // Divider pipeline register distribution.
+    // Only applicable if has_m is 1.
+    parameter div_distr     = "center",
+    // Multiplier latency, 0 or 1.
+    // Only applicable if has_m is 1.
+    parameter mul_latency   = 0,
     // Support M (multiply/divide) instructions.
     parameter has_m         = 1
 )(
@@ -164,8 +170,22 @@ module boa_stage_ex#(
     logic[31:0] mod_res;
     logic[31:0] shx_res;
     generate
-        if (has_m) begin: mul
+        if (has_m && mul_latency == 0) begin
             boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_res);
+        end else if (has_m && mul_latency == 1) begin: l1mul
+            logic[63:0] mul_tmp;
+            boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_tmp);
+            always @(posedge clk) begin
+                mul_res <= mul_tmp;
+            end
+        end else if (has_m) begin: l1mul
+            logic[63:0] mul_tmp0;
+            logic[63:0] mul_tmp1;
+            boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_tmp0);
+            always @(posedge clk) begin
+                mul_tmp1 <= mul_tmp0;
+                mul_res  <= mul_tmp1;
+            end
         end else begin: nomul
             assign mul_res = 'bx;
         end
@@ -174,7 +194,7 @@ module boa_stage_ex#(
                 div_u, r_rs1_val, r_rs2_val, div_res, mod_res
             );
         end else if (has_m) begin: l1div
-            boa_div_pipelined#(.latency(div_latency)) div(
+            boa_div_pipelined#(.latency(div_latency), .distribution(div_distr)) div(
                 clk, div_u, r_rs1_val, r_rs2_val, div_res, mod_res
             );
         end else begin: nodiv
@@ -185,8 +205,12 @@ module boa_stage_ex#(
     boa_shift_simple shift(shr_arith, shr, r_rs1_val, op_rhs_mux, shx_res);
     
     // Computation delay module.
+    logic div_stall_req, mul_stall_req;
+    assign stall_req = div_stall_req || mul_stall_req;
     wire is_divmod = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && d_insn[14];
-    boa_delay_comp#(div_latency) div_delay(clk, is_divmod, stall_req);
+    boa_delay_comp#(div_latency) div_delay(clk, is_divmod, div_stall_req);
+    wire is_mul    = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && !d_insn[14];
+    boa_delay_comp#(mul_latency) mul_delay(clk, is_mul, mul_stall_req);
     
     // Adder mode.
     wire        cmp           = (r_insn[6:2] == `RV_OP_BRANCH) || (is_op && ((r_insn[14:12] == `RV_ALU_SLT) || (r_insn[14:12] == `RV_ALU_SLTU)));

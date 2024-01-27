@@ -22,7 +22,12 @@ module top(
     input  logic        btn_d,
     input  logic        btn_l,
     input  logic        btn_r,
-    input  logic        btn_c
+    input  logic        btn_c,
+    
+    // Top LEDs.
+    output logic[7:0]   led,
+    // Top switches.
+    input  logic[7:0]   sw
 );
     genvar x;
     `include "boa_fileio.svh"
@@ -85,7 +90,10 @@ module top(
         .uart_div(625),
         .pmp_depth(16),
         .pmp_grain(12),
-        .is_simulator(0)
+        .is_simulator(0),
+        .div_latency(8),
+        .div_distr("end"),
+        .mul_latency(1)
     ) main(
         clk || shdn, rtc_clk, rst!=0,
         txd, rxd,
@@ -108,4 +116,10 @@ module top(
             rst  <= 0;
         end
     end
+    
+    // Debug.
+    assign led[0] = !txd;
+    assign led[1] = !rxd;
+    assign led[2] = rst;
+    assign led[3] = shdn;
 endmodule

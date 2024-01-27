@@ -59,6 +59,12 @@ module boa32_cpu#(
     // Divider latency, 0 to 33.
     // Only applicable if has_m is 1.
     parameter div_latency   = 2,
+    // Divider pipeline register distribution.
+    // Only applicable if has_m is 1.
+    parameter div_distr     = "center",
+    // Multiplier latency, 0 or 1.
+    // Only applicable if has_m is 1.
+    parameter mul_latency   = 0,
     // Support configurability through misa.
     parameter misa_we       = 0,
     // Support user mode.
@@ -645,7 +651,7 @@ module boa32_cpu#(
         // Data hazard avoidance.
         fw_stall_id, use_rs1_bt, fw_rs1_bt, fw_in_bt
     );
-    boa_stage_ex#(.div_latency(div_latency), .has_m(has_m)) st_ex (
+    boa_stage_ex#(.div_latency(div_latency), .div_distr(div_distr), .mul_latency(mul_latency), .has_m(has_m)) st_ex (
         clk, rst, clear_ex, cur_priv,
         // Pipeline input.
         id_ex_valid && !fw_stall_id, id_ex_pc, id_ex_insn, id_ex_ilen, id_ex_use_rd, fw_rs1_ex ? fw_in_rs1_ex : id_ex_rs1_val, fw_rs2_ex ? fw_in_rs2_ex : id_ex_rs2_val, id_ex_branch, id_ex_branch_predict, id_ex_trap && !fw_stall_id, id_ex_cause,

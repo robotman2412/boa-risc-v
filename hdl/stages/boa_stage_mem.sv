@@ -9,7 +9,9 @@
 // Boa³² pipline stage: MEM (memory and CSR access).
 module boa_stage_mem#(
     // Support A (atomic memory operation) instructions.
-    parameter has_a         = 1
+    parameter has_a         = 1,
+    // Enable additional latch for RMW AMOs.
+    parameter rmw_amo_reg   = 0
 )(
     // CPU clock.
     input  logic        clk,
@@ -274,7 +276,7 @@ module boa_stage_mem#(
     end
     
     assign pmp.m_mode = mem_priv == 3;
-    assign pmp.addr   = dbus.addr;
+    assign pmp.addr   = d_addr;
     
     // Enable RMW logic.
     logic       r_rmw_en;
@@ -292,6 +294,10 @@ module boa_stage_mem#(
     logic[31:0] r_addr;
     // Data to write.
     logic[31:0] r_wdata;
+    // PMP read permission.
+    logic       r_pmp_r;
+    // PMP write permission.
+    logic       r_pmp_w;
     
     // Memory register select.
     wire        rsel    = (r_re || r_we || r_rmw_en) && !ready;
@@ -307,6 +313,8 @@ module boa_stage_mem#(
             r_asize     <= 'bx;
             r_addr      <= 'bx;
             r_wdata     <= 'bx;
+            r_pmp_r     <= 'bx;
+            r_pmp_w     <= 'bx;
         end else if (ready || !(r_re || r_we || r_rmw_en)) begin
             // Set up memory access.
             r_rmw_en    <= d_rmw_en;
@@ -317,11 +325,13 @@ module boa_stage_mem#(
             r_asize     <= d_asize;
             r_addr      <= d_addr;
             r_wdata     <= d_wdata;
+            r_pmp_r     <= pmp.r;
+            r_pmp_w     <= pmp.w;
         end
     end
     
     assign amo_en = rsel ? r_amo_en : d_amo_en;
-    boa_stage_mem_access#(has_a) mem_if(
+    boa_stage_mem_access#(.has_a(has_a), .rmw_amo_reg(rmw_amo_reg)) mem_if(
         clk, rst,
         (rsel ? r_rmw_en      : d_rmw_en) && pmp.r && pmp.w,
         rsel ? r_insn[31:29] : d_insn[31:29],
@@ -334,6 +344,12 @@ module boa_stage_mem#(
         ealign, ready, rdata,
         dbus
     );
+    
+    // Permission checking logic.
+    wire  pmp_re    = rsel ? r_re : d_re;
+    wire  pmp_we    = rsel ? (r_re || r_amo_en) : (d_re || d_amo_en);
+    wire  pmp_r     = rsel ? r_pmp_r : pmp.r;
+    wire  pmp_w     = rsel ? r_pmp_w : pmp.w;
     
     
     /* ==== CSR access logic ==== */
@@ -379,12 +395,12 @@ module boa_stage_mem#(
             trap    <= 1;
             cause   <= d_cause;
             
-        end else if ((d_we && !pmp.w) || (d_amo_en && (!pmp.r || !pmp.w))) begin
+        end else if (pmp_we && !pmp_w) begin
             // Store/AMO access fault.
             trap    <= 1;
             cause   <= `RV_ECAUSE_SACCESS;
             
-        end else if (d_re && !pmp.r) begin
+        end else if (pmp_re && !pmp_r) begin
             // Load access fault.
             trap    <= 1;
             cause   <= `RV_ECAUSE_LACCESS;
@@ -540,7 +556,9 @@ endmodule
 // Memory access helper.
 module boa_stage_mem_access#(
     // Support A (atomic memory operation) instructions.
-    parameter has_a         = 1
+    parameter has_a         = 1,
+    // Enable additional latch for RMW AMOs.
+    parameter rmw_amo_reg   = 0
 )(
     // CPU clock.
     input  logic        clk,
@@ -580,8 +598,8 @@ module boa_stage_mem_access#(
     // Memory write data.
     logic[31:0] wdata;
     
-    // RMW AMO phase; 0 is read, 1 is modify/write.
-    logic       amo_stage;
+    // RMW AMO phase; 0 is read, 1 is delay, 2 is modify/write.
+    logic[1:2]  amo_stage;
     // RMW AMO read data latch.
     logic[31:0] amo_rdata_reg;
     // RMW AMO write data.
@@ -603,8 +621,12 @@ module boa_stage_mem_access#(
             asize_reg   <= asize;
             addr_reg    <= addr[1:0];
             if (has_a && rmw_en && amo_stage == 0) begin
-                // Transistion from read to modify/write.
-                amo_stage       <= 1;
+                // Transistion from read to delay or modify/write.
+                amo_stage       <= rmw_amo_reg ? 1 : 2;
+            end else if (has_a && rmw_amo_reg && amo_stage == 1) begin
+                // Transision from delay to modify/write.
+                amo_stage       <= 2;
+                amo_rdata_reg   <= bus.rdata;
             end else if (has_a && rmw_en && bus.ready) begin
                 // Transition from modify/write to idle or read.
                 amo_stage       <= 0;
@@ -615,8 +637,10 @@ module boa_stage_mem_access#(
     
     // Write data logic.
     generate
-        if (has_a) begin: a
+        if (has_a && !rmw_amo_reg) begin: a0
             boa_stage_mem_rmw rmw(rmw_mode, bus.ready ? bus.rdata : amo_rdata_reg, wmask, amo_wdata);
+        end else if (has_a) begin: a1
+            boa_stage_mem_rmw rmw(rmw_mode, amo_rdata_reg, wmask, amo_wdata);
             assign wdata = rmw_en ? amo_wdata : wmask;
         end else begin: not_a
             assign wdata = wmask;

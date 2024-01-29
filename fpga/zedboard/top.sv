@@ -93,7 +93,9 @@ module top(
         .is_simulator(0),
         .div_latency(8),
         .div_distr("end"),
-        .mul_latency(1)
+        .mul_latency(1),
+        .if_branch_reg(1),
+        .rmw_amo_reg(1)
     ) main(
         clk || shdn, rtc_clk, rst!=0,
         txd, rxd,

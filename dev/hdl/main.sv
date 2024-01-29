@@ -23,6 +23,10 @@ module main#(
     parameter integer div_distr         = "center",
     // Multiplier latency.
     parameter integer mul_latency       = 1,
+    // Enable additional latch in IF branch address.
+    parameter bit     if_branch_reg     = 0,
+    // Enable additional latch for RMW AMOs.
+    parameter bit     rmw_amo_reg       = 0,
     
     // Number of address bits for the internal memory, at least 16.
     parameter integer bram_alen         = 16,
@@ -198,7 +202,9 @@ module main#(
         .pmp_grain(pmp_grain),
         .div_latency(div_latency),
         .div_distr(div_distr),
-        .mul_latency(mul_latency)
+        .mul_latency(mul_latency),
+        .if_branch_reg(if_branch_reg),
+        .rmw_amo_reg(rmw_amo_reg)
     ) cpu (
         clk, rtc_clk, rst,
         cpu_ibus, cpu_dbus,

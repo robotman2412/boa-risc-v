@@ -19,7 +19,9 @@ module boa_stage_if#(
     // Entrypoint address.
     parameter entrypoint    = 32'h4000_0000,
     // Depth of the instruction cache, at least 2.
-    parameter cache_depth   = 4
+    parameter cache_depth   = 4,
+    // Enable additional latch in IF branch address.
+    parameter if_branch_reg = 0
 )(
     // CPU clock.
     input  logic        clk,
@@ -81,6 +83,8 @@ module boa_stage_if#(
     logic       valid;
     // Address of requested instruction.
     logic[31:1] addr;
+    // Requested address is valid.
+    logic       addr_valid;
     // Next program counter.
     wire [31:1] next_addr  = addr[31:1] + 1 + (insn[1:0] == 2'b11);
     // Next 16-bit word after address of requested instruction.
@@ -88,22 +92,63 @@ module boa_stage_if#(
     
     assign if_next_pc = pc;
     
-    // Program counter generation.
-    always @(*) begin
-        if (rst) begin
-            addr[31:1] = entrypoint[31:1];
-        end else if (fw_stall_if) begin
-            addr[31:1] = pc[31:1];
-        end else if (fw_exception) begin
-            addr[31:1] = {fw_tvec[31:2], 1'b0};
-        end else if (fw_branch_correct) begin
-            addr[31:1] = fw_branch_alt[31:1];
-        end else if (fw_branch_predict) begin
-            addr[31:1] = fw_branch_target[31:1];
-        end else begin
-            addr[31:1] = pc[31:1];
+    generate if (if_branch_reg) begin: with_branch_reg
+        // Branch is requested.
+        logic branch_req;
+        // Branch is requested latch.
+        logic branch_req_reg;
+        // Next address.
+        logic[31:1] next_branch;
+        // Next address latch.
+        logic[31:1] next_branch_reg;
+        // Program counter generation.
+        always @(*) begin
+            branch_req = 1;
+            if (fw_stall_if) begin
+                next_branch[31:1] = pc[31:1];
+            end else if (fw_exception) begin
+                next_branch[31:1] = {fw_tvec[31:2], 1'b0};
+            end else if (fw_branch_correct) begin
+                next_branch[31:1] = fw_branch_alt[31:1];
+            end else if (fw_branch_predict) begin
+                next_branch[31:1] = fw_branch_target[31:1];
+            end else begin
+                branch_req = 0;
+                next_branch[31:1] = 'bx;
+            end
+            addr_valid = !branch_req;
+            if (rst) begin
+                addr[31:1] = entrypoint[31:1];
+            end else if (branch_req_reg) begin
+                addr[31:1] = next_branch_reg[31:1];
+            end else begin
+                addr[31:1] = pc[31:1];
+            end
         end
-    end
+        // Branch address latch.
+        always @(posedge clk) begin
+            branch_req_reg  <= branch_req;
+            next_branch_reg <= next_branch;
+        end
+    end else begin: without_branch_reg
+        // Program counter generation.
+        always @(*) begin
+            addr_valid = 1;
+            if (rst) begin
+                addr[31:1] = entrypoint[31:1];
+            end else if (fw_stall_if) begin
+                addr[31:1] = pc[31:1];
+            end else if (fw_exception) begin
+                addr[31:1] = {fw_tvec[31:2], 1'b0};
+            end else if (fw_branch_correct) begin
+                addr[31:1] = fw_branch_alt[31:1];
+            end else if (fw_branch_predict) begin
+                addr[31:1] = fw_branch_target[31:1];
+            end else begin
+                addr[31:1] = pc[31:1];
+            end
+        end
+    end endgenerate
     
     // Instruction cache.
     logic[31:0] icache[cache_depth];
@@ -204,7 +249,7 @@ module boa_stage_if#(
             q_pc    = addr;
         end else begin
             // Valid instruction.
-            q_valid = 1;
+            q_valid = addr_valid;
             q_pc    = addr;
             q_insn  = insn;
         end

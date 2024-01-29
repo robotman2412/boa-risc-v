@@ -65,6 +65,11 @@ module boa32_cpu#(
     // Multiplier latency, 0 or 1.
     // Only applicable if has_m is 1.
     parameter mul_latency   = 0,
+    // Enable additional latch in IF branch address.
+    parameter if_branch_reg = 0,
+    // Enable additional latch for RMW AMOs.
+    // Only applicable if has_a is 1.
+    parameter rmw_amo_reg   = 0,
     // Support configurability through misa.
     parameter misa_we       = 0,
     // Support user mode.
@@ -623,7 +628,7 @@ module boa32_cpu#(
     
     
     /* ==== Pipeline stages ==== */
-    boa_stage_if#(.entrypoint(entrypoint)) st_if(
+    boa_stage_if#(.entrypoint(entrypoint), .if_branch_reg(if_branch_reg)) st_if(
         clk, rst, clear_if, cur_priv,
         // Memory buses.
         pbus, pmpbus[0],
@@ -660,7 +665,7 @@ module boa32_cpu#(
         // Data hazard avoidance.
         fw_branch_correct, fw_stall_ex, fw_rd_ex, ex_stall_req
     );
-    boa_stage_mem st_mem(
+    boa_stage_mem#(.has_a(has_a), .rmw_amo_reg(rmw_amo_reg)) st_mem(
         clk, rst, clear_mem, cur_priv, csr_status_mprv ? csr_status_mpp : cur_priv,
         // Memory buses.
         dbus_in, pmpbus[1], csr, amo_en, resv_bus,

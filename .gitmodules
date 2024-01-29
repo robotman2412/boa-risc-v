@@ -4,3 +4,6 @@
 [submodule "riscv-tests"]
 	path = sim/riscv-tests/riscv-tests
 	url = https://github.com/riscv-software-src/riscv-tests
+[submodule "dev/sapphire"]
+	path = dev/sapphire
+	url = https://github.com/robotman2412/sapphire-gpu

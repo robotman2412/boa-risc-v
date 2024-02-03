@@ -20,7 +20,7 @@ module block_ram#(
     boa_mem_bus.MEM bus
 );
     // Raw block RAM storage.
-    raw_block_ram#(abits, 4, 8, init_file) bram_inst(clk, bus.we, bus.addr[abits+1:2], bus.wdata, bus.rdata);
+    raw_block_ram#(abits, 4, 8, init_file) bram_inst(clk, is_rom ? 0 : bus.we, bus.addr[abits+1:2], is_rom ? 'bx : bus.wdata, bus.rdata);
     assign bus.ready = 1;
 endmodule
 
@@ -45,8 +45,8 @@ module dp_block_ram#(
     // Raw block RAM storage.
     raw_dp_block_ram#(abits, 4, 8, init_file) bram_inst(
         clk,
-        is_rom ? 0 : a.we, a.addr[abits+1:2], a.wdata, a.rdata,
-        is_rom ? 0 : b.we, b.addr[abits+1:2], b.wdata, b.rdata
+        is_rom ? 0 : a.we, a.addr[abits+1:2], is_rom ? 'bx : a.wdata, a.rdata,
+        is_rom ? 0 : b.we, b.addr[abits+1:2], is_rom ? 'bx : b.wdata, b.rdata
     );
     assign a.ready = 1;
     assign b.ready = 1;

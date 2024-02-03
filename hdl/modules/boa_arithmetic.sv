@@ -164,7 +164,8 @@ module boa_udiv_pipelined#(
     
     // Determine whether a pipeline register is present at a given bit.
     function automatic bit has_reg(input integer stage);
-        integer i0, i1, count, spacing;
+        integer i0, i1, y;
+        real count, spacing, tally;
         if (distribution == "begin") begin
             i0 = 1; i1 = width;   count = latency-1;
             if (stage == 0) return 1;
@@ -177,9 +178,20 @@ module boa_udiv_pipelined#(
             i0 = 1; i1 = width-1; count = latency-2;
             if (stage == 0 || stage == width) return 1;
         end
-        if (count <= 0) return 0;
-        spacing = (i1 - i0 + 1) / count;
-        return (stage-i0+spacing/2) % spacing == 0;
+        if (count < 1) return 0;
+        spacing = count / (i1 - i0 + 1);
+        tally   = 0;
+        for (y = 0; y < width; y = y + 1) begin
+            tally = tally + spacing;
+            if (tally >= 0.5 && count > 0) begin
+                tally = tally - 1;
+                count = count - 1;
+                if (y == stage) begin
+                    return 1;
+                end
+            end
+        end
+        return 0;
     endfunction
     
     // Divisors.

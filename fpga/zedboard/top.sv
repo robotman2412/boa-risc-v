@@ -5,7 +5,7 @@
 
 module top(
     // System clock.
-    input  logic        clk,
+    input  logic        sysclk,
     
     // PMODs.
     input  logic        pmod_a0,
@@ -32,6 +32,10 @@ module top(
     genvar x;
     `include "boa_fileio.svh"
     
+    // Reduct system clock from 100MHz to 50MHz.
+    logic clk;
+    always @(posedge sysclk) clk <= !clk;
+    
     logic rst  = 1;
     logic shdn = 0;
     
@@ -48,7 +52,7 @@ module top(
     end
     
     logic rtc_clk;
-    param_clk_div#(100000000, 1000000) rtc_div(clk || shdn, rtc_clk);
+    param_clk_div#(50000000, 1000000) rtc_div(clk || shdn, rtc_clk);
     
     // GPIO.
     logic[31:0]  gpio_out;
@@ -62,7 +66,7 @@ module top(
     logic[127:0] randomness;
     logic hyperspeed_clk;
     lfsr128 lfsr(hyperspeed_clk, randomness);
-    param_pll#(100000000, 7, 1) rng_pll(clk, hyperspeed_clk);
+    param_pll#(100000000, 7, 1) rng_pll(sysclk, hyperspeed_clk);
     
     // External memory interfaces.
     boa_mem_bus#(12) xmp_bus();
@@ -87,7 +91,7 @@ module top(
     pmu_bus pmb();
     main#(
         .rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"}),
-        .uart_div(625),
+        .uart_div(2604),
         .pmp_depth(16),
         .pmp_grain(12),
         .is_simulator(0),
@@ -124,4 +128,5 @@ module top(
     assign led[1] = !rxd;
     assign led[2] = rst;
     assign led[3] = shdn;
+    assign led[4] = gpio_out[8];
 endmodule

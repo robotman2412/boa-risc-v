@@ -80,7 +80,8 @@
 # Clock Source - Bank 13
 # ---------------------------------------------------------------------------- 
 set_property PACKAGE_PIN Y9 [get_ports {sysclk}];  # "GCLK"
-create_clock -name clk -period 10 [get_ports {sysclk}]
+create_clock -name sysclk -period 10 [get_ports {sysclk}]
+create_clock -name clk -period 40 [get_nets {clk}]
 
 # ----------------------------------------------------------------------------
 # JA Pmod - Bank 13 

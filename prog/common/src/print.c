@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 #include "print.h"
+
 #include "uart.h"
 
 
@@ -48,5 +49,11 @@ void putx(unsigned long value, unsigned int decimals) {
         decimals = 8;
     for (int i = decimals * 4 - 4; i >= 0; i -= 4) {
         UART0.fifo = hextab[(value >> i) & 15];
+        // int tmp = (value >> i) & 15;
+        // if (tmp <= 9) {
+        //     UART0.fifo = '0' + tmp;
+        // } else {
+        //     UART0.fifo = 'A' + tmp - 0xa;
+        // }
     }
 }

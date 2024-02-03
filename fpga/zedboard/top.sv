@@ -33,8 +33,9 @@ module top(
     `include "boa_fileio.svh"
     
     // Reduct system clock from 100MHz to 50MHz.
-    logic clk;
-    always @(posedge sysclk) clk <= !clk;
+    logic clk_tmp, clk;
+    always @(posedge sysclk) clk_tmp <= !clk_tmp;
+    always @(posedge sysclk) clk <= clk ^ clk_tmp;
     
     logic rst  = 1;
     logic shdn = 0;
@@ -52,7 +53,7 @@ module top(
     end
     
     logic rtc_clk;
-    param_clk_div#(50000000, 1000000) rtc_div(clk || shdn, rtc_clk);
+    param_clk_div#(25000000, 1000000) rtc_div(clk || shdn, rtc_clk);
     
     // GPIO.
     logic[31:0]  gpio_out;
@@ -91,7 +92,7 @@ module top(
     pmu_bus pmb();
     main#(
         .rom_file({boa_parentdir(`__FILE__), "/../../prog/bootloader/build/rom.mem"}),
-        .uart_div(2604),
+        .uart_div(1302),
         .pmp_depth(16),
         .pmp_grain(12),
         .is_simulator(0),

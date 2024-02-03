@@ -347,7 +347,7 @@ module boa_stage_mem#(
     
     // Permission checking logic.
     wire  pmp_re    = rsel ? r_re : d_re;
-    wire  pmp_we    = rsel ? (r_re || r_amo_en) : (d_re || d_amo_en);
+    wire  pmp_we    = rsel ? (r_we || r_amo_en) : (d_we || d_amo_en);
     wire  pmp_r     = rsel ? r_pmp_r : pmp.r;
     wire  pmp_w     = rsel ? r_pmp_w : pmp.w;
     

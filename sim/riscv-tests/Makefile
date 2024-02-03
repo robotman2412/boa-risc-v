@@ -11,7 +11,7 @@ PROG ?= build/riscv-tests/isa/rv32ui/simple.S.mem
 
 all: run wave
 
-build: $(HDL) bench.cpp
+build:
 	verilator -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-VARHIDDEN -Wno-WIDTH -Wno-UNUSED \
 		--trace --trace-fst --trace-depth 20 --trace-max-array 128 --trace-max-width 128 \
 		-sv --cc --exe --build \

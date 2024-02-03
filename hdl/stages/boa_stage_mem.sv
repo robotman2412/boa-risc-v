@@ -333,10 +333,10 @@ module boa_stage_mem#(
     assign amo_en = rsel ? r_amo_en : d_amo_en;
     boa_stage_mem_access#(.has_a(has_a), .rmw_amo_reg(rmw_amo_reg)) mem_if(
         clk, rst,
-        (rsel ? r_rmw_en      : d_rmw_en) && pmp.r && pmp.w,
+        rsel ? r_rmw_en && r_pmp_r && r_pmp_w : d_rmw_en && pmp.r && pmp.w,
         rsel ? r_insn[31:29] : d_insn[31:29],
-        (rsel ? r_re          : d_re) && pmp.r,
-        (rsel ? r_we          : d_we) && pmp.w,
+        rsel ? r_re && pmp.r : d_re && r_pmp_r,
+        rsel ? r_we && pmp.w : d_we && r_pmp_w,
         rsel ? r_sign        : d_sign,
         rsel ? r_asize       : d_asize,
         rsel ? r_addr        : d_addr,
@@ -599,7 +599,7 @@ module boa_stage_mem_access#(
     logic[31:0] wdata;
     
     // RMW AMO phase; 0 is read, 1 is delay, 2 is modify/write.
-    logic[1:2]  amo_stage;
+    logic[1:0]  amo_stage;
     // RMW AMO read data latch.
     logic[31:0] amo_rdata_reg;
     // RMW AMO write data.
@@ -639,6 +639,7 @@ module boa_stage_mem_access#(
     generate
         if (has_a && !rmw_amo_reg) begin: a0
             boa_stage_mem_rmw rmw(rmw_mode, bus.ready ? bus.rdata : amo_rdata_reg, wmask, amo_wdata);
+            assign wdata = rmw_en ? amo_wdata : wmask;
         end else if (has_a) begin: a1
             boa_stage_mem_rmw rmw(rmw_mode, amo_rdata_reg, wmask, amo_wdata);
             assign wdata = rmw_en ? amo_wdata : wmask;
@@ -652,8 +653,8 @@ module boa_stage_mem_access#(
         bit re_tmp, we_tmp;
         if (has_a && rmw_en) begin
             // Divide RMW AMOs into two accesses.
-            re_tmp = !amo_stage;
-            we_tmp = amo_stage;
+            re_tmp = amo_stage == 0;
+            we_tmp = amo_stage == 2;
         end else begin
             // NON-RMW AMO or normal access.
             re_tmp = re;

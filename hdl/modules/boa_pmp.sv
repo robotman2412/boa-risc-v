@@ -210,7 +210,7 @@ module boa_pmp_checker#(
     // Report the result.
     always @(*) begin
         integer i;
-        if (pmp_contains == 0 && bus.m_mode) begin
+        if (pmp_filter == 0 && bus.m_mode) begin
             bus.r = 1;
             bus.w = 1;
             bus.x = 1;

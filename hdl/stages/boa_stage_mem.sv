@@ -80,7 +80,9 @@ module boa_stage_mem#(
     // Stall MEM stage.
     input  logic        fw_stall_mem,
     // Stall request.
-    output logic        stall_req
+    output logic        stall_req,
+    // Virtual address for traps.
+    output logic[31:0]  mem_vaddr
 );
     // EX/MEM: Result valid.
     logic       r_valid;
@@ -389,6 +391,7 @@ module boa_stage_mem#(
     
     
     /* ==== Trap generation logic ==== */
+    assign  mem_vaddr   = r_addr;
     always @(posedge clk) begin
         if (d_trap) begin
             // Trap from an earlier stage.

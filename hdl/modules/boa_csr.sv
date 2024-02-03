@@ -20,6 +20,10 @@ interface boa_csr_ex_bus;
     logic[31:1] ex_epc;
     // CPU -> CSR: Exception cause.
     logic[4:0]  ex_cause;
+    // CPU -> CSR: Memory access virtual address.
+    logic[31:0] ex_vaddr;
+    // CPU -> CSR: Exception actual instruction.
+    logic[31:0] ex_inst;
     // CSR -> CPU: Exception vector address.
     logic[31:2] ex_tvec;
     
@@ -44,9 +48,9 @@ interface boa_csr_ex_bus;
     logic[31:0] irq_sie;
     
     // Directions from CPU perspective.
-    modport CPU (output ex_trap, ex_irq, ex_priv, ex_pp, ex_epc, ex_cause, input  ex_tvec, output ret, ret_priv, input  ret_pp, ret_epc, output irq_ip, input  irq_mie, irq_mideleg, irq_medeleg, irq_sie);
+    modport CPU (output ex_trap, ex_irq, ex_priv, ex_pp, ex_epc, ex_cause, ex_vaddr, ex_inst, input  ex_tvec, output ret, ret_priv, input  ret_pp, ret_epc, output irq_ip, input  irq_mie, irq_mideleg, irq_medeleg, irq_sie);
     // Directions from CSR perspective.
-    modport CSR (input  ex_trap, ex_irq, ex_priv, ex_pp, ex_epc, ex_cause, output ex_tvec, input  ret, ret_priv, output ret_pp, ret_epc, input  irq_ip, output irq_mie, irq_mideleg, irq_medeleg, irq_sie);
+    modport CSR (input  ex_trap, ex_irq, ex_priv, ex_pp, ex_epc, ex_cause, ex_vaddr, ex_inst, output ex_tvec, input  ret, ret_priv, output ret_pp, ret_epc, input  irq_ip, output irq_mie, irq_mideleg, irq_medeleg, irq_sie);
 endinterface
 
 

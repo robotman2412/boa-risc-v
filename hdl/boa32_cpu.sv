@@ -28,7 +28,7 @@
         0x340   mscratch
         0x341   mepc
         0x342   mcause
-        0x343   mtval       (0)
+        0x343   mtval
         
         0xf11   mvendorid   (0)
         0xf12   marchid     (37)
@@ -190,6 +190,8 @@ module boa32_cpu#(
     logic       mem_wb_trap;
     // MEM/WB: Trap cause.
     logic[3:0]  mem_wb_cause;
+    // Virtual address for traps.
+    logic[31:0] mem_vaddr;
     
     // WB: Result valid.
     logic       wb_valid;
@@ -537,6 +539,8 @@ module boa32_cpu#(
     /* ==== Exception logic ==== */
     assign csr_ex.ex_priv       = 1;
     assign csr_ex.ex_epc[31:1]  = mem_wb_pc[31:1];
+    assign csr_ex.ex_vaddr      = mem_vaddr;
+    assign csr_ex.ex_inst       = mem_wb_insn;
     assign csr_ex.ret_priv      = 1;
     logic  mtime_irq;
     
@@ -676,7 +680,9 @@ module boa32_cpu#(
         // Pipeline output.
         mem_wb_valid, mem_wb_pc, mem_wb_insn, mem_wb_use_rd, mem_wb_rd_val, mem_wb_trap, mem_wb_cause,
         // Data hazard avoidance.
-        fw_stall_mem, mem_stall_req
+        fw_stall_mem, mem_stall_req,
+        // Trap virtual address.
+        mem_vaddr
     );
     always @(posedge clk) begin
         if (!fw_stall_mem) begin
@@ -771,7 +777,7 @@ module boa32_csrs#(
     // CSR mcause: M-mode interrupt / trap cause.
     wire [31:0] csr_mcause      = (csr_mcause_int << 31) | csr_mcause_no;
     // CSR mtval: M-mode trap value.
-    wire [31:0] csr_mtval       = 0;
+    logic[31:0] csr_mtval;
     // CSR mvendorid: M-mode vendor ID.
     wire [31:0] csr_mvendorid   = 0;
     // CSR marchid: M-mode architecture ID.
@@ -939,6 +945,7 @@ module boa32_csrs#(
             csr_status_mie  <= 0;
             csr_mcause_int  <= 0;
             csr_mcause_no   <= 0;
+            csr_mtval       <= 0;
             csr_mie         <= 0;
             csr_mtvec       <= 0;
             csr_mscratch    <= 0;
@@ -948,9 +955,27 @@ module boa32_csrs#(
             // CSR changes on trap or interrupt.
             csr_status_mpie <= csr_status_mie;
             csr_status_mie  <= 0;
-            csr_mepc        <= ex.ex_epc;
             csr_mcause_int  <= ex.ex_irq;
             csr_mcause_no   <= ex.ex_cause;
+            csr_mepc        <= ex.ex_epc;
+            
+            case (ex.ex_cause)
+                default:                csr_mtval <= 0;
+                `RV_ECAUSE_IALIGN:      csr_mtval <= ex.ex_epc;
+                `RV_ECAUSE_IACCESS:     csr_mtval <= ex.ex_epc;
+                `RV_ECAUSE_IILLEGAL:    csr_mtval <= ex.ex_inst;
+                `RV_ECAUSE_EBREAK:      csr_mtval <= 0;
+                `RV_ECAUSE_LALIGN:      csr_mtval <= ex.ex_vaddr;
+                `RV_ECAUSE_LACCESS:     csr_mtval <= ex.ex_vaddr;
+                `RV_ECAUSE_SALIGN:      csr_mtval <= ex.ex_vaddr;
+                `RV_ECAUSE_SACCESS:     csr_mtval <= ex.ex_vaddr;
+                `RV_ECAUSE_U_ECALL:     csr_mtval <= 0;
+                `RV_ECAUSE_S_ECALL:     csr_mtval <= 0;
+                `RV_ECAUSE_M_ECALL:     csr_mtval <= 0;
+                `RV_ECAUSE_IPAGE:       csr_mtval <= ex.ex_epc;
+                `RV_ECAUSE_LPAGE:       csr_mtval <= ex.ex_vaddr;
+                `RV_ECAUSE_SPAGE:       csr_mtval <= ex.ex_vaddr;
+            endcase
             
         end else if (ex.ret) begin
             // CSR changes on xret instruction.
@@ -966,6 +991,7 @@ module boa32_csrs#(
                 `RV_CSR_MSCRATCH:   begin csr_mscratch <= csr.wdata; end
                 `RV_CSR_MEPC:       begin csr_mepc[31:1] <= csr.wdata[31:1]; end
                 `RV_CSR_MCAUSE:     begin csr_mcause_int <= csr.wdata[31]; csr_mcause_no <= csr.wdata[4:0]; end
+                `RV_CSR_MTVAL:      begin csr_mtval <= csr.wdata; end
             endcase
         end
     end

@@ -30,11 +30,14 @@ void safe_putx(unsigned long value, unsigned int decimals) {
 }
 
 void isr() {
-    long mcause, mepc;
+    long mcause, mepc, mtval;
     asm("csrr %0, mepc" : "=r"(mepc));
     asm("csrr %0, mcause" : "=r"(mcause));
-    print("MEPC = 0x");
+    asm("csrr %0, mtval" : "=r"(mtval));
+    print("MEPC  = 0x");
     safe_putx(mepc, 8);
+    print("\nMTVAL = 0x");
+    safe_putx(mtval, 8);
     print("\n");
     if (mcause < 0) {
         print("Interrupt 0x");

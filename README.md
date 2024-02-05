@@ -58,9 +58,6 @@ The following bits op `mimpid` are allocated:
 | [3:0]   | PATCH  | Current version    | Semantic versioning PATCH number
 | [7:4]   | MINOR  | Current version    | Semantic versioning MINOR number
 | [15:8]  | MAJOR  | Current version    | Semantic versioning MAJOR number
-| [21:16] | DIVDEL | `2`                | Delay of division / modulo instructions
-| [22]    | DIVMOD | `0`                | Fusion of division and modulo supported
-| [23]    | MULLH  | `0`                | Fusion of mul and mulh[s][u] instructions supported
 | [31]    | FORK   | `0`                | Recommended way to distinguish between official releases and fork releases of Boa-RISC-V
 Other bits of `mimpid` are currently reserved for future use and should be 0 until allocated.
 

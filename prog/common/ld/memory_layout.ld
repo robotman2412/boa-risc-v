@@ -9,6 +9,8 @@ PROVIDE(__start_rom     = 0x40000000);
 PROVIDE(__stop_rom      = 0x40001000);
 PROVIDE(__start_sram    = 0x50000000);
 PROVIDE(__stop_sram     = 0x50010000);
+PROVIDE(__start_extperi = 0x70000000);
+PROVIDE(__stop_extperi  = 0x80000000);
 PROVIDE(__start_extrom  = 0x80000000);
 PROVIDE(__start_extram  = 0xc0000000);
 

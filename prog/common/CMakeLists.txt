@@ -17,7 +17,6 @@ endif()
 
 target_compile_definitions(${target} PUBLIC
     -Dmemory_layout_${memory_layout}
-    -Dpmp_disable
 )
 
 target_compile_definitions(${target} PUBLIC

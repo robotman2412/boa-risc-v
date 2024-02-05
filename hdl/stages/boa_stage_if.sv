@@ -69,7 +69,9 @@ module boa_stage_if#(
     input  logic[31:2]  fw_tvec,
     
     // Stall IF stage.
-    input  logic        fw_stall_if
+    input  logic        fw_stall_if,
+    // Clear cache.
+    input  logic        fw_cclear
 );
     genvar x;
     
@@ -170,7 +172,7 @@ module boa_stage_if#(
     generate
         for (x = 1; x < cache_depth; x = x + 1) begin
             always @(posedge clk) begin
-                if (rst || fence_i) begin
+                if (rst || fence_i || fw_cclear) begin
                     icache[x] <= 'bx;
                     acache[x] <= 'bx;
                     cvalid[x] <= 0;
@@ -240,7 +242,7 @@ module boa_stage_if#(
         q_cause  = 'bx;
         q_pc     = 'bx;
         q_insn   = 'bx;
-        if (!insn_valid || clear || fence_i) begin
+        if (!insn_valid || clear || fence_i || fw_cclear) begin
             // No results to give.
         end else if (!cperml.x || (!cpermh.x && insn[1:0] == 2'b11)) begin
             // No permission to execute this address.

@@ -278,7 +278,7 @@ module boa_stage_mem#(
     end
     
     assign pmp.m_mode = mem_priv == 3;
-    assign pmp.addr   = d_addr;
+    assign pmp.addr   = d_addr >> 2;
     
     // Enable RMW logic.
     logic       r_rmw_en;
@@ -336,13 +336,13 @@ module boa_stage_mem#(
     boa_stage_mem_access#(.has_a(has_a), .rmw_amo_reg(rmw_amo_reg)) mem_if(
         clk, rst,
         rsel ? r_rmw_en && r_pmp_r && r_pmp_w : d_rmw_en && pmp.r && pmp.w,
-        rsel ? r_insn[31:29] : d_insn[31:29],
-        rsel ? r_re && pmp.r : d_re && r_pmp_r,
-        rsel ? r_we && pmp.w : d_we && r_pmp_w,
-        rsel ? r_sign        : d_sign,
-        rsel ? r_asize       : d_asize,
-        rsel ? r_addr        : d_addr,
-        rsel ? r_wdata       : d_wdata,
+        rsel ? r_insn[31:29]    : d_insn[31:29],
+        rsel ? r_re && r_pmp_r  : d_re && pmp.r,
+        rsel ? r_we && r_pmp_w  : d_we && pmp.w,
+        rsel ? r_sign           : d_sign,
+        rsel ? r_asize          : d_asize,
+        rsel ? r_addr           : d_addr,
+        rsel ? r_wdata          : d_wdata,
         ealign, ready, rdata,
         dbus
     );
@@ -656,7 +656,7 @@ module boa_stage_mem_access#(
         bit re_tmp, we_tmp;
         if (has_a && rmw_en) begin
             // Divide RMW AMOs into two accesses.
-            re_tmp = amo_stage == 0;
+            re_tmp = amo_stage != 2;
             we_tmp = amo_stage == 2;
         end else begin
             // NON-RMW AMO or normal access.

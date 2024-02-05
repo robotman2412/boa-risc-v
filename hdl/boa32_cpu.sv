@@ -372,11 +372,17 @@ module boa32_cpu#(
             fw_branch_target    = branch_target;
             if (debug) $strobe("JAL(R) from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
         end else if (id_ex_valid && is_branch) begin
-            // JAL or JALR.
+            // Branch opcodes.
             csr_ex.ret          = 0;
             fw_branch_predict   = branch_predict;
             fw_branch_target    = branch_target;
             if (debug) $strobe("BRANCH from %x to %x", id_ex_pc<<1, fw_branch_target<<1);
+        end else if (pmp_locking) begin
+            // PMP being locked.
+            // Send instruction in ID back to IF to have its permissions checked again.
+            csr_ex.ret          = 0;
+            fw_branch_predict   = 1;
+            fw_branch_target    = id_ex_pc;
         end else begin
             // Not a control transfer.
             csr_ex.ret          = 0;
@@ -643,7 +649,7 @@ module boa32_cpu#(
         // Control transfer.
         fw_branch_predict, fw_branch_target, if_next_pc, fw_branch_correct, fw_branch_alt, fw_exception, fw_tvec,
         // Data hazard avoicance.
-        fw_stall_if
+        fw_stall_if, pmp_locking
     );
     boa_stage_id#(.debug(debug), .has_m(has_m), .has_c(has_c)) st_id(
         clk, rst, clear_id, cur_priv,
@@ -700,9 +706,6 @@ endmodule
 module boa32_csrs#(
     // CSR mhartid value.
     parameter hartid        = 32'h0000_0000,
-    // Divider latency, 0 to 33.
-    // Only applicable if has_m is 1.
-    parameter div_latency   = 2,
     // Support configurability through misa.
     parameter misa_we       = 1,
     // Support user mode.
@@ -890,17 +893,11 @@ module boa32_csrs#(
     // Semantic versioning PATCH.
     assign csr_mimpid[3:0]   = 0;
     // Semantic versioning MINOR.
-    assign csr_mimpid[7:4]   = 0;
+    assign csr_mimpid[7:4]   = 1;
     // Semantic versioning MAJOR.
     assign csr_mimpid[15:8]  = 2;
-    // Divider latency.
-    assign csr_mimpid[21:16] = div_latency;
-    // DIV/MOD fusion support.
-    assign csr_mimpid[22]    = 0;
-    // MUL/MULH[S][U] fusion support.
-    assign csr_mimpid[23]    = 0;
     // Reserved.
-    assign csr_mimpid[30:24] = 0;
+    assign csr_mimpid[30:16] = 0;
     // Is a fork of Boa-RISC-V.
     assign csr_mimpid[31]    = 0;
     

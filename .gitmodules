@@ -7,3 +7,6 @@
 [submodule "prog/coremark/coremark"]
 	path = prog/coremark/coremark
 	url = https://github.com/eembc/coremark
+[submodule "dev/sapphire"]
+	path = dev/sapphire
+	url = https://github.com/robotman2412/sapphire-gpu

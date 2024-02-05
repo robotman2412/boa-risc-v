@@ -32,10 +32,10 @@ module top(
     genvar x;
     `include "boa_fileio.svh"
     
-    // Reduct system clock from 100MHz to 50MHz.
-    logic clk_tmp, clk;
-    always @(posedge sysclk) clk_tmp <= !clk_tmp;
-    always @(posedge sysclk) clk <= clk ^ clk_tmp;
+    // Reduce system clock from 100MHz to 25MHz.
+    logic clktmp, clk;
+    always @(posedge sysclk) clktmp <= !clktmp;
+    always @(posedge sysclk) clk <= clk ^ clktmp;
     
     logic rst  = 1;
     logic shdn = 0;
@@ -96,11 +96,9 @@ module top(
         .pmp_depth(16),
         .pmp_grain(12),
         .is_simulator(0),
-        .div_latency(8),
+        .div_latency(6),
         .div_distr("end"),
-        .mul_latency(1),
-        .if_branch_reg(1),
-        .rmw_amo_reg(1)
+        .mul_latency(1)
     ) main(
         clk || shdn, rtc_clk, rst!=0,
         txd, rxd,

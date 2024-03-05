@@ -69,6 +69,177 @@ endmodule
 
 
 
+// Cyclic divider slice.
+module boa_cyc_div_part#(
+    // Divider bit width.
+    parameter   width   = 32,
+    // Double the divider bit width.
+    localparam  dwidth  = width * 2
+)(
+    // Current divisor position bitmask.
+    input  logic[width-1:0]     pos,
+    // Divisor.
+    input  logic[dwidth-1:0]    div,
+    
+    // Remainder in.
+    input  logic[width-1:0]     d_rem,
+    // Result in.
+    input  logic[width-1:0]     d_res,
+    
+    // Remainder out.
+    output logic[width-1:0]     q_rem,
+    // Result out.
+    output logic[width-1:0]     q_res
+);
+    // Subtraction and comparison logic.
+    wire[width:0]   sub = d_rem - div[width-1:0];
+    wire            ge  = !sub[width] && div[dwidth-1:width] == 0;
+    
+    // Output mux.
+    assign q_rem = ge ? sub : d_rem;
+    assign q_res = (ge * pos) | d_res;
+endmodule
+
+// Multiple cyclic divider slices.
+module boa_cyc_div_parts#(
+    // Divider bit width.
+    parameter   width   = 32,
+    // Number of slices.
+    parameter   slices  = 1,
+    // Double the divider bit width.
+    localparam  dwidth      = width * 2
+)(
+    // Current divisor position bitmask.
+    input  logic[width-1:0]     pos,
+    // Divisor.
+    input  logic[dwidth-1:0]    div,
+    
+    // Remainder in.
+    input  logic[width-1:0]     d_rem,
+    // Result in.
+    input  logic[width-1:0]     d_res,
+    
+    // Remainder out.
+    output logic[width-1:0]     q_rem,
+    // Result out.
+    output logic[width-1:0]     q_res
+);
+    genvar x;
+    
+    // Remainder in.
+    logic[width-1:0] d_rem_arr[slices];
+    // Result in.
+    logic[width-1:0] d_res_arr[slices];
+    
+    // Remainder out.
+    logic[width-1:0] q_rem_arr[slices];
+    // Result out.
+    logic[width-1:0] q_res_arr[slices];
+    
+    generate
+        // Divider slices.
+        for (x = 0; x < slices; x = x + 1) begin
+            boa_cyc_div_part#(width) part(
+                pos >> x, div >> x,
+                d_rem_arr[x], d_res_arr[x],
+                q_rem_arr[x], q_res_arr[x]
+            );
+        end
+        // Slice interconnects.
+        assign d_rem_arr[0] = d_rem;
+        assign d_res_arr[0] = d_res;
+        for (x = 0; x < slices - 1; x = x + 1) begin
+            assign d_rem_arr[x+1] = q_rem_arr[x];
+            assign d_res_arr[x+1] = q_res_arr[x];
+        end
+        assign q_rem = q_rem_arr[slices-1];
+        assign q_res = q_res_arr[slices-1];
+    endgenerate
+endmodule
+
+// Signed cyclic divider with configurable delay.
+module boa_div_cyclic#(
+    // Number of cycles division takes, at least 1.
+    parameter   delay       = 8,
+    // Divider bit width.
+    parameter   width       = 32,
+    // Number of slices required.
+    localparam  slices      = (width - 1) / delay + 1,
+    // Double the divider bit width.
+    localparam  dwidth      = width * 2
+)(
+    // Cycle clock.
+    input  logic            clk,
+    // Input latch.
+    input  logic            latch,
+    // Perform unsigned division.
+    input  logic            u,
+    
+    // Left-hand side.
+    input  logic[width-1:0] lhs,
+    // Right-hand side.
+    input  logic[width-1:0] rhs,
+    
+    // Division result.
+    output logic[width-1:0] div_res,
+    // Modulo result.
+    output logic[width-1:0] mod_res
+);
+    // Correct sign of inputs.
+    wire [width-1:0]    neg_lhs  = ~lhs + 1;
+    wire                sign_lhs = !u && lhs[width-1];
+    wire [width-1:0]    tmp_lhs  = sign_lhs ? neg_lhs : lhs;
+    wire [width-1:0]    neg_rhs  = ~rhs + 1;
+    wire                sign_rhs = !u && rhs[width-1];
+    wire [width-1:0]    tmp_rhs  = sign_rhs ? neg_rhs : rhs;
+    
+    logic sign_lhs_reg, sign_rhs_reg;
+    
+    // Divisor was zero register.
+    logic               zero_reg;
+    // Divisor register.
+    logic[dwidth-1:0]   div_reg;
+    // Exponent register.
+    logic[width-1:0]    pos_reg;
+    // Remainder register.
+    logic[width-1:0]    rem_reg;
+    // Result register.
+    logic[width-1:0]    res_reg;
+    
+    // Divider slices.
+    logic[width-1:0]    q_rem, q_res;
+    boa_cyc_div_parts#(width, slices) parts(pos_reg, div_reg, rem_reg, res_reg, q_rem, q_res);
+    
+    // Latching logic.
+    always @(posedge clk) begin
+        if (latch) begin
+            zero_reg            <= tmp_rhs == 0;
+            div_reg             <= tmp_rhs << (width-1);
+            pos_reg[width-1]    <= 1;
+            pos_reg[width-2:0]  <= 0;
+            rem_reg             <= tmp_lhs;
+            res_reg             <= 0;
+            sign_lhs_reg        <= sign_lhs;
+            sign_rhs_reg        <= sign_rhs;
+        end else begin
+            div_reg             <= div_reg >> slices;
+            pos_reg             <= pos_reg >> slices;
+            rem_reg             <= q_rem;
+            res_reg             <= q_res;
+        end
+    end
+    wire [width-1:0] u_div = q_res;
+    wire [width-1:0] u_mod = q_rem;
+    
+    // Correct sign of outputs.
+    wire [width-1:0]    neg_div  = ~u_div + 1;
+    assign              div_res  = zero_reg ? -1 : (sign_lhs_reg ^ sign_rhs_reg) ? neg_div : u_div;
+    wire [width-1:0]    neg_mod  = ~u_mod + 1;
+    assign              mod_res  = sign_lhs_reg ? neg_mod : u_mod;
+endmodule
+
+
+
 /* verilator lint_off UNOPTFLAT */
 /* Also: really, verilator? */
 

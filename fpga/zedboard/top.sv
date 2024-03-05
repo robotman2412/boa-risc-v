@@ -98,7 +98,7 @@ module top(
         .pmp_depth(16),
         .pmp_grain(12),
         .is_simulator(0),
-        .div_latency(6),
+        .div_latency(4),
         .div_distr("end"),
         .mul_latency(1)
     ) main(

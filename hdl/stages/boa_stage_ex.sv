@@ -158,6 +158,14 @@ module boa_stage_ex#(
     // RHS generation for OP-IMM.
     wire [31:0] op_rhs_mux = r_insn[5] ? r_rs2_val : imm12_i;
     
+    // Computation delay module.
+    logic div_stall_req, mul_stall_req;
+    assign stall_req = div_stall_req || mul_stall_req;
+    wire is_divmod = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && d_insn[14];
+    boa_delay_comp#(div_latency) div_delay(clk, is_divmod, div_stall_req);
+    wire is_mul    = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && !d_insn[14];
+    boa_delay_comp#(mul_latency) mul_delay(clk, is_mul, mul_stall_req);
+    
     // Computational units.
     wire        mul_u_lhs = r_insn[13] && r_insn[12];
     wire        mul_u_rhs = r_insn[13];
@@ -193,24 +201,41 @@ module boa_stage_ex#(
             boa_div_simple div(
                 div_u, r_rs1_val, r_rs2_val, div_res, mod_res
             );
-        end else if (has_m) begin: l1div
-            boa_div_pipelined#(.latency(div_latency), .distribution(div_distr)) div(
-                clk, div_u, r_rs1_val, r_rs2_val, div_res, mod_res
+        end else if (has_m && div_latency == 1) begin: l1div
+            logic div_trig;
+            always @(posedge clk) begin
+                if (is_divmod && !stall_req && !fw_stall_ex) begin
+                    div_trig <= 1;
+                end else begin
+                    div_trig <= 0;
+                end
+            end
+            boa_div_cyclic#(.delay(1)) div(
+                clk, div_trig, div_u, r_rs1_val, r_rs2_val, div_res, mod_res
             );
+        end else if (has_m) begin: l2div
+            logic div_trig;
+            always @(posedge clk) begin
+                if (is_divmod && !stall_req && !fw_stall_ex) begin
+                    div_trig <= 1;
+                end else begin
+                    div_trig <= 0;
+                end
+            end
+            logic[31:0] div_res_tmp, mod_res_tmp;
+            boa_div_cyclic#(.delay(div_latency-1)) div(
+                clk, div_trig, div_u, r_rs1_val, r_rs2_val, div_res_tmp, mod_res_tmp
+            );
+            always @(posedge clk) begin
+                div_res <= div_res_tmp;
+                mod_res <= mod_res_tmp;
+            end
         end else begin: nodiv
             assign div_res = 'bx;
             assign mod_res = 'bx;
         end
     endgenerate
     boa_shift_simple shift(shr_arith, shr, r_rs1_val, op_rhs_mux, shx_res);
-    
-    // Computation delay module.
-    logic div_stall_req, mul_stall_req;
-    assign stall_req = div_stall_req || mul_stall_req;
-    wire is_divmod = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && d_insn[14];
-    boa_delay_comp#(div_latency) div_delay(clk, is_divmod, div_stall_req);
-    wire is_mul    = has_m && d_valid && d_insn[6:2] == `RV_OP_OP && d_insn[25] && !d_insn[14];
-    boa_delay_comp#(mul_latency) mul_delay(clk, is_mul, mul_stall_req);
     
     // Adder mode.
     wire        cmp           = (r_insn[6:2] == `RV_OP_BRANCH) || (is_op && ((r_insn[14:12] == `RV_ALU_SLT) || (r_insn[14:12] == `RV_ALU_SLTU)));

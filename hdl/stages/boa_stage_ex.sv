@@ -178,6 +178,7 @@ module boa_stage_ex#(
     logic[31:0] mod_res;
     logic[31:0] shx_res;
     generate
+        // Multiplier implementation.
         if (has_m && mul_latency == 0) begin
             boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_res);
         end else if (has_m && mul_latency == 1) begin: l1mul
@@ -197,6 +198,8 @@ module boa_stage_ex#(
         end else begin: nomul
             assign mul_res = 'bx;
         end
+        
+        // Divider implementation.
         if (has_m && div_latency == 0) begin: l0div
             boa_div_simple div(
                 div_u, r_rs1_val, r_rs2_val, div_res, mod_res

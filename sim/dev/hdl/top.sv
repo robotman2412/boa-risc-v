@@ -26,6 +26,7 @@ module top(
     boa_mem_bus#(12) xmp_bus();
     boa_mem_bus#(xm_alen) extrom_bus();
     boa_mem_bus#(xm_alen) extram_bus();
+    boa_mem_bus#(xm_alen) uncached_bus();
     pmu_bus pmb();
     
     // Fence signals.
@@ -44,7 +45,7 @@ module top(
         tx, rx,
         gpio_out, gpio_oe, gpio_in,
         randomness,
-        xmp_bus, extrom_bus, extram_bus,
+        xmp_bus, extrom_bus, extram_bus, uncached_bus,
         fence_rl, fence_aq, fence_i,
         pmb
     );
@@ -63,8 +64,10 @@ module top(
     boa_extmem_sram#(xm_alen) sram_ctl(clk, rst, extram_bus, sram_re, sram_we, sram_addr, sram_wdata, sram_rdata);
     
     // External ROM stub.
-    assign extrom_bus.ready = 1;
-    assign extrom_bus.rdata = 0;
+    assign extrom_bus.ready     = 1;
+    assign extrom_bus.rdata     = 31'hffff_ffff;
+    assign uncached_bus.ready   = 1;
+    assign uncached_bus.rdata   = 31'hffff_ffff;
     
     always @(posedge clk) begin
         // Create new randomness.

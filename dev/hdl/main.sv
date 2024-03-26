@@ -78,12 +78,14 @@ module main#(
     // A 32-bit quantity of randomness.
     input  logic[31:0]  randomness,
     
-    // Additional MMIO bus.
+    // External MMIO bus.
     boa_mem_bus.CPU     xmp_bus,
     // External ROM bus.
     boa_mem_bus.CPU     extrom_bus,
     // External RAM bus.
     boa_mem_bus.CPU     extram_bus,
+    // Additional uncached bus.
+    boa_mem_bus.CPU     uncached_bus,
     
     // Perform a release data fence.
     output logic    fence_rl,
@@ -104,13 +106,13 @@ module main#(
     boa_mem_bus cache_dbus();
     boa_mem_bus xm_ibus();
     boa_mem_bus xm_dbus();
-    boa_mem_bus ibus[3]();
-    boa_mem_bus dbus[4]();
-    boa_mem_bus#(12) peri_bus[14]();
+    boa_mem_bus ibus[4]();
+    boa_mem_bus dbus[5]();
+    boa_mem_bus#(12) peri_bus[10]();
     
     // Atomics signals.
-    logic       amo_rmw;
-    boa_amo_bus amo_bus();
+    logic        amo_rmw;
+    boa_amo_bus  amo_bus();
     boa_amo_term amo_term(amo_bus);
     
     // Program ROM.
@@ -135,8 +137,12 @@ module main#(
     );
     
     // External memory connections.
-    boa_mem_cmap#(31, 1, cache_alen-1) icmap(ibus[2], cache_ibus);
-    boa_mem_cmap#(31, 1, cache_alen-1) dcmap(dbus[2], cache_dbus);
+    boa_mem_cmap#(31, 1, cache_alen-1) icmap(ibus[3], cache_ibus);
+    boa_mem_cmap#(31, 1, cache_alen-1) dcmap(dbus[3], cache_dbus);
+    boa_mem_bus ucbus[2]();
+    boa_mem_connector uxconn0(ucbus[0], ibus[2]);
+    boa_mem_connector uxconn1(ucbus[1], dbus[2]);
+    boa_mem_demux#(28) uxdmx(clk, rst, ucbus, uncached_bus);
     boa_mem_bus#(cache_alen) cache_buses[2]();
     boa_mem_bus#(cache_alen) xm_buses[2]();
     boa_mem_connector cxconn0(cache_buses[0], xm_ibus);
@@ -173,23 +179,19 @@ module main#(
     boa_peri_readable#(.addr('h300)) rng(clk, rst, peri_bus[3], randomness);
     // PWM generators.
     assign gpio_ext_oe[7:0] = 8'hff;
-    boa_peri_pwm#(.addr('h480)) pwm0gen(clk, clk, rst, peri_bus[4+0], gpio_ext_sig[0]);
-    boa_peri_pwm#(.addr('h490)) pwm1gen(clk, clk, rst, peri_bus[4+1], gpio_ext_sig[1]);
-    boa_peri_pwm#(.addr('h4a0)) pwm2gen(clk, clk, rst, peri_bus[4+2], gpio_ext_sig[2]);
-    boa_peri_pwm#(.addr('h4b0)) pwm3gen(clk, clk, rst, peri_bus[4+3], gpio_ext_sig[3]);
-    boa_peri_pwm#(.addr('h4c0)) pwm4gen(clk, clk, rst, peri_bus[4+4], gpio_ext_sig[4]);
-    boa_peri_pwm#(.addr('h4d0)) pwm5gen(clk, clk, rst, peri_bus[4+5], gpio_ext_sig[5]);
-    boa_peri_pwm#(.addr('h4e0)) pwm6gen(clk, clk, rst, peri_bus[4+6], gpio_ext_sig[6]);
-    boa_peri_pwm#(.addr('h4f0)) pwm7gen(clk, clk, rst, peri_bus[4+7], gpio_ext_sig[7]);
+    boa_peri_pwm#(.addr('h480)) pwm0gen(clk, clk, rst, peri_bus[4], gpio_ext_sig[0]);
+    boa_peri_pwm#(.addr('h490)) pwm1gen(clk, clk, rst, peri_bus[5], gpio_ext_sig[1]);
+    boa_peri_pwm#(.addr('h4a0)) pwm2gen(clk, clk, rst, peri_bus[6], gpio_ext_sig[2]);
+    boa_peri_pwm#(.addr('h4b0)) pwm3gen(clk, clk, rst, peri_bus[7], gpio_ext_sig[3]);
     // Is simulator?
-    boa_peri_readable#(.addr('h310)) is_sim(clk, rst, peri_bus[12], is_simulator);
+    boa_peri_readable#(.addr('h310)) is_sim(clk, rst, peri_bus[8], is_simulator);
     // External MMIO bus.
-    boa_mem_connector xmp_conn(xmp_bus, peri_bus[13]);
+    boa_mem_connector xmp_conn(xmp_bus, peri_bus[9]);
     
     // Memory interconnects.
-    boa_mem_mux#(.mems(3)) imux(clk, rst, cpu_ibus, ibus, {32'h4000_0000, 32'h5000_0000, 32'h8000_0000},                {12, bram_alen, 31});
-    boa_mem_mux#(.mems(4)) dmux(clk, rst, cpu_dbus, dbus, {32'h4000_0000, 32'h5000_0000, 32'h8000_0000, 32'h2000_0000}, {12, bram_alen, 31, 12});
-    boa_mem_overlay#(.mems(14)) ovl(dbus[3], peri_bus);
+    boa_mem_mux#(.mems(4)) imux(clk, rst, cpu_ibus, ibus, {32'h4000_0000, 32'h5000_0000, 32'h7000_0000, 32'h8000_0000},                {12, bram_alen, 28, 31});
+    boa_mem_mux#(.mems(5)) dmux(clk, rst, cpu_dbus, dbus, {32'h4000_0000, 32'h5000_0000, 32'h7000_0000, 32'h8000_0000, 32'h2000_0000}, {12, bram_alen, 28, 31, 12});
+    boa_mem_overlay#(.mems(10)) ovl(dbus[4], peri_bus);
     
     // CPU.
     logic[31:16] irq;

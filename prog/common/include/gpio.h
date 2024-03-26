@@ -42,4 +42,4 @@ typedef struct {
 // GPIO address.
 extern gpio_t GPIO asm("__gpio_base");
 // PWM address.
-extern pwm_t  PWM[8] asm("__pwm_base");
+extern pwm_t  PWM[4] asm("__pwm_base");

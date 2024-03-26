@@ -73,14 +73,17 @@ module top(
     boa_mem_bus#(12) xmp_bus();
     boa_mem_bus#(31) extrom_bus();
     boa_mem_bus#(19) extram_bus();
+    boa_mem_bus#(28) uncached_bus();
     
     // External peripherals.
     // Extmem size device.
     boa_peri_readable#('h600) xm_size(clk, rst, xmp_bus, 32'b1 << 19);
     
-    // External ROM stub.
-    assign extrom_bus.ready = 1;
-    assign extrom_bus.rdata = 32'hffff_ffff;
+    // External memory bus stubs.
+    assign extrom_bus.ready     = 1;
+    assign extrom_bus.rdata     = 32'hffff_ffff;
+    assign uncached_bus.ready   = 1;
+    assign uncached_bus.rdata   = 32'hffff_ffff;
     
     // External RAM interface.
     logic       sram_re;
@@ -109,7 +112,7 @@ module top(
         txd, rxd,
         gpio_out, gpio_oe, gpio_in,
         randomness,
-        xmp_bus, extrom_bus, extram_bus,
+        xmp_bus, extrom_bus, extram_bus, uncached_bus,
         fence_rl, fence_aq, fence_i,
         pmb
     );

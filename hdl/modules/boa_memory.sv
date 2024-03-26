@@ -170,23 +170,6 @@ module boa_mem_term(
     assign mem.rdata    = 'bx;
 endmodule
 
-// Boa memory clock domain crossing: MEM is faster than CPU.
-// MEM clock must be a synchronized integer multiple of CPU clock.
-module boa_mem_faster#(
-    // Multiplier ratio from mem_clk to cpu_clk.
-    parameter   integer clk_div = 2
-)(
-    // CPU clock.
-    input  logic    cpu_clk,
-    // CPU port.
-    boa_mem_bus.MEM cpu_port,
-    // MEM clock.
-    input  logic    mem_clk,
-    // MEM port.
-    boa_mem_bus.CPU mem_port
-);
-endmodule
-
 // Boa center remapper.
 // Used to remap address spaces that have unused center bits.
 module boa_mem_cmap#(

@@ -154,6 +154,19 @@ _halt:
 
 
 
+    .type softreset, %function
+    .global softreset
+softreset:
+    csrw mstatus, 0
+    csrw mie, 0
+    sw x0, 0+__mtimecmp, t0
+    sw x0, 4+__mtimecmp, t0
+    sw x0, 0+__mtime, t0
+    sw x0, 4+__mtime, t0
+    la ra, __start_rom
+    jr ra
+
+
     .type reset, %function
     .global reset
 reset:

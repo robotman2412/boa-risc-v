@@ -35,9 +35,6 @@ module boa_peri_writeable#(
             assign wmask[x*8+7:x*8] = bus.we[x] && bus.addr[bus.alen-1:2] == addr[bus.alen-1:2] ? 8'hff : 8'h00;
         end
         for (x = 0; x < width; x = x + 1) begin
-            initial begin
-                value[x] <= def_val[x];
-            end
             always @(posedge clk) begin
                 if (rst) begin
                     value[x] <= def_val[x];

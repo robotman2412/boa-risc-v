@@ -89,7 +89,6 @@ module top(
     
     // Extmem size device.
     boa_peri_readable#('h600) xm_size(clk, rst, xmp_ovl[0], 0);
-    // boa_peri_readable#('h600) xm_size(clk, rst, xmp_bus, 0);
     
     // External memory bus stubs.
     assign extrom_bus.ready     = 1;
@@ -130,7 +129,6 @@ module top(
     assign vga_hsync = vga_port.hsync;
     assign vga_vsync = vga_port.vsync;
     mmio_vga_periph vga(vga_clk, clk, rst, uncached_bus, xmp_ovl[1], vga_port);
-    // mmio_vga_periph vga(vga_clk, clk, rst, uncached_bus, xmp_bus, vga_port);
     
     // Power management.
     always @(posedge clk) begin

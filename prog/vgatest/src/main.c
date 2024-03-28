@@ -1,6 +1,7 @@
 
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
+#include "mtime.h"
 #include "print.h"
 #include "uart.h"
 #include "vga.h"
@@ -13,6 +14,7 @@
 
 extern void halt();
 extern void reset();
+extern void softreset();
 
 
 void isr() {
@@ -36,43 +38,33 @@ void isr() {
     }
 }
 
+static inline uint16_t col_rgb(int r, int g, int b) {
+    return ((r & 15) << 8) | ((g & 15) << 4) | (b & 15);
+}
+
+static inline void setpix(int x, int y, uint16_t col) {
+    VRAM[x + y * 256] = col;
+}
+
 void main() {
-    while (!UART0.status.rx_hasdat) continue;
-    VGA.clk.enable = true;
-    print("CLKCFG:   ");
-    putx(*(uint32_t *)&VGA.clk, 8);
-    putc('\n');
-    print("SHR:      ");
-    putx(VGA.coord_shr, 8);
-    putc('\n');
-    print("H FP:     ");
-    putx(VGA.htiming.fp_width, 8);
-    putc('\n');
-    print("H VID:    ");
-    putx(VGA.htiming.vid_width, 8);
-    putc('\n');
-    print("H BP:     ");
-    putx(VGA.htiming.bp_width, 8);
-    putc('\n');
-    print("H SYNC:   ");
-    putx(VGA.htiming.sync_width, 8);
-    putc('\n');
-    print("V FP:     ");
-    putx(VGA.vtiming.fp_width, 8);
-    putc('\n');
-    print("V VID:    ");
-    putx(VGA.vtiming.vid_width, 8);
-    putc('\n');
-    print("V BP:     ");
-    putx(VGA.vtiming.bp_width, 8);
-    putc('\n');
-    print("V SYNC:   ");
-    putx(VGA.vtiming.sync_width, 8);
-    putc('\n');
-    VRAM[0] = 0xfff;
-    VRAM[1] = 0xf00;
-    VRAM[2] = 0x0f0;
-    VRAM[3] = 0x00f;
-    VRAM[4] = 0x000;
-    while (1) continue;
+    mtime                  = 0;
+    VGA.htiming.fp_width   = 39;
+    VGA.htiming.vid_width  = 799;
+    VGA.htiming.sync_width = 127;
+    VGA.htiming.bp_width   = 87;
+    VGA.vtiming.fp_width   = 0;
+    VGA.vtiming.vid_width  = 599;
+    VGA.vtiming.sync_width = 3;
+    VGA.vtiming.bp_width   = 22;
+    VGA.clk.enable         = true;
+    for (int y = 0; y < 150; y++) {
+        for (int x = 0; x < 200; x++) {
+            setpix(x, y, col_rgb(x, y, 0));
+        }
+    }
+    for (int i = 0; i < 10; i++) {
+        while (mtime < i * 500000) continue;
+        setpix(i, i, 0xfff);
+    }
+    softreset();
 }

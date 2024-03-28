@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -49,9 +50,9 @@ module boa_pmp#(
     parameter int checkers = 2
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // CSR bus.
     boa_csr_bus.CSR     csr,
@@ -170,11 +171,11 @@ module boa_pmp_checker#(
     parameter int depth    = 64
 )(
     // PMP lock status.
-    input  logic                pmplock[depth],
+    input  wire                 pmplock[depth],
     // PMP configuration storage.
-    input  logic[4:0]           pmpcfg[depth],
+    input  wire [4:0]           pmpcfg[depth],
     // PMP address storage.
-    input  logic[alen-1:grain]  pmpaddr[depth],
+    input  wire [alen-1:grain]  pmpaddr[depth],
     
     // Access checking port.
     boa_pmp_bus.PMP             bus
@@ -235,14 +236,14 @@ module boa_pmp_contains#(
     parameter int grain    = 2
 )(
     // Memory address to check.
-    input  logic[alen-1:grain]  addr,
+    input  wire [alen-1:grain]  addr,
     
     // PMP configuration.
-    input  logic[4:0]           pmpcfg,
+    input  wire [4:0]           pmpcfg,
     // PMP address.
-    input  logic[alen-1:grain]  pmpaddr,
+    input  wire [alen-1:grain]  pmpaddr,
     // Previous PMP address.
-    input  logic[alen-1:grain]  base,
+    input  wire [alen-1:grain]  base,
     
     // PMP contains this memory address.
     output logic                contains

@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -21,37 +22,37 @@ module boa_stage_ex#(
     parameter has_m         = 1
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     // Invalidate results and clear traps.
-    input  logic        clear,
+    input  wire         clear,
     // Current privilege mode.
-    input  logic[1:0]   cur_priv,
+    input  wire [1:0]   cur_priv,
     
     
     // ID/EX: Result valid.
-    input  logic        d_valid,
+    input  wire         d_valid,
     // ID/EX: Current instruction PC.
-    input  logic[31:1]  d_pc,
+    input  wire [31:1]  d_pc,
     // ID/EX: Current instruction word.
-    input  logic[31:0]  d_insn,
+    input  wire [31:0]  d_insn,
     // ID/EX: Is 32-bit instruction.
-    input  logic        d_ilen,
+    input  wire         d_ilen,
     // ID/EX: Stores to register RD.
-    input  logic        d_use_rd,
+    input  wire         d_use_rd,
     // ID/EX: Value from RS1 register.
-    input  logic[31:0]  d_rs1_val,
+    input  wire [31:0]  d_rs1_val,
     // ID/EX: Value from RS2 register.
-    input  logic[31:0]  d_rs2_val,
+    input  wire [31:0]  d_rs2_val,
     // ID/EX: Conditional branch.
-    input  logic        d_branch,
+    input  wire         d_branch,
     // ID/EX: Branch prediction result.
-    input  logic        d_branch_predict,
+    input  wire         d_branch_predict,
     // ID/EX: Trap raised.
-    input  logic        d_trap,
+    input  wire         d_trap,
     // ID/EX: Trap cause.
-    input  logic[3:0]   d_cause,
+    input  wire [3:0]   d_cause,
     
     
     // EX/MEM: Result valid.
@@ -75,7 +76,7 @@ module boa_stage_ex#(
     // EX/IF: Mispredicted branch.
     output logic        fw_branch_correct,
     // Stall EX stage.
-    input  logic        fw_stall_ex,
+    input  wire         fw_stall_ex,
     // Produces final result.
     output logic        fw_rd,
     // Stall request.
@@ -179,7 +180,7 @@ module boa_stage_ex#(
     logic[31:0] shx_res;
     generate
         // Multiplier implementation.
-        if (has_m && mul_latency == 0) begin
+        if (has_m && mul_latency == 0) begin: l0mul
             boa_mul_simple mul(mul_u_lhs, mul_u_rhs, r_rs1_val, r_rs2_val, mul_res);
         end else if (has_m && mul_latency == 1) begin: l1mul
             logic[63:0] mul_tmp;
@@ -352,7 +353,7 @@ endmodule
 // Boa³² pipline stage forwarding helper: EX (ALU and address calculation).
 module boa_stage_ex_fw(
     // Current instruction word.
-    input  logic[31:0]  d_insn,
+    input  wire [31:0]  d_insn,
     
     // Uses value of RS1.
     output logic        use_rs1,

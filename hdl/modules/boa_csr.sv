@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -122,11 +123,11 @@ endmodule
 // Boa³² CSR write data helper.
 module boa_csrw_helper(
     // RS1 / immediate value.
-    input  logic[31:0]  wmask,
+    input  wire [31:0]  wmask,
     // Read data.
-    input  logic[31:0]  rdata,
+    input  wire [31:0]  rdata,
     // Write mode.
-    input  logic[1:0]   wmode,
+    input  wire [1:0]   wmode,
     // Write data.
     output logic[31:0]  wdata
 );

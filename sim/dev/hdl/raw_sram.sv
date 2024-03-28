@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -13,16 +14,16 @@ module raw_sram#(
     localparam depth = 1 << alen
 )(
     // Write clock.
-    input  logic            clk,
+    input  wire             clk,
     
     // Read enable.
-    input  logic            re,
+    input  wire             re,
     // Write enable.
-    input  logic            we,
+    input  wire             we,
     // Address.
-    input  logic[alen-1:0]  addr,
+    input  wire [alen-1:0]  addr,
     // Write data.
-    input  logic[7:0]       wdata,
+    input  wire [7:0]       wdata,
     // Read data.
     output logic[7:0]       rdata
 );

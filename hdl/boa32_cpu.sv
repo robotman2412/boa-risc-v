@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -86,11 +87,11 @@ module boa32_cpu#(
     parameter has_c         = 1
 )(
     // CPU clock.
-    input  logic    clk,
+    input  wire     clk,
     // Timekeeping clock, must not be faster than CPU clock.
-    input  logic    rtc_clk,
+    input  wire     rtc_clk,
     // Synchronous reset.
-    input  logic    rst,
+    input  wire     rst,
     
     // Program memory bus.
     boa_mem_bus.CPU pbus,
@@ -112,7 +113,7 @@ module boa32_cpu#(
     boa_amo_bus.CPU resv_bus,
     
     // External interrupts 16 to 31.
-    input  logic[31:16] irq
+    input  wire [31:16] irq
 );
     genvar x;
     
@@ -718,9 +719,9 @@ module boa32_csrs#(
     parameter has_c         = 1
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // CSR bus.
     boa_csr_bus.CSR     csr,

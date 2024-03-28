@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -14,15 +15,15 @@ module boa_stage_mem#(
     parameter rmw_amo_reg   = 0
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     // Invalidate results and clear traps.
-    input  logic        clear,
+    input  wire         clear,
     // Current privilege mode.
-    input  logic[1:0]   cur_priv,
+    input  wire [1:0]   cur_priv,
     // Effective memory privilege mode.
-    input  logic[1:0]   mem_priv,
+    input  wire [1:0]   mem_priv,
     
     // Data memory bus.
     boa_mem_bus.CPU     dbus,
@@ -44,21 +45,21 @@ module boa_stage_mem#(
     
     
     // EX/MEM: Result valid.
-    input  logic        d_valid,
+    input  wire         d_valid,
     // EX/MEM: Current instruction PC.
-    input  logic[31:1]  d_pc,
+    input  wire [31:1]  d_pc,
     // EX/MEM: Current instruction word.
-    input  logic[31:0]  d_insn,
+    input  wire [31:0]  d_insn,
     // EX/MEM: Stores to register RD.
-    input  logic        d_use_rd,
+    input  wire         d_use_rd,
     // EX/MEM: Value from RS1 register / ALU result / memory address.
-    input  logic[31:0]  d_rs1_val,
+    input  wire [31:0]  d_rs1_val,
     // EX/MEM: Value from RS2 register / memory write data.
-    input  logic[31:0]  d_rs2_val,
+    input  wire [31:0]  d_rs2_val,
     // EX/MEM: Trap raised.
-    input  logic        d_trap,
+    input  wire         d_trap,
     // EX/MEM: Trap cause.
-    input  logic[3:0]   d_cause,
+    input  wire [3:0]   d_cause,
     
     
     // MEM/WB: Result valid.
@@ -78,7 +79,7 @@ module boa_stage_mem#(
     
     
     // Stall MEM stage.
-    input  logic        fw_stall_mem,
+    input  wire         fw_stall_mem,
     // Stall request.
     output logic        stall_req,
     // Virtual address for traps.
@@ -454,7 +455,7 @@ endmodule
 // Boa³² pipline stage forwarding helper: MEM (memory and CSR access).
 module boa_stage_mem_fw(
     // Current instruction word.
-    input  logic[31:0]  d_insn,
+    input  wire [31:0]  d_insn,
     
     // Uses value of RS1.
     output logic        use_rs1,
@@ -504,11 +505,11 @@ endmodule
 // RMW AMO write data calculator.
 module boa_stage_mem_rmw(
     // Mode for RMW AMOs.
-    input  logic[2:0]   rmw_mode,
+    input  wire [2:0]   rmw_mode,
     // Read data.
-    input  logic[31:0]  rdata,
+    input  wire [31:0]  rdata,
     // Write mask / value.
-    input  logic[31:0]  wmask,
+    input  wire [31:0]  wmask,
     // Write data.
     output logic[31:0]  wdata
 );
@@ -564,27 +565,27 @@ module boa_stage_mem_access#(
     parameter rmw_amo_reg   = 0
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // Enable RMW AMO logic.
-    input  logic        rmw_en,
+    input  wire         rmw_en,
     // Mode for RMW AMOs.
-    input  logic[2:0]   rmw_mode,
+    input  wire [2:0]   rmw_mode,
     
     // Read enable.
-    input  logic        re,
+    input  wire         re,
     // Write enable.
-    input  logic        we,
+    input  wire         we,
     // Access is signed.
-    input  logic        sign,
+    input  wire         sign,
     // Access size.
-    input  logic[1:0]   asize,
+    input  wire [1:0]   asize,
     // Memory access address.
-    input  logic[31:0]  addr,
+    input  wire [31:0]  addr,
     // Data to write or RHS for RMW AMOs.
-    input  logic[31:0]  wmask,
+    input  wire [31:0]  wmask,
     
     // Alignment error.
     output logic        ealign,

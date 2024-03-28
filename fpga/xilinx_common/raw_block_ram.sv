@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -23,13 +24,13 @@ module raw_block_ram#(
     localparam       dbits       = dbytes * blen
 )(
     // RAM clock.
-    input  logic                clk,
+    input  wire                 clk,
     // Per-byte write enable.
-    input  logic[dbytes-1:0]    we,
+    input  wire [dbytes-1:0]    we,
     // Address.
-    input  logic[abits-1:0]     addr,
+    input  wire [abits-1:0]     addr,
     // Write data.
-    input  logic[dbits-1:0]     wdata,
+    input  wire [dbits-1:0]     wdata,
     // Read data.
     output logic[dbits-1:0]     rdata
 );
@@ -82,17 +83,17 @@ module raw_sdp_block_ram#(
     localparam       dbits       = dbytes * blen
 )(
     // RAM clock.
-    input  logic                clk,
+    input  wire                 clk,
     
     // Per-byte write enable.
-    input  logic[dbytes-1:0]    a_we,
+    input  wire [dbytes-1:0]    a_we,
     // Address.
-    input  logic[abits-1:0]     a_addr,
+    input  wire [abits-1:0]     a_addr,
     // Write data.
-    input  logic[dbits-1:0]     a_wdata,
+    input  wire [dbits-1:0]     a_wdata,
     
     // Address.
-    input  logic[abits-1:0]     b_addr,
+    input  wire [abits-1:0]     b_addr,
     // Read data.
     output logic[dbits-1:0]     b_rdata
 );
@@ -150,23 +151,23 @@ module raw_dp_block_ram#(
     localparam       dbits       = dbytes * blen
 )(
     // RAM clock.
-    input  logic                clk,
+    input  wire                 clk,
     
     // Per-byte write enable.
-    input  logic[dbytes-1:0]    a_we,
+    input  wire [dbytes-1:0]    a_we,
     // Address.
-    input  logic[abits-1:0]     a_addr,
+    input  wire [abits-1:0]     a_addr,
     // Write data.
-    input  logic[dbits-1:0]     a_wdata,
+    input  wire [dbits-1:0]     a_wdata,
     // Read data.
     output logic[dbits-1:0]     a_rdata,
     
     // Per-byte write enable.
-    input  logic[dbytes-1:0]    b_we,
+    input  wire [dbytes-1:0]    b_we,
     // Address.
-    input  logic[abits-1:0]     b_addr,
+    input  wire [abits-1:0]     b_addr,
     // Write data.
-    input  logic[dbits-1:0]     b_wdata,
+    input  wire [dbits-1:0]     b_wdata,
     // Read data.
     output logic[dbits-1:0]     b_rdata
 );
@@ -238,26 +239,26 @@ module raw_dpdc_block_ram#(
     localparam       dbits       = dbytes * blen
 )(
     // RAM clock A.
-    input  logic                a_clk,
+    input  wire                 a_clk,
     
     // Per-byte write enable.
-    input  logic[dbytes-1:0]    a_we,
+    input  wire [dbytes-1:0]    a_we,
     // Address.
-    input  logic[abits-1:0]     a_addr,
+    input  wire [abits-1:0]     a_addr,
     // Write data.
-    input  logic[dbits-1:0]     a_wdata,
+    input  wire [dbits-1:0]     a_wdata,
     // Read data.
     output logic[dbits-1:0]     a_rdata,
     
     // RAM clock B.
-    input  logic                b_clk,
+    input  wire                 b_clk,
     
     // Per-byte write enable.
-    input  logic[dbytes-1:0]    b_we,
+    input  wire [dbytes-1:0]    b_we,
     // Address.
-    input  logic[abits-1:0]     b_addr,
+    input  wire [abits-1:0]     b_addr,
     // Write data.
-    input  logic[dbits-1:0]     b_wdata,
+    input  wire [dbits-1:0]     b_wdata,
     // Read data.
     output logic[dbits-1:0]     b_rdata
 );

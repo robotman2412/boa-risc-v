@@ -2,9 +2,12 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
+
+
 
 module top(
-    input  logic        clk,
+    input  wire         clk,
     output logic        is_ecall,
     output logic        is_ebreak,
     output logic[31:0]  regs[31:0],

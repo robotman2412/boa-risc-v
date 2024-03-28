@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -12,16 +13,16 @@ module unbuffered_uart_tx#(
     parameter dlen = 8
 )(
     // Undivided clock.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     // Clock divider setting.
-    input  logic[dlen-1:0]  clk_div,
+    input  wire [dlen-1:0]  clk_div,
     
     // Byte to transmit.
-    input  logic[7:0]       tx_byte,
+    input  wire [7:0]       tx_byte,
     // Send trigger.
-    input  logic            tx_trig,
+    input  wire             tx_trig,
     // Send acknowledgement.
     output logic            tx_ack,
     // UART transmit wire.
@@ -80,20 +81,20 @@ module unbuffered_uart_rx#(
     parameter dlen = 8
 )(
     // Undivided clock.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     // Clock divider setting.
-    input  logic[dlen-1:0]  clk_div,
+    input  wire [dlen-1:0]  clk_div,
     
     // Byte just received.
     output logic[7:0]       rx_byte,
     // A byte has been fully received.
     output logic            rx_trig,
     // Acknowledge and clear rx_trig.
-    input  logic            rx_ack,
+    input  wire             rx_ack,
     // UART receive wire.
-    input  logic            rxd,
+    input  wire             rxd,
     // UART is currently receiving.
     output logic            rx_busy
 );
@@ -161,16 +162,16 @@ module boa_peri_uart#(
     parameter init_div      = 1250
 )(
     // Peripheral bus clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     // Peripheral bus interface.
     boa_mem_bus.MEM     bus,
     
     // Transmitted data pin.
     output logic        txd,
     // Received data pin.
-    input  logic        rxd,
+    input  wire         rxd,
     
     // UART transmit buffer has emptied.
     output logic        tx_empty,

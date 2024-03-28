@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -10,29 +11,45 @@ module boa_peri_writeable#(
     // Base address to respond to.
     parameter addr      = 32'h8000_0000,
     // Default value.
-    parameter def_val   = 0
+    parameter def_val   = 0,
+    // Width of value.
+    parameter width     = 32
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // Peripheral bus.
     boa_mem_bus.MEM     bus,
     
     // Value to present to the bus.
-    output logic[31:0]  value
+    output logic[width-1:0]  value
 );
+    genvar x;
     assign bus.ready = 1;
+    
+    logic[bus.dlen-1:0] wmask;
+    generate
+        for (x = 0; x < bus.dlen/8; x = x + 1) begin
+            assign wmask[x*8+7:x*8] = bus.we[x] && bus.addr[bus.alen-1:2] == addr[bus.alen-1:2] ? 8'hff : 8'h00;
+        end
+        for (x = 0; x < width; x = x + 1) begin
+            initial begin
+                value[x] <= def_val[x];
+            end
+            always @(posedge clk) begin
+                if (rst) begin
+                    value[x] <= def_val[x];
+                end else if (wmask[x]) begin
+                    value[x] <= bus.wdata[x];
+                end
+            end
+        end
+    endgenerate
+    
     always @(posedge clk) begin
-        if (rst) begin
-            value <= def_val;
-            bus.rdata <= 0;
-        end else if (bus.addr == addr[bus.alen-1:2]) begin
-            if (bus.we[0]) value[7:0]   <= bus.wdata[7:0];
-            if (bus.we[1]) value[15:8]  <= bus.wdata[15:8];
-            if (bus.we[2]) value[23:16] <= bus.wdata[23:16];
-            if (bus.we[3]) value[31:24] <= bus.wdata[31:24];
+        if (bus.addr[bus.alen-1:2] == addr[bus.alen-1:2]) begin
             bus.rdata <= value;
         end else begin
             bus.rdata <= 0;

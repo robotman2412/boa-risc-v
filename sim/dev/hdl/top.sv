@@ -2,13 +2,14 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
 module top(
-    input  logic clk,
+    input  wire  clk,
     output logic tx,
-    input  logic rx
+    input  wire  rx
 );
     `include "boa_fileio.svh"
     logic rst = 1;

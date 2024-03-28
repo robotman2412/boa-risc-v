@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -15,23 +16,23 @@ module boa_peri_gpio#(
     parameter num_ext   = 1
 )(
     // Peripheral bus clock.
-    input  logic                clk,
+    input  wire                 clk,
     // Synchronous reset.
-    input  logic                rst,
+    input  wire                 rst,
     // Peripheral bus interface.
     boa_mem_bus.MEM             bus,
     
     // External signals for GPIO matrix.
-    input  logic[num_ext-1:0]   ext,
+    input  wire [num_ext-1:0]   ext,
     // External output enable signals for GPIO matrix.
-    input  logic[num_ext-1:0]   ext_oe,
+    input  wire [num_ext-1:0]   ext_oe,
     
     // Outputs.
     output logic[pins-1:0]      pin_out,
     // Output enable.
     output logic[pins-1:0]      pin_oe,
     // Inputs.
-    input  logic[pins-1:0]      pin_in
+    input  wire [pins-1:0]      pin_in
 );
     genvar x;
     assign bus.ready = 1;
@@ -87,6 +88,8 @@ module boa_peri_gpio#(
                 sel_reg[bus.addr[6:2]]  <= bus.wdata[15:0];
                 ext_reg[bus.addr[6:2]]  <= bus.wdata[16];
             end
+        end else begin
+            bus.rdata <= 0;
         end
     end
 endmodule

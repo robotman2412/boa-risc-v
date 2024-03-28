@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -24,13 +25,13 @@ module boa_stage_if#(
     parameter if_branch_reg = 0
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     // Invalidate results and clear traps.
-    input  logic        clear,
+    input  wire         clear,
     // Current privilege mode.
-    input  logic[1:0]   cur_priv,
+    input  wire [1:0]   cur_priv,
     
     // Program memory bus.
     boa_mem_bus.CPU     pbus,
@@ -51,27 +52,27 @@ module boa_stage_if#(
     
     
     // Instruction fetch fence.
-    input  logic        fence_i,
+    input  wire         fence_i,
     
     // Unconditional control transfer or branch predicted as taken.
-    input  logic        fw_branch_predict,
+    input  wire         fw_branch_predict,
     // Branch target address.
-    input  logic[31:1]  fw_branch_target,
+    input  wire [31:1]  fw_branch_target,
     // Address of the next instruction.
     output logic[31:1]  if_next_pc,
     // Branch to be corrected.
-    input  logic        fw_branch_correct,
+    input  wire         fw_branch_correct,
     // Branch correction address.
-    input  logic[31:1]  fw_branch_alt,
+    input  wire [31:1]  fw_branch_alt,
     // Exception occurred.
-    input  logic        fw_exception,
+    input  wire         fw_exception,
     // Exception vector.
-    input  logic[31:2]  fw_tvec,
+    input  wire [31:2]  fw_tvec,
     
     // Stall IF stage.
-    input  logic        fw_stall_if,
+    input  wire         fw_stall_if,
     // Clear cache.
-    input  logic        fw_cclear
+    input  wire         fw_cclear
 );
     genvar x;
     
@@ -272,18 +273,18 @@ module boa_stage_if_creader#(
     parameter depth   = 2
 )(
     // Match M-mode.
-    input  logic        m_mode,
+    input  wire         m_mode,
     // Instruction cache.
-    input  logic[31:0]  icache[depth],
+    input  wire [31:0]  icache[depth],
     // Address cache.
-    input  logic[31:2]  acache[depth],
+    input  wire [31:2]  acache[depth],
     // Cache validity.
-    input  logic        cvalid[depth],
+    input  wire         cvalid[depth],
     // Cache permission.
     input  cperm_t      cperm[depth],
     
     // Cache read address.
-    input  logic[31:2]  addr,
+    input  wire [31:2]  addr,
     // Cache read valid.
     output logic        valid,
     // Cache read is about to expire.

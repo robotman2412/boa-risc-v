@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -10,11 +11,11 @@ module boa_mtime#(
     parameter addr = 32'hffff_f000
 )(
     // CPU clock.
-    input  logic    clk,
+    input  wire     clk,
     // Timekeeping clock.
-    input  logic    rtc_clk,
+    input  wire     rtc_clk,
     // Synchronous reset.
-    input  logic    rst,
+    input  wire     rst,
     
     // Memory bus.
     boa_mem_bus.MEM bus,

@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -15,7 +16,7 @@ module block_ram#(
     parameter bit    is_rom     = 0
 )(
     // Memory clock.
-    input  logic    clk,
+    input  wire     clk,
     // Memory bus.
     boa_mem_bus.MEM bus
 );
@@ -36,7 +37,7 @@ module dp_block_ram#(
     parameter bit    is_rom     = 0
 )(
     // Memory clock.
-    input  logic    clk,
+    input  wire     clk,
     // Memory bus A.
     boa_mem_bus.MEM a,
     // Memory bus B.
@@ -64,17 +65,17 @@ module dpdc_block_ram#(
     parameter bit    is_rom     = 0
 )(
     // Memory clock A.
-    input  logic    clk_a,
+    input  wire     clk_a,
     // Memory bus A.
     boa_mem_bus.MEM a,
     
     // Memory clock B.
-    input  logic    clk_b,
+    input  wire     clk_b,
     // Memory bus B.
     boa_mem_bus.MEM b
 );
     // Raw block RAM storage.
-    raw_dp_block_ram#(abits, 4, 8, init_file) bram_inst(
+    raw_dpdc_block_ram#(abits, 4, 8, init_file) bram_inst(
         clk_a,
         is_rom ? 0 : a.we, a.addr[abits+1:2], is_rom ? 'bx : a.wdata, a.rdata,
         clk_b,

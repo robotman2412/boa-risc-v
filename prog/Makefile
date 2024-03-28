@@ -8,6 +8,7 @@ all:
 	make -C divtest all
 	make -C bootloader all
 	make -C coremark all
+	make -C vgatest all
 
 build:
 	make -C test build
@@ -16,6 +17,7 @@ build:
 	make -C divtest build
 	make -C bootloader build
 	make -C coremark build
+	make -C vgatest build
 
 clean:
 	make -C test clean
@@ -24,3 +26,4 @@ clean:
 	make -C divtest clean
 	make -C bootloader clean
 	make -C coremark clean
+	make -C vgatest clean

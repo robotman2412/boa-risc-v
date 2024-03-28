@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -18,25 +19,25 @@ module boa_stage_id#(
     parameter has_c         = 1
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     // Invalidate results and clear traps.
-    input  logic        clear,
+    input  wire         clear,
     // Current privilege mode.
-    input  logic[1:0]   cur_priv,
+    input  wire [1:0]   cur_priv,
     
     
     // IF/ID: Result valid.
-    input  logic        d_valid,
+    input  wire         d_valid,
     // IF/ID: Current instruction PC.
-    input  logic[31:1]  d_pc,
+    input  wire [31:1]  d_pc,
     // IF/ID: Current instruction word.
-    input  logic[31:0]  d_insn,
+    input  wire [31:0]  d_insn,
     // IF/ID: Trap raised.
-    input  logic        d_trap,
+    input  wire         d_trap,
     // IF/ID: Trap cause.
-    input  logic[3:0]   d_cause,
+    input  wire [3:0]   d_cause,
     
     // ID/EX: Result valid.
     output logic        q_valid,
@@ -65,7 +66,7 @@ module boa_stage_id#(
     // FENCE.I instructions.
     output logic        is_fencei,
     // Current MISA value.
-    input  logic[31:0]  cur_misa,
+    input  wire [31:0]  cur_misa,
     
     // MRET or SRET instruction.
     output logic        is_xret,
@@ -81,21 +82,21 @@ module boa_stage_id#(
     output logic[31:1]  branch_target,
     
     // Write-back enable.
-    input  logic        wb_we,
+    input  wire         wb_we,
     // Write-back register.
-    input  logic[4:0]   wb_rd,
+    input  wire [4:0]   wb_rd,
     // Write-back write data.
-    input  logic[31:0]  wb_wdata,
+    input  wire [31:0]  wb_wdata,
     
     // Stall ID stage.
-    input  logic        fw_stall_id,
+    input  wire         fw_stall_id,
     
     // Branch target address uses RS1.
     output logic        use_rs1_bt,
     // Forward RS1 to branch target address.
-    input  logic        fw_rs1_bt,
+    input  wire         fw_rs1_bt,
     // Forwarding value.
-    input  logic[31:0]  fw_val
+    input  wire [31:0]  fw_val
 );
     // IF/ID: Result valid.
     logic       r_valid;
@@ -226,24 +227,24 @@ module boa_regfile#(
     parameter debug         = 0
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // Register write enable.
-    input  logic        we,
+    input  wire         we,
     // Register write index.
-    input  logic[4:0]   rd,
+    input  wire [4:0]   rd,
     // Register write data.
-    input  logic[31:0]  wdata,
+    input  wire [31:0]  wdata,
     
     // Register read index 1.
-    input  logic[4:0]   rs1,
+    input  wire [4:0]   rs1,
     // Register read data 1.
     output logic[31:0]  q1,
     
     // Register read index 1.
-    input  logic[4:0]   rs2,
+    input  wire [4:0]   rs2,
     // Register read data 1.
     output logic[31:0]  q2
 );
@@ -276,11 +277,11 @@ endmodule
 // Does branch prediction and branch target address calculation.
 module boa_branch_decoder(
     // Instruction to evaluate.
-    input  logic[31:0]  insn,
+    input  wire [31:0]  insn,
     // Address of current instruction (for JAL and conditional branch).
-    input  logic[31:1]  pc_val,
+    input  wire [31:1]  pc_val,
     // Value of RS1 register (for JALR).
-    input  logic[31:0]  rs1_val,
+    input  wire [31:0]  rs1_val,
     
     // Instruction is MRET or SRET.
     output logic        is_xret,
@@ -366,7 +367,7 @@ module boa_reg_decoder#(
     // Check for RV64 instructions.
     parameter rv64 = 0
 )(
-    input  logic[31:0]  insn,
+    input  wire [31:0]  insn,
     output logic        has_rs1,
     output logic        has_rs2,
     output logic        has_rs3,
@@ -426,13 +427,13 @@ module boa_insn_validator#(
     parameter has_s_mode = 0
 )(
     // Instruction to verify.
-    input  logic[31:0]  insn,
+    input  wire [31:0]  insn,
     // Current privilege level.
-    input  logic[1:0]   privilege,
+    input  wire [1:0]   privilege,
     // Allow RV64 instructions.
-    input  logic        rv64,
+    input  wire         rv64,
     // Current value of misa.
-    input  logic[31:0]  misa,
+    input  wire [31:0]  misa,
     
     // Instruction is recognised.
     output logic        valid,

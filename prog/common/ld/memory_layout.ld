@@ -20,6 +20,7 @@ PROVIDE(__mtimecmp      = __start_cpummio + 8);
 PROVIDE(__is_simulator_base = __start_peri + 0x310);
 PROVIDE(__xromctl_base      = __start_peri + 0x500);
 PROVIDE(__xramctl_base      = __start_peri + 0x600);
+PROVIDE(__vgactl_base       = __start_peri + 0x700);
 
 PROVIDE(__uart0_base = __start_peri + 0x000);
 PROVIDE(__pmu_base   = __start_peri + 0x100);

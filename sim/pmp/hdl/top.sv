@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `include "boa_defines.sv"
+`default_nettype none
 
 
 

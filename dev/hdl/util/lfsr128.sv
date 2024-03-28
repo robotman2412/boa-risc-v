@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -9,7 +10,7 @@
 module lfsr128#(
     parameter [127:0] init_value = 128'h001bb69a_baf65811_caa417d1_19362a08
 )(
-    input  logic        clk,
+    input  wire         clk,
     output logic[127:0] state
 );
     initial begin

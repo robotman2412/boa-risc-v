@@ -2,7 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
-
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -57,26 +57,26 @@ module main#(
     parameter integer pmp_grain         = 2
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Timekeeping clock.
-    input  logic        rtc_clk,
+    input  wire         rtc_clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // UART send data.
     output logic        txd,
     // UART receive data.
-    input  logic        rxd,
+    input  wire         rxd,
     
     // GPIO outputs.
     output logic[31:0]  gpio_out,
     // GPIO output enables.
     output logic[31:0]  gpio_oe,
     // GPIO inputs.
-    input  logic[31:0]  gpio_in,
+    input  wire [31:0]  gpio_in,
     
     // A 32-bit quantity of randomness.
-    input  logic[31:0]  randomness,
+    input  wire [31:0]  randomness,
     
     // External MMIO bus.
     boa_mem_bus.CPU     xmp_bus,
@@ -172,13 +172,13 @@ module main#(
     // PMU interface.
     boa_peri_pmu #(.addr('h100)) pmu(clk, rst, peri_bus[1], pmb);
     // GPIO.
-    logic[7:0] gpio_ext_sig;
-    logic[7:0] gpio_ext_oe;
-    boa_peri_gpio#(.addr('h200), .num_ext(8)) gpio(clk, rst, peri_bus[2], gpio_ext_sig, gpio_ext_oe, gpio_out, gpio_oe, gpio_in);
+    logic[3:0] gpio_ext_sig;
+    logic[3:0] gpio_ext_oe;
+    boa_peri_gpio#(.addr('h200), .num_ext(4)) gpio(clk, rst, peri_bus[2], gpio_ext_sig, gpio_ext_oe, gpio_out, gpio_oe, gpio_in);
     // Hardware RNG.
     boa_peri_readable#(.addr('h300)) rng(clk, rst, peri_bus[3], randomness);
     // PWM generators.
-    assign gpio_ext_oe[7:0] = 8'hff;
+    assign gpio_ext_oe[3:0] = 8'hff;
     boa_peri_pwm#(.addr('h480)) pwm0gen(clk, clk, rst, peri_bus[4], gpio_ext_sig[0]);
     boa_peri_pwm#(.addr('h490)) pwm1gen(clk, clk, rst, peri_bus[5], gpio_ext_sig[1]);
     boa_peri_pwm#(.addr('h4a0)) pwm2gen(clk, clk, rst, peri_bus[6], gpio_ext_sig[2]);

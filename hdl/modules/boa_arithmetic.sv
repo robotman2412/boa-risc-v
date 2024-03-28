@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -9,14 +10,14 @@
 // Simple zero latency multiplier.
 module boa_mul_simple(
     // Left-hand side is unsigned.
-    input  logic       u_lhs,
+    input  wire        u_lhs,
     // Right-hand side is unsigned.
-    input  logic       u_rhs,
+    input  wire        u_rhs,
     
     // Left-hand side.
-    input  logic[31:0] lhs,
+    input  wire [31:0] lhs,
     // Right-hand side.
-    input  logic[31:0] rhs,
+    input  wire [31:0] rhs,
     // Multiplication result.
     output logic[63:0] res
 );
@@ -37,12 +38,12 @@ endmodule
 // Simple zero latency divider.
 module boa_div_simple(
     // Perform unsigned division.
-    input  logic        u,
+    input  wire         u,
     
     // Left-hand side.
-    input  logic[31:0] lhs,
+    input  wire [31:0] lhs,
     // Right-hand side.
-    input  logic[31:0] rhs,
+    input  wire [31:0] rhs,
     // Division result.
     output logic[31:0] div_res,
     // Modulo result.
@@ -77,14 +78,14 @@ module boa_cyc_div_part#(
     localparam  dwidth  = width * 2
 )(
     // Current divisor position bitmask.
-    input  logic[width-1:0]     pos,
+    input  wire [width-1:0]     pos,
     // Divisor.
-    input  logic[dwidth-1:0]    div,
+    input  wire [dwidth-1:0]    div,
     
     // Remainder in.
-    input  logic[width-1:0]     d_rem,
+    input  wire [width-1:0]     d_rem,
     // Result in.
-    input  logic[width-1:0]     d_res,
+    input  wire [width-1:0]     d_res,
     
     // Remainder out.
     output logic[width-1:0]     q_rem,
@@ -110,14 +111,14 @@ module boa_cyc_div_parts#(
     localparam  dwidth      = width * 2
 )(
     // Current divisor position bitmask.
-    input  logic[width-1:0]     pos,
+    input  wire [width-1:0]     pos,
     // Divisor.
-    input  logic[dwidth-1:0]    div,
+    input  wire [dwidth-1:0]    div,
     
     // Remainder in.
-    input  logic[width-1:0]     d_rem,
+    input  wire [width-1:0]     d_rem,
     // Result in.
-    input  logic[width-1:0]     d_res,
+    input  wire [width-1:0]     d_res,
     
     // Remainder out.
     output logic[width-1:0]     q_rem,
@@ -169,16 +170,16 @@ module boa_div_cyclic#(
     localparam  dwidth      = width * 2
 )(
     // Cycle clock.
-    input  logic            clk,
+    input  wire             clk,
     // Input latch.
-    input  logic            latch,
+    input  wire             latch,
     // Perform unsigned division.
-    input  logic            u,
+    input  wire             u,
     
     // Left-hand side.
-    input  logic[width-1:0] lhs,
+    input  wire [width-1:0] lhs,
     // Right-hand side.
-    input  logic[width-1:0] rhs,
+    input  wire [width-1:0] rhs,
     
     // Division result.
     output logic[width-1:0] div_res,
@@ -253,14 +254,14 @@ module boa_div_part#(
     parameter has_reg   = 0
 )(
     // Clock (unused if not pipelined).
-    input  logic            clk,
+    input  wire             clk,
     
     // Unshifted divisor input.
-    input  logic[width-1:0] d_divisor,
+    input  wire [width-1:0] d_divisor,
     // Remainder input.
-    input  logic[width-1:0] d_remainder,
+    input  wire [width-1:0] d_remainder,
     // Result input.
-    input  logic[width-1:0] d_result,
+    input  wire [width-1:0] d_result,
     
     // Divisor output.
     output logic[width-1:0] q_divisor,
@@ -319,12 +320,12 @@ module boa_udiv_pipelined#(
     parameter width        = 32
 )(
     // Pipeline clock.
-    input  logic            clk,
+    input  wire             clk,
     
     // Left-hand side.
-    input  logic[width-1:0] lhs,
+    input  wire [width-1:0] lhs,
     // Right-hand side.
-    input  logic[width-1:0] rhs,
+    input  wire [width-1:0] rhs,
     
     // Division result.
     output logic[width-1:0] div_res,
@@ -414,14 +415,14 @@ module boa_div_pipelined#(
     parameter width        = 32
 )(
     // Pipeline clock.
-    input  logic            clk,
+    input  wire             clk,
     // Perform unsigned division.
-    input  logic            u,
+    input  wire             u,
     
     // Left-hand side.
-    input  logic[width-1:0] lhs,
+    input  wire [width-1:0] lhs,
     // Right-hand side.
-    input  logic[width-1:0] rhs,
+    input  wire [width-1:0] rhs,
     
     // Division result.
     output logic[width-1:0] div_res,
@@ -475,14 +476,14 @@ endmodule
 // Simple zero latency bit shifter.
 module boa_shift_simple(
     // Shift arithmetic.
-    input  logic                arith,
+    input  wire                 arith,
     // Shift right instead of left.
-    input  logic                shr,
+    input  wire                 shr,
     
     // Left-hand side.
-    input  logic signed[31:0]   lhs,
+    input  wire  signed[31:0]   lhs,
     // Right-hand side.
-    input  logic       [31:0]   rhs,
+    input  wire        [31:0]   rhs,
     // Bit shift result.
     output logic signed[31:0]   res
 );

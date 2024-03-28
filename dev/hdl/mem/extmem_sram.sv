@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -11,9 +12,9 @@ module boa_extmem_sram#(
     parameter sram_alen = 8
 )(
     // CPU clock.
-    input  logic                clk,
+    input  wire                 clk,
     // Synchronous reset.
-    input  logic                rst,
+    input  wire                 rst,
     
     // Internal memory bus.
     boa_mem_bus.MEM             bus,
@@ -27,7 +28,7 @@ module boa_extmem_sram#(
     // Extmem write data.
     output logic[7:0]           xm_wdata,
     // Extmem read data.
-    input  logic[7:0]           xm_rdata
+    input  wire [7:0]           xm_rdata
 );
     genvar x;
     

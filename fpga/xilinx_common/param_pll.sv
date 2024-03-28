@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -15,7 +16,7 @@ module param_pll#(
     // Division factor for the output clock.
     parameter out_div = 1
 )(
-    input  logic clk_in,
+    input  wire  clk_in,
     output logic clk_out
 );
     logic clk_div;

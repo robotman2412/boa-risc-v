@@ -477,6 +477,7 @@ bool f_read(char const *raw_addr, char const *raw_len, char const *raw_file) {
         printf("Address out of range: %s\n", raw_len);
         return false;
     }
+    printf("Reading 0x%08x bytes from 0x%08x\n", (int)length, (int)address);
 
     // Set up a read command.
     phdr_t phdr = {
@@ -502,7 +503,8 @@ bool f_read(char const *raw_addr, char const *raw_len, char const *raw_file) {
     } else {
         // Dump data to STDOUT.
         for (size_t row = 0; row < (header.length - 1) / HEXDUMP_COLS + 1; row++) {
-            printf("%0*zx:", (clog2(header.length) - 1) / 4 + 1, row * HEXDUMP_COLS);
+            size_t digits = header.length > 4 ? (clog2(header.length) - 1) / 4 + 1 : 1;
+            printf("%0*zx:", digits, row * HEXDUMP_COLS);
             for (size_t col = 0; col < HEXDUMP_COLS; col++) {
                 if (col % HEXDUMP_GROUP == 0) {
                     putchar(' ');

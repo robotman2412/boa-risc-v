@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -15,17 +16,17 @@ module param_fifo#(
     parameter allow_full_we = 1
 )(
     // Clock.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     
     // FIFO write enable.
-    input  logic            we,
+    input  wire             we,
     // FIFO write data.
-    input  logic[width-1:0] wdata,
+    input  wire [width-1:0] wdata,
     
     // FIFO read enable.
-    input  logic            re,
+    input  wire             re,
     // FIFO read data.
     output logic[width-1:0] rdata,
     

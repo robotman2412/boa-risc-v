@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -45,9 +46,9 @@ module boa_amo_ctl_1#(
     parameter arbiter   = `BOA_ARBITER_RR
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // CPU AMO ports.
     boa_amo_bus.MEM     amo[cpus],
@@ -199,19 +200,19 @@ endmodule
 // Used to map memories into a larger address space without mirorring.
 module mem_mem_amap(
     // CPU clock.
-    input  logic                clk,
+    input  wire                        clk,
     // Synchrounous reset.
-    input  logic                rst,
+    input  wire                        rst,
     
     // Address space to remap.
-    boa_mem_bus.MEM             mem,
+    boa_mem_bus.MEM                    mem,
     // Remapped address space.
-    boa_mem_bus.CPU             cpu,
+    boa_mem_bus.CPU                    cpu,
     
     // Base address.
-    logic[cpu.alen-1:0]         addr,
+    input  wire [cpu.alen-1:0]         addr,
     // Number of address bits to ignore.
-    logic[$clog2(cpu.alen)-1:0] pos
+    input  wire [$clog2(cpu.alen)-1:0] pos
 );
     wire [cpu.alen-1:0] mask        = 64'b1 << pos;
     wire                sel         = (mem.addr & ~mask) == (addr & ~mask);
@@ -283,9 +284,9 @@ module boa_mem_mux#(
     localparam elen     = $clog2(alen)
 )(
     // CPU clock.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     
     // CPU port.
     boa_mem_bus.MEM         cpu,
@@ -293,9 +294,9 @@ module boa_mem_mux#(
     boa_mem_bus.CPU         mem[mems],
     
     // MEM port addresses, naturally aligned.
-    input  logic[alen-1:0]  addr[mems],
+    input  wire [alen-1:0]  addr[mems],
     // MEM port size in log2(size_bytes).
-    input  logic[elen-1:0]  size[mems]
+    input  wire [elen-1:0]  size[mems]
 );
     genvar x;
     
@@ -353,14 +354,14 @@ module boa_arbiter_rr#(
     parameter ports = 2
 )(
     // Latch the current arbiter value.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     
     // Requests.
-    input  logic[ports-1:0] req,
+    input  wire [ports-1:0] req,
     // Current arbitration result.
-    input  logic[ports-1:0] cur,
+    input  wire [ports-1:0] cur,
     // Next arbitration result.
     output logic[ports-1:0] next
 );
@@ -404,14 +405,14 @@ module boa_arbiter_static#(
     parameter ports = 2
 )(
     // Latch the current arbiter value.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     
     // Requests.
-    input  logic[ports-1:0] req,
+    input  wire [ports-1:0] req,
     // Current arbitration result.
-    input  logic[ports-1:0] cur,
+    input  wire [ports-1:0] cur,
     // Next arbitration result.
     output logic[ports-1:0] next
 );
@@ -449,9 +450,9 @@ module boa_mem_demux#(
     localparam wes      = dlen/8
 )(
     // CPU clock.
-    input  logic    clk,
+    input  wire     clk,
     // Synchronous reset.
-    input  logic    rst,
+    input  wire     rst,
     
     // CPU ports.
     boa_mem_bus.MEM cpu[cpus],
@@ -544,9 +545,9 @@ module boa_mem_xbar#(
     localparam elen     = $clog2(alen)
 )(
     // CPU clock.
-    input  logic    clk,
+    input  wire     clk,
     // Synchronous reset.
-    input  logic    rst,
+    input  wire     rst,
     
     // CPU ports.
     boa_mem_bus.MEM cpu[cpus],
@@ -554,9 +555,9 @@ module boa_mem_xbar#(
     boa_mem_bus.CPU mem[mems],
     
     // MEM port addresses, naturally aligned.
-    input  logic[alen-1:0]  addr[mems],
+    input  wire [alen-1:0]  addr[mems],
     // MEM port size in log2(size_bytes).
-    input  logic[elen-1:0]  size[mems]
+    input  wire [elen-1:0]  size[mems]
 );
     genvar x, y;
     

@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -11,11 +12,11 @@ module boa_peri_pwm#(
     parameter addr      = 32'h8000_0000
 )(
     // CPU clock.
-    input  logic        clk,
+    input  wire         clk,
     // PWM clock.
-    input  logic        pwm_clk,
+    input  wire         pwm_clk,
     // Synchronous reset.
-    input  logic        rst,
+    input  wire         rst,
     
     // Peripheral bus.
     boa_mem_bus.MEM     bus,

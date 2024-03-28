@@ -2,12 +2,15 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
+
+
 
 module param_clk_div#(
     parameter fast_hz = 1000000,
     parameter slow_hz = 9600*4
 )(
-    input  logic clk_fast,
+    input  wire  clk_fast,
     output logic clk_slow
 );
     generate

@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
@@ -34,27 +35,27 @@ module boa_cache#(
     localparam twidth       = alen-tgrain+2
 )(
     // CPU clock.
-    input  logic            clk,
+    input  wire             clk,
     // Synchronous reset.
-    input  logic            rst,
+    input  wire             rst,
     
     // Flush the entire cache.
     // If flush_w is 0, writes are discarded.
-    input  logic            flush_r,
+    input  wire             flush_r,
     // Flush cached writes and mark as clean.
-    input  logic            flush_w,
+    input  wire             flush_w,
     
     // Precise invalidation enable.
-    input  logic            pi_en,
+    input  wire             pi_en,
     // Precise invalidation address.
-    input  logic[alen-1:2]  pi_addr,
+    input  wire [alen-1:2]  pi_addr,
     
     // Currently flushing the cache.
     output logic            flushing_r,
     // Currently flushing writes.
     output logic            flushing_w,
     // Stall any access requests.
-    input  logic            stall,
+    input  wire             stall,
     
     // Cache interface.
     boa_mem_bus.MEM         bus,

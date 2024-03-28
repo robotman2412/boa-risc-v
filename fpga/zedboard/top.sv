@@ -2,34 +2,42 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 
 
 
 module top(
     // System clock.
-    input  logic        sysclk,
+    input  wire         sysclk,
     
     // PMODs.
-    input  logic        pmod_a0,
+    input  wire         pmod_a0,
     output logic        pmod_a1,
-    input  logic        pmod_a2,
-    input  logic        pmod_a3,
-    input  logic        pmod_a4,
-    input  logic        pmod_a5,
-    input  logic        pmod_a6,
-    input  logic        pmod_a7,
+    input  wire         pmod_a2,
+    input  wire         pmod_a3,
+    input  wire         pmod_a4,
+    input  wire         pmod_a5,
+    input  wire         pmod_a6,
+    input  wire         pmod_a7,
     
     // Top buttons.
-    input  logic        btn_u,
-    input  logic        btn_d,
-    input  logic        btn_l,
-    input  logic        btn_r,
-    input  logic        btn_c,
+    input  wire         btn_u,
+    input  wire         btn_d,
+    input  wire         btn_l,
+    input  wire         btn_r,
+    input  wire         btn_c,
     
     // Top LEDs.
     output logic[7:0]   led,
     // Top switches.
-    input  logic[7:0]   sw
+    input  wire [7:0]   sw,
+    
+    // VGA port.
+    output logic[3:0]   vga_r,
+    output logic[3:0]   vga_g,
+    output logic[3:0]   vga_b,
+    output logic        vga_hsync,
+    output logic        vga_vsync
 );
     genvar x;
     `include "boa_fileio.svh"
@@ -76,18 +84,18 @@ module top(
     boa_mem_bus#(31) extrom_bus();
     boa_mem_bus#(19) extram_bus();
     boa_mem_bus#(28) uncached_bus();
+    boa_mem_bus#(12) xmp_ovl[2]();
+    boa_mem_overlay xmp_ovl_conn(xmp_bus, xmp_ovl);
     
-    // External peripherals.
     // Extmem size device.
-    boa_peri_readable#('h600) xm_size(clk, rst, xmp_bus, 0);
+    boa_peri_readable#('h600) xm_size(clk, rst, xmp_ovl[0], 0);
+    // boa_peri_readable#('h600) xm_size(clk, rst, xmp_bus, 0);
     
     // External memory bus stubs.
     assign extrom_bus.ready     = 1;
     assign extrom_bus.rdata     = 32'hffff_ffff;
     assign extram_bus.ready     = 1;
     assign extram_bus.rdata     = 32'hffff_ffff;
-    assign uncached_bus.ready   = 1;
-    assign uncached_bus.rdata   = 32'hffff_ffff;
     
     // Fence signals.
     logic fence_rl, fence_aq, fence_i;
@@ -111,6 +119,18 @@ module top(
         fence_rl, fence_aq, fence_i,
         pmb
     );
+    
+    // VGA generator.
+    logic  vga_clk;
+    param_pll#(100000000, 8, 10) vga_pll(sysclk, vga_clk);
+    saph_vidport_vga#(4, 4, 4) vga_port();
+    assign vga_r     = vga_port.r;
+    assign vga_g     = vga_port.g;
+    assign vga_b     = vga_port.b;
+    assign vga_hsync = vga_port.hsync;
+    assign vga_vsync = vga_port.vsync;
+    mmio_vga_periph vga(vga_clk, clk, rst, uncached_bus, xmp_ovl[1], vga_port);
+    // mmio_vga_periph vga(vga_clk, clk, rst, uncached_bus, xmp_bus, vga_port);
     
     // Power management.
     always @(posedge clk) begin

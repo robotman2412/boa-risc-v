@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -14,9 +15,9 @@ module boa_delay_comp#(
     localparam  exp     = delay > 0 ? $clog2(delay+1) : 1
 )(
     // Pipeline clock.
-    input  logic    clk,
+    input  wire     clk,
     // Delay trigger.
-    input  logic    trig,
+    input  wire     trig,
     // Wait output.
     output logic    waiting
 );
@@ -50,7 +51,7 @@ module boa_unary_enc#(
     localparam exp   = $clog2(width)
 )(
     // Unary input.
-    input  logic[width-1:0] unary,
+    input  wire [width-1:0] unary,
     // Binary output.
     output logic[exp-1:0]   binary
 );
@@ -73,9 +74,9 @@ module boa_sel_enc#(
     parameter width = 1
 )(
     // Select inputs.
-    input  logic[depth-1:0] sel,
+    input  wire [depth-1:0] sel,
     // Value inputs.
-    input  logic[width-1:0] d[depth],
+    input  wire [width-1:0] d[depth],
     // Value output.
     output logic[width-1:0] q
 );
@@ -104,11 +105,11 @@ module boa_clk_sync#(
     parameter   integer div_len = 2
 )(
     // Slow clock.
-    input  logic                clk_slow,
+    input  wire                 clk_slow,
     // Fast clock.
-    input  logic                clk_fast,
+    input  wire                 clk_fast,
     // Current division factor minus one.
-    input  logic[div_len-1:0]   division,
+    input  wire [div_len-1:0]   division,
     // Detected clock phase.
     output logic[div_len-1:0]   phase,
     // Clock sync detected.

@@ -2,17 +2,20 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
+
+
 
 module top(
     // System clock.
-    input  logic        clk,
+    input  wire         clk,
     // UART send data.
     output logic        tx,
     // UART receive data.
-    input  logic        rx,
+    input  wire         rx,
     
     // Top buttons.
-    input  logic[1:0]   btn,
+    input  wire [1:0]   btn,
     // LED red component.
     output logic        led_r,
     // LED green component.

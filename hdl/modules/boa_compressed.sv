@@ -2,6 +2,7 @@
 // Copyright © 2024, Julian Scheffers, see LICENSE for more information
 
 `timescale 1ns/1ps
+`default_nettype none
 `include "boa_defines.svh"
 
 
@@ -16,11 +17,11 @@ module boa_insn_decomp#(
     parameter has_q = 0
 )(
     // Decompress RV64 instructions.
-    input  logic       rv64,
+    input  wire        rv64,
     // Current value of misa.
-    input  logic[31:0] misa,
+    input  wire [31:0] misa,
     // Instruction to decompress.
-    input  logic[15:0] comp,
+    input  wire [15:0] comp,
     // Decompressed instruction.
     output logic[31:0] decomp,
     // Is a valid RVC instruction.

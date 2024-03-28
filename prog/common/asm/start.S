@@ -99,6 +99,7 @@ _stop_data_loop:
     memory_napot(13, sram, t0, RAM_PERM)
     memory_napot(12, peri, t0, PMPCFG_RW)
     memory_napot(11, cpummio, t0, PMPCFG_RW)
+    memory_napot(10, extperi, t0, RAM_PERM)
     
     # Detect and set address for extrom.
     li   t0, __addr__start_extrom
@@ -106,9 +107,9 @@ _stop_data_loop:
     lw   t1, __xromctl_base
     srl  t1, t1, 2
     add  t1, t0, t1
-    csrw pmpaddr10, t1
-    csrw pmpaddr9, t0
-    pmp_set_cfg(10, PMPCFG_LOCK + PMPCFG_TOR + ROM_PERM, t0)
+    csrw pmpaddr9, t1
+    csrw pmpaddr8, t0
+    pmp_set_cfg(9, PMPCFG_LOCK + PMPCFG_TOR + ROM_PERM, t0)
     
     # Detect and set address for extram.
     li   t0, __addr__start_extram
@@ -116,9 +117,9 @@ _stop_data_loop:
     lw   t1, __xramctl_base
     srl  t1, t1, 2
     add  t1, t0, t1
-    csrw pmpaddr8, t1
-    csrw pmpaddr7, t0
-    pmp_set_cfg(8, PMPCFG_LOCK + PMPCFG_TOR + RAM_PERM, t0)
+    csrw pmpaddr7, t1
+    csrw pmpaddr6, t0
+    pmp_set_cfg(7, PMPCFG_LOCK + PMPCFG_TOR + RAM_PERM, t0)
     
     # Make all other memory inaccessible.
     li   t0, -1; csrw pmpaddr15, t0
